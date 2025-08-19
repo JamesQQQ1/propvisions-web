@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-white">
+  <head>
+    <title>PDFMonkey</title>
+
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <meta content="en" http-equiv="content-language">
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <script>
+      tailwind.config = {
+        plugins: [
+          require('@tailwindcss/forms'),
+        ],
+      }
+    </script>
+
+    <link rel="icon" type="image/x-icon" href="https://pmp.pdfmonkey.io/assets/favicon-admin-dd2eff2ad2ee62f9aea067ef42c791db1520b053b25cdd9768bd5d3bdde864be.png" />
+    <meta name="csrf-param" content="authenticity_token" />
+<meta name="csrf-token" content="mWPo-buMeMbZGrDlcZqpFsrZzze9KbXOla-sGnR8Es1rVF7Othc-RV0MV_BJUHfA_7l-l6EI8xcTGWFP8X7MeA" />
+    
+  </head>
+
+  <body class="h-full">
+    <main>
+      <h1>404 Not Found</h1>
+
+    </main>
+  </body>
+</html>

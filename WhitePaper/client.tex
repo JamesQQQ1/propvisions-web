@@ -1,0 +1,177 @@
+\documentclass[11pt,a4paper]{article}
+
+% ---------------- Packages ----------------
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{parskip}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{tabularx}
+\usepackage{booktabs}
+
+% ---------------- Branding ----------------
+\definecolor{Accent}{HTML}{0A7AA6}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=Accent,
+  urlcolor=Accent,
+  citecolor=Accent
+}
+
+\newcommand{\product}{PropertyScout}
+\newcommand{\tagline}{AI Deal Analysis \& Alerts for Property Investors and Agents}
+
+% ---------------- Title ----------------
+\makeatletter
+\def\@maketitle{%
+  \newpage
+  \null
+  {\LARGE\bfseries\color{Accent}\product\par}
+  \vspace{0.25em}
+  {\large \tagline\par}
+  \vspace{0.5em}
+  {\normalsize \textbf{Beta Client Brief} \textbar\  \today\par}
+  \vspace{0.75em}
+  \hrule height 1pt \vspace{0.8em}
+}
+\makeatother
+
+% ---------------- Lists ----------------
+\setlist[itemize]{nosep,left=0pt,label=\textbullet}
+\setlist[enumerate]{nosep,left=0pt}
+
+\begin{document}
+\title{\product}
+\author{}
+\date{}
+\maketitle
+
+\section*{One line}
+\textbf{\product} turns a property listing URL \emph{or} API query into a full investment snapshot---refurb costs, rent band (using historical rent data), yield, ROI, EPC and comparables---and alerts you to new or returning deals. It is in \textbf{active beta}: fast progress, imperfect outputs.
+
+\section*{Beta status \& what to expect (read first)}
+\textbf{This is a working beta.} We are prioritising speed and learning:
+\begin{itemize}
+  \item Results will \textbf{not} be perfect yet; UI is functional rather than pretty.
+  \item Current accuracy is \textbf{variable} by area and listing quality; we will publish baselines after initial pilots.
+  \item Our target is \textbf{$\geq$\,80\%} accuracy across core outputs (rent band selection, refurb banding, EPC matching) as we iterate.
+  \item A simple, transparent model lets you adjust assumptions (management\%, voids, fees) and see the effect immediately.
+  \item Human judgement remains important; we provide confidence bands and clear levers to tweak.
+\end{itemize}
+
+\section*{What works today (MVP)}
+\begin{itemize}
+  \item \textbf{Paste a URL} (portals or agent sites) $\rightarrow$ clean scrape $\rightarrow$ structured fields (price, layout, images, agent, postcode).
+  \item \textbf{Refurb from photos:} Per-room line items using regional baseline rates; editable totals.
+  \item \textbf{Rent estimate:} Combines \emph{historical rent data}, postcode features and listing signals to produce monthly/annual \emph{rent bands} with a confidence indicator.
+  \item \textbf{Investment metrics:} Stamp duty, fees, management\%, voids, maintenance $\rightarrow$ yield, cash flow, ROI.
+  \item \textbf{EPC enrichment:} Rating and measures where available; full record stored for reporting.
+  \item \textbf{Comps checks (basic):} Recent local sales/rental comps to flag \pounds/sq\,ft outliers.
+  \item \textbf{Exports \& alerts:} Auto PDF/Excel; Slack/email notifications on completion.
+\end{itemize}
+
+\section*{Launch (v1) Unified Search \& API Integrations}
+\textbf{Ready at go-live.} Beyond single URLs, \product{} will ship with a unified search bar and configurable API connectors:
+\begin{itemize}
+  \item \textbf{Unified search bar:} Search by postcode/filters \emph{or} paste any listing URL.
+  \item \textbf{Prebuilt connectors:} Rightmove, Zoopla, OnTheMarket, major auction platforms, and selected agent feeds (where APIs or data partnerships are available).
+  \item \textbf{Area coverage:} Works across all regions where APIs/feeds exist; falls back to one-time URL ingest for other sites.
+  \item \textbf{One-time URL ingest:} Run ad-hoc analyses for \emph{any} agent/auction page (HTML cleaned to structured JSON).
+  \item \textbf{Per-client customisation:} Enable/disable sources, set query defaults \& quotas, and prioritise data sources by reliability for your patch.
+  \item \textbf{De-duplication \& canonicals:} Merge the same listing across sources; canonicalise by address+agent+photos.
+  \item \textbf{Scheduling \& batch import:} Saved searches with periodic runs; daily digests of new/returning/price-dropped deals.
+  \item \textbf{Compliance \& ops:} Honour site T\&Cs and rate limits; API credentials stored securely; full audit logs \& error handling.
+\end{itemize}
+
+\section*{How it makes estimates (transparent methods)}
+\begin{itemize}
+  \item \textbf{Historical rent data:} Local historic rents and listing features (beds, type, postcode) to place the property into a realistic rent band; your edits re-calibrate per area.
+  \item \textbf{Refurb:} Image classification (room type), baseline regional trade rates, itemised scope; override any line item; add contingencies.
+  \item \textbf{Sanity checks:} Simple comparables, EPC cross-refs, and outlier flags to nudge manual review when needed.
+  \item \textbf{Data hygiene:} De-dup by URL/address; validation on key numeric fields; error logs and retries.
+\end{itemize}
+
+\section*{Mortgage module: now and next}
+\textbf{Today}
+\begin{itemize}
+  \item Standard mortgage assumptions (rates, LTV, fees) included in ROI/yield and cash-flow calculations.
+\end{itemize}
+\textbf{Coming}
+\begin{itemize}
+  \item \textbf{Mortgage types:} IO vs.\ repayment, BTL vs.\ residential, product fees, ERC modelling.
+  \item \textbf{Rate changes \& forward rates:} Integrate live rate updates and forward curves to explore re-mortgage timing windows.
+  \item \textbf{Live dashboard (Q3):} Visualise projected payments, DSCR/ICR under different rate paths; export scenarios.
+\end{itemize}
+
+\section*{Deal discovery (Q2 focus)}
+\begin{itemize}
+  \item \textbf{Off-Market Sourcing Module:} Agent coverage lists \& cadence; GDPR-compliant outreach templates; probate/distress signals where available; lightweight CRM for follow-ups.
+  \item \textbf{Deal-status change watcher:} Monitors portals for \emph{newly listed}, \emph{price drops}, \emph{back on market/fall-through} and \emph{time-on-market} thresholds; smart filters by postcode/price/bed/yield/refurb budget; alerts with a pre-built analysis.
+\end{itemize}
+
+\section*{Accuracy plan \& measurement}
+We measure and publish decision-focused metrics:
+\begin{center}
+\begin{tabularx}{\linewidth}{@{}p{3.2cm} X X@{}}
+\toprule
+\textbf{Output} & \textbf{Metric} & \textbf{Target (beta $\rightarrow$ stable)}\\
+\midrule
+Rent band & Mean absolute \% error (MAPE) on achieved rent; band hit-rate & \textasciitilde 20--25\% $\rightarrow$ \textbf{$\leq$ 15\%}, band hit-rate $\geq$ \textbf{80\%}\\
+Refurb total & MAPE vs.\ final invoices/quotes & \textasciitilde 25--35\% $\rightarrow$ \textbf{$\leq$ 20\%}\\
+EPC match & Correct record match rate & \textasciitilde 85\% $\rightarrow$ \textbf{$\geq$ 95\%}\\
+Yield/ROI & Propagated error from inputs & Confidence bands shown; narrows as inputs confirmed\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\noindent\textbf{Improvement loop}
+\begin{itemize}
+  \item \textbf{Feedback-at-source:} Users nudge rent/refurb bands; we log adjustments for retraining.
+  \item \textbf{Area priors:} Store per-postcode priors (rent per bed, refurb per m$^2$ by room type).
+  \item \textbf{Model updates:} Weekly prompt/model tweaks during beta; monthly calibration once stable.
+\end{itemize}
+
+\section*{Roadmap (high level)}
+\begin{center}
+\begin{tabularx}{\linewidth}{@{}p{2.2cm} X X@{}}
+\toprule
+\textbf{When} & \textbf{Highlights} & \textbf{Accuracy focus}\\
+\midrule
+Now (Beta) & URL$\rightarrow$analysis, refurb from photos, rent bands (historical data), ROI/EPC, PDF/Excel, alerts & Establish baselines; expose assumptions; log user edits\\
+\textbf{Launch (v1)} & \textbf{Unified search bar}, \textbf{API integrations} (Rightmove, Zoopla, \dots), one-time URLs, per-client source customisation, de-dup, batch import & Source reliability weighting; cross-source validation\\
+Q2 & Off-market module, deal-status watcher, smarter comps, regional calibration & Push rent band hit-rate; reduce refurb variance\\
+Q3 & Mortgage types, forward rates, \textbf{live dashboard} for scenarios; remortgage assistant & Validate DSCR/ICR under rate paths; shrink confidence bands\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\section*{Risks \& mitigations}
+\begin{itemize}
+  \item \textbf{Data gaps/changes:} Portal HTML changes or missing fields $\rightarrow$ monitored scrapers, fast fallbacks, error alerts.
+  \item \textbf{Model drift:} Market moves faster than priors $\rightarrow$ rolling calibration and user-feedback signals.
+  \item \textbf{Local quirks:} Unique stock or micro-markets $\rightarrow$ per-area priors and optional client fine-tuning.
+  \item \textbf{API constraints:} Rate limits/T\&Cs $\rightarrow$ queueing, caching, credential vaulting, and clear SLAs.
+\end{itemize}   
+
+\section*{How to pilot}
+\begin{itemize}
+  \item Share \textbf{target postcodes} and 10--20 sample links; optionally provide \textbf{portal API keys} for your sources.
+  \item We configure your \textbf{source mix} (APIs + ad-hoc URLs), run a guided pilot (2--4 weeks), and deliver \textbf{analysis packs} (PDF/Excel) with alerts.
+  \item No payment until you have a working pilot you can use. Beta pricing locks in a discount; optional \textbf{custom area fine-tuning} available for teams/regions.
+\end{itemize}
+
+\section*{What this is not (yet)}
+\begin{itemize}
+  \item A guarantee of valuation or lending terms.
+  \item A replacement for surveys, quotes or legal advice.
+  \item A fully polished UI---that arrives after we lock accuracy and workflows.
+\end{itemize}
+
+\section*{Call to action}
+If you can tolerate ``beta rough edges'' in exchange for speed and a say in the roadmap, we would love you in the first cohort. Send postcodes, links, and any API keys; we will have you analysing deals within days.\\[0.25em]
+\textit{Contact:} \href{mailto:hello@propertyscout.example}{hello@propertyscout.example} \quad\textbar\quad \href{https://propertyscout.example}{propertyscout.example}
+
+\end{document}

@@ -1,0 +1,64 @@
+\contentsline {section}{\numberline {1}Executive Summary}{4}{section.1}%
+\contentsline {paragraph}{Positioning.}{4}{section.1}%
+\contentsline {paragraph}{Outcome.}{4}{section.1}%
+\contentsline {section}{\numberline {2}Problem and Opportunity}{4}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Industry Pain Points}{4}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Why Now}{4}{subsection.2.2}%
+\contentsline {section}{\numberline {3}Product Overview}{5}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Elevator Pitch}{5}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Current MVP Capabilities}{5}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Planned Features (Highlights)}{5}{subsection.3.3}%
+\contentsline {section}{\numberline {4}User Personas \& Jobs-To-Be-Done}{5}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Professional Investor}{5}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Sourcing Agent}{5}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Estate Agency (Partner)}{6}{subsection.4.3}%
+\contentsline {section}{\numberline {5}System Architecture}{6}{section.5}%
+\contentsline {subsection}{\numberline {5.1}High-Level Diagram}{6}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Workflow Orchestration (n8n)}{6}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}Data Stores}{6}{subsection.5.3}%
+\contentsline {section}{\numberline {6}Data Model (Canonical Schemas)}{7}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Core Entities}{7}{subsection.6.1}%
+\contentsline {section}{\numberline {7}Algorithms \& Methods}{7}{section.7}%
+\contentsline {subsection}{\numberline {7.1}HTML $\rightarrow $ JSON Extraction}{7}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}Vision-Guided Refurb Estimation}{7}{subsection.7.2}%
+\contentsline {subsection}{\numberline {7.3}EPC Matching (Robust Heuristic)}{8}{subsection.7.3}%
+\contentsline {subsection}{\numberline {7.4}Rent Estimation}{8}{subsection.7.4}%
+\contentsline {subsection}{\numberline {7.5}Fees \& ROI}{8}{subsection.7.5}%
+\contentsline {subsection}{\numberline {7.6}Uplift \& Forecasting}{8}{subsection.7.6}%
+\contentsline {section}{\numberline {8}Prompts \& Guardrails (Selected)}{9}{section.8}%
+\contentsline {subsection}{\numberline {8.1}HTML-to-JSON Prompt (Skeleton)}{9}{subsection.8.1}%
+\contentsline {subsection}{\numberline {8.2}Refurb Estimation Prompt (Vision)}{9}{subsection.8.2}%
+\contentsline {subsection}{\numberline {8.3}Rent Estimation Prompt}{9}{subsection.8.3}%
+\contentsline {subsection}{\numberline {8.4}EPC Matching Prompt (LLM fallback)}{9}{subsection.8.4}%
+\contentsline {section}{\numberline {9}Evaluation \& Accuracy Targets}{9}{section.9}%
+\contentsline {subsection}{\numberline {9.1}Metrics}{9}{subsection.9.1}%
+\contentsline {subsection}{\numberline {9.2}Initial Targets (Beta)}{10}{subsection.9.2}%
+\contentsline {subsection}{\numberline {9.3}Test Protocol}{10}{subsection.9.3}%
+\contentsline {section}{\numberline {10}Security, Compliance, and Data Governance}{10}{section.10}%
+\contentsline {subsection}{\numberline {10.1}GDPR}{10}{subsection.10.1}%
+\contentsline {subsection}{\numberline {10.2}Credentials}{10}{subsection.10.2}%
+\contentsline {subsection}{\numberline {10.3}PII and Retention}{10}{subsection.10.3}%
+\contentsline {section}{\numberline {11}Performance \& Cost}{10}{section.11}%
+\contentsline {subsection}{\numberline {11.1}Latency Budgets (MVP)}{10}{subsection.11.1}%
+\contentsline {subsection}{\numberline {11.2}Run Cost (Illustrative)}{11}{subsection.11.2}%
+\contentsline {section}{\numberline {12}Commercial Strategy}{11}{section.12}%
+\contentsline {subsection}{\numberline {12.1}Pricing}{11}{subsection.12.1}%
+\contentsline {subsection}{\numberline {12.2}GTM}{11}{subsection.12.2}%
+\contentsline {subsection}{\numberline {12.3}Unit Economics (Indicative)}{11}{subsection.12.3}%
+\contentsline {section}{\numberline {13}Risk Register \& Mitigations}{11}{section.13}%
+\contentsline {section}{\numberline {14}Roadmap}{12}{section.14}%
+\contentsline {subsection}{\numberline {14.1}6-Week Plan (Detailed)}{12}{subsection.14.1}%
+\contentsline {subsection}{\numberline {14.2}Post-MVP (Quarterly Themes)}{12}{subsection.14.2}%
+\contentsline {section}{\numberline {15}Case Study (Illustrative)}{12}{section.15}%
+\contentsline {subsection}{\numberline {15.1}Deal Summary}{12}{subsection.15.1}%
+\contentsline {subsection}{\numberline {15.2}Outputs}{13}{subsection.15.2}%
+\contentsline {section}{\numberline {16}Support, SLAs, and Operations}{13}{section.16}%
+\contentsline {subsection}{\numberline {16.1}Beta Support}{13}{subsection.16.1}%
+\contentsline {subsection}{\numberline {16.2}SLA Targets (Post-Beta)}{13}{subsection.16.2}%
+\contentsline {section}{\numberline {17}Conclusion}{13}{section.17}%
+\contentsline {section}{Appendix A: Supabase SQL DDL (Selected)}{13}{section.17}%
+\contentsline {section}{Appendix B: n8n Workflow (Pseudo-YAML)}{15}{lstnumber.-5.61}%
+\contentsline {section}{Appendix C: Report Structure (PDF/Excel)}{15}{lstnumber.-6.16}%
+\contentsline {section}{Appendix D: API Stubs (FastAPI)}{15}{lstnumber.-6.16}%
+\contentsline {section}{Appendix E: Prompt Library (Copy-Paste Ready)}{16}{lstnumber.-7.19}%
+\contentsline {section}{Appendix F: Glossary}{16}{lstnumber.-9.11}%
