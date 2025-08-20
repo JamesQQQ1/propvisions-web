@@ -1,3 +1,4 @@
+// pages/api/analyze.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
@@ -13,7 +14,7 @@ type UsageRow = {
 };
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const SERVICE_KEY   = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL!;
 const DAILY_RUN_LIMIT = parseInt(process.env.DAILY_RUN_LIMIT || '3', 10);
 const USAGE_TZ = process.env.USAGE_TZ || 'Europe/London';
@@ -43,6 +44,7 @@ function nextMidnightISO() {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' });
+
     if (!SUPABASE_URL || !SERVICE_KEY) return res.status(500).json({ error: 'server_missing_supabase_env' });
     if (!N8N_WEBHOOK_URL) return res.status(500).json({ error: 'server_missing_n8n_webhook' });
 
@@ -55,17 +57,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const ip_hash = hash(ip, ua);
     const day = todayISO();
 
-    // ensure usage row exists
+    // ensure usage row exists (tolerate empty table)
     const sel = await supabase.from<UsageRow>('demo_usage')
       .select('*').eq('ip_hash', ip_hash).eq('day', day).maybeSingle();
-    if (sel.error) throw sel.error;
+    if (sel.error) {
+      console.error('USAGE_SELECT_ERR', sel.error);
+      return res.status(500).json({ error: 'usage_select_failed' });
+    }
 
     let row = sel.data;
     if (!row) {
       const ins = await supabase.from<UsageRow>('demo_usage')
         .insert({ ip_hash, day, count: 0, ua, last_at: null } as Partial<UsageRow>)
         .select('*').single();
-      if (ins.error) throw ins.error;
+      if (ins.error) {
+        console.error('USAGE_INSERT_ERR', ins.error);
+        return res.status(500).json({ error: 'usage_insert_failed' });
+      }
       row = ins.data;
     }
 
@@ -78,7 +86,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const upd = await supabase.from<UsageRow>('demo_usage')
       .update({ count: (row.count ?? 0) + 1, last_at: new Date().toISOString() })
       .eq('id', row.id).select('*').single();
-    if (upd.error) throw upd.error;
+    if (upd.error) {
+      console.error('USAGE_UPDATE_ERR', upd.error);
+      return res.status(500).json({ error: 'usage_update_failed' });
+    }
 
     // queue n8n job
     const resp = await fetch(N8N_WEBHOOK_URL, {
@@ -86,6 +97,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url, ip_hash, ua, day, source: 'propertyscout-ui' }),
     });
+
     if (!resp.ok) {
       const text = await resp.text();
       // best-effort rollback of one count
@@ -98,6 +110,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       status: 'queued',
       jobId: job?.id || job?.jobId || upd.data!.id,
       usage: { count: upd.data!.count, limit, remaining: Math.max(0, limit - (upd.data!.count ?? 0)), reset_at: nextMidnightISO() },
+      route: 'analyze.ts' // helps you confirm you’re hitting the z-route
     });
   } catch (e: any) {
     console.error('ANALYSE_ERR', e?.message || e);
