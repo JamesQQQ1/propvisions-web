@@ -1,6 +1,7 @@
 // src/app/contact/page.tsx
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
 
 type FormState =
@@ -71,6 +72,28 @@ export default function ContactPage() {
 
   return (
     <main className="container section">
+      {/* Top CTA row — ensure demo goes through the access gate */}
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <div className="small text-slate-600">
+          Have a quick look at the product or drop us a line.
+        </div>
+        <div className="flex items-center gap-2">
+          {/* 🔒 Route the demo CTA to the gate */}
+          <Link
+            href="/demo-access?next=/demo"
+            className="btn btn-primary"
+          >
+            Try the Demo
+          </Link>
+          <Link
+            href="/"
+            className="btn"
+          >
+            Home
+          </Link>
+        </div>
+      </div>
+
       {/* Header */}
       <header className="max-w-3xl">
         <span className="badge">We usually reply within one business day</span>
