@@ -4,6 +4,7 @@ import { serialize } from 'cookie';
 
 const DEMO_ACCESS_KEY = process.env.DEMO_ACCESS_KEY || 'letmein';
 const COOKIE_NAME = 'demo_session';
+const COOKIE_DOMAIN = process.env.DEMO_COOKIE_DOMAIN; // e.g. .propvisions.com
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' });
@@ -19,6 +20,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     sameSite: 'lax',
     path: '/',
     maxAge: 60 * 60 * 6, // 6 hours
+    ...(COOKIE_DOMAIN ? { domain: COOKIE_DOMAIN } : {}),
   });
 
   res.setHeader('Set-Cookie', cookie);

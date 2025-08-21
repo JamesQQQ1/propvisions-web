@@ -17,9 +17,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Link href="/" className="font-semibold tracking-tight">PropertyScout</Link>
             <nav className="flex items-center gap-6 text-sm">
               <Link href="/" className="hover:text-brand-700">Home</Link>
-              <Link href="/demo" className="hover:text-brand-700">Demo</Link>
+              <Link href="/demo-access" className="hover:text-brand-700">Demo</Link>
               <Link href="/contact" className="hover:text-brand-700">Contact</Link>
-              <Link href="/demo" className="btn btn-primary">Give it a try</Link>
+              <Link href="/demo-access" className="btn btn-primary">Give it a try</Link>
             </nav>
           </div>
         </header>
