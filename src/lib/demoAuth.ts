@@ -4,7 +4,7 @@ import { cookies } from 'next/headers'
 function parseKeys(raw?: string | null): string[] {
   if (!raw) return []
   return raw
-    .split(/[,\n\r\s]+/)      // commas, newlines OR whitespace
+    .split(/[,\n\r\s]+/)      // commas, newlines OR any whitespace
     .map(s => s.trim())
     .filter(Boolean)
 }

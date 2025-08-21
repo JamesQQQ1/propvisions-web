@@ -2,28 +2,32 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { isValidKey, getAllowedKeys } from '@/lib/demoAuth'
 
+// Accepts { key } or { code } or { accessKey } or { password }, or "x-demo-key" header.
+// Returns keys_count so you can see if the env var was loaded.
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' })
 
-  const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {})
+  const body = typeof req.body === 'string' ? safeParse(req.body) : (req.body || {})
+  let input =
+    (body.key ?? body.code ?? body.accessKey ?? body.password ?? '').toString().trim()
 
-  // Accept both field names to avoid UI/API mismatch
-  const input = (body.key ?? body.code ?? '').toString().trim()
+  if (!input && typeof req.headers['x-demo-key'] === 'string') {
+    input = (req.headers['x-demo-key'] as string).trim()
+  }
   const next = (body.next ?? '/demo').toString()
 
+  const keysCount = getAllowedKeys().length
+  console.log('[demo-auth] allowed_keys_count =', keysCount)
+
   if (!input) {
-    return res.status(400).json({ error: 'missing_key' })
+    return res.status(400).json({ error: 'missing_key', keys_count: keysCount })
   }
-
-  // Debug count only (no secrets)
-  console.log('[demo-auth] allowed_keys_count=', getAllowedKeys().length)
-
   if (!isValidKey(input)) {
-    return res.status(401).json({ error: 'invalid_key' })
+    return res.status(401).json({ error: 'invalid_key', keys_count: keysCount })
   }
 
-  // Set cookie manually via header (works in pages/api)
-  const cookieParts = [
+  // Set cookie (works on pages/api)
+  const parts = [
     `demo_session=${encodeURIComponent('ok')}`,
     'Path=/',
     'HttpOnly',
@@ -32,9 +36,12 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     `Max-Age=${(Number(process.env.DEMO_SESSION_TTL_DAYS || '7') || 7) * 86400}`,
   ]
   const domain = process.env.DEMO_COOKIE_DOMAIN?.trim()
-  if (domain) cookieParts.push(`Domain=${domain}`)
+  if (domain) parts.push(`Domain=${domain}`)
+  res.setHeader('Set-Cookie', parts.join('; '))
 
-  res.setHeader('Set-Cookie', cookieParts.join('; '))
+  return res.status(200).json({ ok: true, next, keys_count: keysCount })
+}
 
-  return res.status(200).json({ ok: true, next })
+function safeParse(s: string) {
+  try { return JSON.parse(s) } catch { return {} }
 }

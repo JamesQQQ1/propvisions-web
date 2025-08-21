@@ -10,7 +10,9 @@ function formatGBP(n?: number | string | null) {
   const v = typeof n === 'string' ? Number(n) : n
   return Number.isFinite(v as number) ? `£${Math.round(v as number).toLocaleString()}` : '—'
 }
-
+function classNames(...xs: (string | false | null | undefined)[]) 
+  return xs.filter(Boolean).join(' ')
+}
 const HIDE_FIN_KEYS = new Set(['id', 'property_id', 'created_at', 'updated_at'])
 const isMoneyKey = (k: string) => k.endsWith('_gbp')
 const titleize = (k: string) => k.replace(/_/g, ' ')
