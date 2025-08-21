@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { pollUntilDone, type RunStatus, startAnalyze } from '@/lib/api'
 
 /* ---------- helpers ---------- */
@@ -59,6 +60,35 @@ function ProgressBar({ percent, show }: { percent: number; show: boolean }) {
 
 /* ---------- page ---------- */
 export default function Page() {
+  const router = useRouter()
+
+  // --- NEW: gate check
+  const [gate, setGate] = useState<'checking' | 'ok' | 'denied'>('checking')
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/demo-auth', { method: 'GET', credentials: 'include' })
+        if (!cancelled) setGate(res.ok ? 'ok' : 'denied')
+        if (!res.ok) router.replace('/demo-access?next=/demo')
+      } catch {
+        if (!cancelled) {
+          setGate('denied')
+          router.replace('/demo-access?next=/demo')
+        }
+      }
+    })()
+    return () => { cancelled = true }
+  }, [router])
+
+  // while checking, render nothing (avoids flash)
+  if (gate === 'checking') {
+    return <main className="p-6 max-w-6xl mx-auto"><p className="text-slate-500">Loading…</p></main>
+  }
+  // if denied, we already redirected; render nothing
+  if (gate === 'denied') return null
+
+  // --- existing state
   const [url, setUrl] = useState('')
   const [status, setStatus] = useState<RunStatus | 'idle'>('idle')
   const [error, setError] = useState<string>()
@@ -120,9 +150,7 @@ export default function Page() {
     progressTickRef.current = setInterval(() => {
       if (!startedAtRef.current) return
       const elapsed = Date.now() - startedAtRef.current
-      // linear ramp toward MAX_DURING_RUN during RAMP_MS
       const target = Math.min(MAX_DURING_RUN, (elapsed / RAMP_MS) * MAX_DURING_RUN)
-      // ease current progress toward target
       setProgress((p) => (p < target ? p + Math.min(0.8, target - p) : p))
     }, 300)
 
@@ -221,7 +249,6 @@ export default function Page() {
       } catch (err: any) {
         setError(err?.message === 'Polling aborted' ? 'Cancelled.' : (err?.message || 'Run failed'))
         setStatus('failed')
-        // progress will reset via effect above
       } finally {
         abortRef.current = null
       }
@@ -233,7 +260,6 @@ export default function Page() {
   }
 
   async function handleCancel() {
-    // 1) Tell the server to cancel (co-op + hard kill if exec id exists)
     const run_id = runIdRef.current
     const execution_id = execIdRef.current
     try {
@@ -242,11 +268,7 @@ export default function Page() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ run_id, execution_id }),
       })
-    } catch {
-      // ignore network error; we'll still stop polling locally
-    }
-
-    // 2) Stop polling immediately on the client
+    } catch {}
     abortRef.current?.abort()
     abortRef.current = null
     setStatus('failed')
@@ -262,7 +284,6 @@ export default function Page() {
           <p className="text-slate-600">
             Paste a listing URL to generate valuations, refurb breakdown, and financials.
           </p>
-          {/* Progress bar shows while queued/processing; slow-ramp for 5 mins */}
           <ProgressBar percent={progress} show={status === 'queued' || status === 'processing'} />
         </div>
         <div className="flex items-center gap-3">
@@ -317,7 +338,11 @@ export default function Page() {
         {/* Samples */}
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-slate-500">Try a sample:</span>
-          {sampleUrls.map((s) => (
+          {[
+            'https://auctions.savills.co.uk/auctions/19-august-2025-211/152-154-crockhamwell-road-woodley-reading-rg5-3jh-18173',
+            'https://auctions.savills.co.uk/auctions/19-august-2025-211/9-seedhill-road-11942',
+            'https://www.rightmove.co.uk/properties/123456789#/',
+          ].map((s) => (
             <button
               key={s}
               type="button"
@@ -342,7 +367,7 @@ export default function Page() {
         <div className="border border-red-200 bg-red-50 text-red-800 rounded-lg p-3">{error}</div>
       )}
 
-      {/* Results */}
+      {/* Results (unchanged) */}
       {status === 'completed' && data && (
         <div className="grid grid-cols-1 gap-6">
           {/* Property Card */}
