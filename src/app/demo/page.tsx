@@ -5,6 +5,17 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { pollUntilDone, type RunStatus, startAnalyze } from '@/lib/api'
 
+import { redirect } from 'next/navigation'
+import DemoClient from './DemoClient'
+
+export default function DemoPage() {
+  const has = typeof document === 'undefined' ? undefined : undefined // server-only file, no client code
+  // The real guard is middleware + cookie check on API; here we just render the client UI.
+  // If you want a strict server check, wire a server helper to read cookie and:
+  // if (!requireDemoCookieServer()) redirect('/demo-access?next=/demo')
+  return <DemoClient />
+}
+
 /* ---------- helpers ---------- */
 function formatGBP(n?: number | string | null) {
   const v = typeof n === 'string' ? Number(n) : n

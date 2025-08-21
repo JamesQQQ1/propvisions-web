@@ -1,43 +1,22 @@
-// lib/demoAuth.ts
-import crypto from 'crypto';
+// src/lib/demoAuth.ts
+import { cookies, headers } from 'next/headers';
 
-const SECRET = process.env.DEMO_SESSION_SECRET!;
-const TTL_DAYS = parseInt(process.env.DEMO_SESSION_TTL_DAYS || '7', 10);
-const MS = 24 * 60 * 60 * 1000;
+const COOKIE_NAME = 'demo_session';
+const ALLOWED = 'ok'; // simple allow value
 
-export type DemoSession = { sub: 'demo'; iat: number; exp: number; key?: string };
-
-function b64url(buf: Buffer | string) {
-  return Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-function hmac(data: string) {
-  return crypto.createHmac('sha256', SECRET).update(data).digest();
+export function hasDemoCookieInMiddleware(reqHeaders: Headers): boolean {
+  const raw = reqHeaders.get('cookie') || '';
+  return raw.split(/;\s*/).some(c => c.startsWith(`${COOKIE_NAME}=${ALLOWED}`));
 }
 
-export function createSession(key?: string): string {
-  if (!SECRET) throw new Error('DEMO_SESSION_SECRET missing');
-  const now = Date.now();
-  const payload: DemoSession = { sub: 'demo', iat: now, exp: now + TTL_DAYS * MS, key };
-  const body = b64url(Buffer.from(JSON.stringify(payload)));
-  const sig = b64url(hmac(body));
-  return `${body}.${sig}`;
+export function requireDemoCookieServer(): boolean {
+  const c = cookies().get(COOKIE_NAME)?.value;
+  return c === ALLOWED;
 }
 
-export function verifySession(token?: string): DemoSession | null {
-  if (!SECRET) return null;
-  if (!token) return null;
-  const [body, sig] = token.split('.');
-  if (!body || !sig) return null;
-  const expected = b64url(hmac(body));
-  // avoid exceptions if lengths differ
-  if (expected.length !== sig.length) return null;
-  if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
-  try {
-    const payload = JSON.parse(Buffer.from(body, 'base64').toString()) as DemoSession;
-    if (payload.sub !== 'demo') return null;
-    if (typeof payload.exp !== 'number' || Date.now() > payload.exp) return null;
-    return payload;
-  } catch {
-    return null;
-  }
+export function getCookieName() {
+  return COOKIE_NAME;
+}
+export function getAllowedValue() {
+  return ALLOWED;
 }
