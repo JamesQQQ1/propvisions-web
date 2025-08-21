@@ -1,88 +1,60 @@
 // src/lib/demoAuth.ts
-import type { NextApiRequest, NextApiResponse } from 'next'
-import { serialize } from 'cookie'
-
 /**
- * Read and normalise valid access keys from env.
- * Supports comma-separated OR newline-separated lists.
- * Example values:
- *   DEMO_ACCESS_KEYS="abc123, partner-2025, internal-beta"
- * or
- *   DEMO_ACCESS_KEYS="abc123
- *   partner-2025
- *   internal-beta"
+ * Demo Access helpers
+ * - Reads DEMO_ACCESS_KEYS from env
+ * - Accepts CSV and/or whitespace separated
+ * - Trims, de-dupes, ignores empty entries
+ * - Case-insensitive compare
  */
-export function getValidKeys(): string[] {
-  const raw = process.env.DEMO_ACCESS_KEYS || process.env.NEXT_PUBLIC_DEMO_ACCESS_KEYS || ''
-  return raw
-    .split(/[\n,]/g)
-    .map(s => s.trim())
-    .filter(Boolean)
-    .map(s => s.toLowerCase())
-}
 
-/**
- * Pull `code` from the body, tolerating different field names and casing.
- * Accepts: code, accessCode, access_code, access-key, key
- */
-export function extractCode(body: any): string | null {
-  if (!body || typeof body !== 'object') return null
-  const entries = Object.entries(body) as [string, unknown][]
-  let found: string | null = null
-  for (const [k, v] of entries) {
-    const nk = k.toLowerCase().replace(/[-\s]/g, '_')
-    if (['code', 'accesscode', 'access_code', 'accesskey', 'access_key', 'key'].includes(nk)) {
-      if (typeof v === 'string' && v.trim()) {
-        found = v.trim()
-        break
-      }
-    }
+export type ParsedKeys = {
+    all: string[];
+    lowerSet: Set<string>;
+  };
+  
+  export function parseAllowedKeysFromEnv(): ParsedKeys {
+    const raw = process.env.DEMO_ACCESS_KEYS || process.env.NEXT_PUBLIC_DEMO_ACCESS_KEYS || "";
+    // Split on commas and whitespace (one or many)
+    const parts = raw.split(/[,\s]+/g).map(s => s.trim()).filter(Boolean);
+    const dedup = Array.from(new Set(parts));
+    const lowerSet = new Set(dedup.map(s => s.toLowerCase()));
+    return { all: dedup, lowerSet };
   }
-  return found
-}
-
-/** Validate a code (case-insensitive) against env keys */
-export function isCodeAllowed(code: string | null): boolean {
-  if (!code) return false
-  const keys = getValidKeys()
-  return keys.includes(code.toLowerCase())
-}
-
-/** Cookie helpers */
-const COOKIE_NAME = 'ps_demo_access'
-export const DEMO_COOKIE_NAME = COOKIE_NAME
-
-export function makeAccessCookie(value = '1'): string {
-  const days = 7
-  const maxAge = days * 24 * 60 * 60
-  return serialize(COOKIE_NAME, value, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge,
-  })
-}
-
-export function clearAccessCookie(): string {
-  return serialize(COOKIE_NAME, '', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 0,
-  })
-}
-
-/** Optional helper to send JSON */
-export function json(res: NextApiResponse, status: number, data: any) {
-  res.status(status).setHeader('Content-Type', 'application/json').end(JSON.stringify(data))
-}
-
-/** Very small logger (avoids leaking keys) */
-export function logDebug(label: string, extra?: Record<string, unknown>) {
-  try {
-    // eslint-disable-next-line no-console
-    console.log(`[demo-auth] ${label}`, extra ? JSON.stringify(extra) : '')
-  } catch {}
-}
+  
+  /**
+   * Extracts a user-provided code from:
+   * - JSON body: { code } or { accessCode } or { key }
+   * - Query string: ?code=... or ?accessCode=... or ?key=...
+   * - Header: x-demo-code: ...
+   */
+  export function extractUserCode(req: any): string | null {
+    const headers = req?.headers || {};
+    const h = (name: string) => (headers[name] ?? headers[name.toLowerCase()] ?? "");
+    const headerCode = String(h("x-demo-code") || "").trim();
+  
+    // Body (may already be parsed by Next)
+    const body = typeof req.body === "string"
+      ? safeJson(req.body)
+      : (req.body || {});
+    const bodyCode = String(
+      body?.code ?? body?.accessCode ?? body?.key ?? ""
+    ).trim();
+  
+    // Query
+    const q = req?.query || {};
+    const queryCode = String(
+      q.code ?? q.accessCode ?? q.key ?? ""
+    ).trim();
+  
+    const firstNonEmpty = [headerCode, bodyCode, queryCode].find(Boolean) || null;
+    return firstNonEmpty;
+  }
+  
+  function safeJson(s: string) {
+    try { return JSON.parse(s); } catch { return {}; }
+  }
+  
+  export function isAllowed(code: string, lowerSet: Set<string>): boolean {
+    return lowerSet.has(code.toLowerCase());
+  }
+  

@@ -1,18 +1,17 @@
 // middleware.ts
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { verifyDemoAccess } from './src/lib/demoAuth';
+import { NextResponse, NextRequest } from "next/server";
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // only guard demo pages
-  if (pathname.startsWith('/demo')) {
-    const cookie = req.cookies.get('demo-access-token')?.value;
-    if (!verifyDemoAccess(cookie)) {
-      // redirect unauthorised users to /demo-access
+  // Only gate /demo (and its subpaths if any)
+  if (pathname === "/demo" || pathname.startsWith("/demo/")) {
+    const hasCookie = req.cookies.get("ps_demo")?.value === "ok";
+    if (!hasCookie) {
       const url = req.nextUrl.clone();
-      url.pathname = '/demo-access';
+      url.pathname = "/demo-access";
+      // Keep original as ?next= for a nice redirect after login
+      url.searchParams.set("next", pathname);
       return NextResponse.redirect(url);
     }
   }
@@ -21,5 +20,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/demo/:path*'], // 👈 ensures every /demo route is protected
+  matcher: ["/demo/:path*", "/demo"],
 };
