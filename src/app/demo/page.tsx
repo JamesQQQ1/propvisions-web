@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { pollUntilDone, type RunStatus, startAnalyze } from '@/lib/api'
+import RoomCard from '@/components/RoomCard'
 
 /* ---------- helpers ---------- */
 function formatGBP(n?: number | string | null) {
@@ -483,37 +484,50 @@ export default function Page() {
           {/* Refurbishment */}
           <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
             <h3 className="text-xl font-semibold mb-3">Refurbishment Estimates</h3>
+
             {Array.isArray(data.refurb_estimates) && data.refurb_estimates.length ? (
-              <div className="overflow-x-auto">
-                <table className="w-full border text-sm">
-                  <thead>
-                    <tr className="bg-slate-50">
-                      <th className="p-2 text-left">Room</th>
-                      <th className="p-2 text-right">Total</th>
-                      <th className="p-2 text-right">Paint</th>
-                      <th className="p-2 text-right">Floor</th>
-                      <th className="p-2 text-right">Plumbing</th>
-                      <th className="p-2 text-right">Electrics</th>
-                      <th className="p-2 text-right">Mould/Damp</th>
-                      <th className="p-2 text-right">Structure</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.refurb_estimates.map((est) => (
-                      <tr key={est.id ?? `${est.room_type}-${Math.random()}`} className="border-t">
-                        <td className="p-2 capitalize">{est.room_type}</td>
-                        <td className="p-2 text-right">{formatGBP(est.estimated_total_gbp)}</td>
-                        <td className="p-2 text-right">{formatGBP(est.wallpaper_or_paint_gbp)}</td>
-                        <td className="p-2 text-right">{formatGBP(est.flooring_gbp)}</td>
-                        <td className="p-2 text-right">{formatGBP(est.plumbing_gbp)}</td>
-                        <td className="p-2 text-right">{formatGBP(est.electrics_gbp)}</td>
-                        <td className="p-2 text-right">{formatGBP(est.mould_or_damp_gbp)}</td>
-                        <td className="p-2 text-right">{formatGBP(est.structure_gbp)}</td>
+              <>
+                {/* NEW: Photo + itemised reasons */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                  {data.refurb_estimates.map((est, idx) => (
+                    <RoomCard key={est.id ?? idx} room={est} />
+                  ))}
+                </div>
+
+                {/* EXISTING: totals table (kept for fast scanning) */}
+                <div className="overflow-x-auto">
+                  <table className="w-full border text-sm">
+                    <thead>
+                      <tr className="bg-slate-50">
+                        <th className="p-2 text-left">Room</th>
+                        <th className="p-2 text-right">Total</th>
+                        <th className="p-2 text-right">Paint</th>
+                        <th className="p-2 text-right">Floor</th>
+                        <th className="p-2 text-right">Plumbing</th>
+                        <th className="p-2 text-right">Electrics</th>
+                        <th className="p-2 text-right">Mould/Damp</th>
+                        <th className="p-2 text-right">Structure</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {data.refurb_estimates.map((est, i) => (
+                        <tr key={est.id ?? `row-${i}`} className="border-t">
+                          <td className="p-2 capitalize">
+                            {est.detected_room_type || est.room_type || 'room'}
+                          </td>
+                          <td className="p-2 text-right">{formatGBP(est.estimated_total_gbp)}</td>
+                          <td className="p-2 text-right">{formatGBP(est.wallpaper_or_paint_gbp)}</td>
+                          <td className="p-2 text-right">{formatGBP(est.flooring_gbp)}</td>
+                          <td className="p-2 text-right">{formatGBP(est.plumbing_gbp)}</td>
+                          <td className="p-2 text-right">{formatGBP(est.electrics_gbp)}</td>
+                          <td className="p-2 text-right">{formatGBP(est.mould_or_damp_gbp)}</td>
+                          <td className="p-2 text-right">{formatGBP(est.structure_gbp)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             ) : (
               <p className="text-slate-600">No refurbishment rows were saved for this property.</p>
             )}
