@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { pollUntilDone, type RunStatus, startAnalyze } from '@/lib/api';
-import RoomCard, { RefurbRow } from '@/components/RoomCard';
+import RoomCard, { RefurbRow } from '../../components/RoomCard'; // 👈 force relative import
 
 /* ---------- helpers ---------- */
 function formatGBP(n?: number | string | null) {
@@ -359,7 +359,12 @@ export default function Page() {
         <div className="flex items-center gap-3">
           <StatusBadge status={status} />
           {(status === 'queued' || status === 'processing') && (
-            <span className="text-sm text-slate-600">Elapsed: {elapsedLabel}</span>
+            <span className="text-sm text-slate-600">Elapsed: {useMemo(() => {
+              const s = Math.floor(elapsedMs / 1000);
+              const m = Math.floor(s / 60);
+              const rs = s % 60;
+              return m ? `${m}m ${rs}s` : `${rs}s`;
+            }, [elapsedMs])}</span>
           )}
         </div>
       </header>
@@ -566,7 +571,6 @@ export default function Page() {
 
             {Array.isArray(refinedRefurbs) && refinedRefurbs.length ? (
               <>
-                {/* Photo + itemised reasons */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                   {refinedRefurbs.map((est, idx) => (
                     <RoomCard key={est.id ?? idx} room={est} />

@@ -50,6 +50,9 @@ function pct(n?: number | null) {
 export default function RoomCard({ room }: { room: RefurbRow }) {
   const [open, setOpen] = useState(false);
 
+  // DEBUG signature so we can verify production is using THIS file
+  console.log('RoomCard v2 loaded');
+
   // Parse works whether array or JSON string
   const works: Work[] = useMemo(() => {
     if (Array.isArray(room.works)) return room.works as Work[];
@@ -116,10 +119,10 @@ export default function RoomCard({ room }: { room: RefurbRow }) {
           </span>
         </div>
 
-        {/* Top-right chip: total */}
+        {/* Top-right chip: total (with v2 label so you can SEE it live) */}
         <div className="absolute top-2 right-2">
           <span className="inline-block text-[11px] bg-black/70 text-white px-2 py-1 rounded-full shadow-sm">
-            Total {formatGBP(total)}
+            Total (v2) {formatGBP(total)}
           </span>
         </div>
 
@@ -169,7 +172,7 @@ export default function RoomCard({ room }: { room: RefurbRow }) {
           </span>
         </div>
 
-        {/* Compact subtotal strip (always visible for a quick scan) */}
+        {/* Compact subtotal strip */}
         <div className="text-xs text-slate-700 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1">
           <div>Paint: {formatGBP(paint)}</div>
           <div>Floor: {formatGBP(floor)}</div>
@@ -189,7 +192,7 @@ export default function RoomCard({ room }: { room: RefurbRow }) {
             aria-label="Toggle more info"
             title={open ? 'Hide details' : 'More info'}
           >
-            {open ? 'Hide details' : 'More info'}
+            {open ? 'Hide details ▲' : 'More info ▼'}
           </button>
         </div>
 
