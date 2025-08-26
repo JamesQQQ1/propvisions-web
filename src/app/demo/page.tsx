@@ -79,6 +79,7 @@ export default function Page() {
   // UI state: filters + sort
   const [filterType, setFilterType] = useState<string>('All');
   const [sortKey, setSortKey] = useState<'total_desc' | 'total_asc' | 'room_asc'>('total_desc');
+  const [minConfidence, setMinConfidence] = useState<number>(0); // 0..100
 
   // Keep the current run + exec ids so Stop can hard-cancel via API
   const runIdRef = useRef<string | null>(null);
@@ -94,8 +95,7 @@ export default function Page() {
   async function handleLogout() {
     try {
       await fetch('/api/demo-logout', { method: 'POST' });
-    } catch (_) { /* ignore */ }
-    // send the user to the unlock page with a redirect back to /demo
+    } catch (_) {}
     window.location.href = '/demo-access?next=/demo';
   }
 
@@ -103,9 +103,8 @@ export default function Page() {
   const [progress, setProgress] = useState(0);
   const progressTickRef = useRef<NodeJS.Timeout | null>(null);
   const RAMP_MS = 5 * 60 * 1000; // 5 minutes
-  const MAX_DURING_RUN = 97; // never exceed this until complete
+  const MAX_DURING_RUN = 97;
 
-  // when running, track elapsed for label and for progress ramp
   useEffect(() => {
     if (!running) {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -123,7 +122,6 @@ export default function Page() {
     };
   }, [running]);
 
-  // progress ramp controller
   useEffect(() => {
     if (!running) {
       if (progressTickRef.current) clearInterval(progressTickRef.current);
@@ -143,7 +141,6 @@ export default function Page() {
     };
   }, [running]);
 
-  // snap to 100 on completion; reset on failure/idle
   useEffect(() => {
     if (status === 'completed') {
       setProgress(100);
@@ -270,6 +267,26 @@ export default function Page() {
   const refinedRefurbs = useMemo(() => {
     let list = (data?.refurb_estimates || []) as RefurbRow[];
 
+    // drop zero/hidden rows
+    list = list.filter((r) => {
+      const catSum =
+        toInt(r.wallpaper_or_paint_gbp) +
+        toInt(r.flooring_gbp) +
+        toInt(r.plumbing_gbp) +
+        toInt(r.electrics_gbp) +
+        toInt(r.mould_or_damp_gbp) +
+        toInt(r.structure_gbp);
+      const worksArr =
+        Array.isArray(r.works)
+          ? (r.works as any[])
+          : typeof r.works === 'string'
+            ? (() => { try { const p = JSON.parse(r.works as string); return Array.isArray(p) ? p : []; } catch { return []; } })()
+            : [];
+      const worksSum = worksArr.reduce((acc, w) => acc + toInt(w?.subtotal_gbp), 0);
+      const total = Math.max(toInt(r.estimated_total_gbp), catSum, worksSum);
+      return total > 0;
+    });
+
     if (filterType !== 'All') {
       list = list.filter((r) => {
         const t = (r.detected_room_type || r.room_type || 'Other').toString();
@@ -277,6 +294,11 @@ export default function Page() {
         return norm === filterType;
       });
     }
+
+    // min confidence gate (0..100)
+    list = list.filter((r) =>
+      typeof r.confidence === 'number' ? r.confidence * 100 >= minConfidence : true
+    );
 
     // Sort
     const totalOf = (r: RefurbRow) => {
@@ -307,7 +329,14 @@ export default function Page() {
     });
 
     return list;
-  }, [data?.refurb_estimates, filterType, sortKey]);
+  }, [data?.refurb_estimates, filterType, sortKey, minConfidence]);
+
+  const elapsedLabel = useMemo(() => {
+    const s = Math.floor(elapsedMs / 1000);
+    const m = Math.floor(s / 60);
+    const rs = s % 60;
+    return m ? `${m}m ${rs}s` : `${rs}s`;
+  }, [elapsedMs]);
 
   return (
     <main className="p-6 max-w-6xl mx-auto space-y-8">
@@ -328,7 +357,7 @@ export default function Page() {
       {/* Header */}
       <header className="flex items-start md:items-center justify-between gap-4">
         <div className="flex-1">
-          <h1 className="text-3xl font-bold">PropertyScout Demo</h1>
+          <h1 className="text-3xl font-bold tracking-tight">PropertyScout Demo</h1>
           <p className="text-slate-600">
             Paste a listing URL to generate valuations, refurb breakdown, and financials.
           </p>
@@ -418,7 +447,7 @@ export default function Page() {
           <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="md:col-span-2 space-y-2">
-                <h2 className="text-2xl font-semibold">
+                <h2 className="text-2xl font-semibold tracking-tight">
                   {data.property?.property_title || 'Untitled property'}
                 </h2>
                 <p className="text-slate-700">
@@ -496,37 +525,6 @@ export default function Page() {
             </div>
           </section>
 
-          {/* Financials */}
-          <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xl font-semibold">Financial Summary</h3>
-              {data.pdf_url && (
-                <a
-                  href={data.pdf_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-sm inline-flex items-center rounded-md border px-3 py-1.5 hover:bg-slate-50"
-                >
-                  Download PDF
-                </a>
-              )}
-            </div>
-            {data.financials ? (
-              <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
-                {Object.entries(data.financials)
-                  .filter(([k]) => !HIDE_FIN_KEYS.has(k))
-                  .map(([k, v]) => (
-                    <div key={k} className="flex justify-between border-b py-1">
-                      <dt className="capitalize text-slate-600">{titleize(k)}</dt>
-                      <dd className="font-medium text-right">{fmtValue(k, v)}</dd>
-                    </div>
-                  ))}
-              </dl>
-            ) : (
-              <p className="text-slate-600">No financials found for this property yet.</p>
-            )}
-          </section>
-
           {/* Refurbishment */}
           <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
             <div className="flex items-start justify-between gap-3 mb-3">
@@ -556,6 +554,20 @@ export default function Page() {
                   <option value="total_asc">Total (low → high)</option>
                   <option value="room_asc">Room (A → Z)</option>
                 </select>
+
+                {/* Confidence gate */}
+                <label className="text-xs text-slate-600 ml-2">Min confidence:</label>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={minConfidence}
+                  onChange={(e) => setMinConfidence(Number(e.target.value))}
+                  className="w-28"
+                  title={`${minConfidence}%`}
+                />
+                <span className="text-xs text-slate-600 w-10 text-right">{minConfidence}%</span>
               </div>
             </div>
 
@@ -582,6 +594,7 @@ export default function Page() {
                         <th className="p-2 text-right">Mould/Damp</th>
                         <th className="p-2 text-right">Structure</th>
                         <th className="p-2 text-right">Other</th>
+                        <th className="p-2 text-right">Conf.</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -604,11 +617,12 @@ export default function Page() {
 
                         const total = Math.max(toInt(est.estimated_total_gbp), catSum, worksSum);
                         const other = Math.max(0, total - catSum);
+                        const conf = typeof est.confidence === 'number' ? Math.round(est.confidence * 100) : null;
 
                         return (
                           <tr key={est.id ?? `row-${i}`} className="border-t">
                             <td className="p-2 capitalize">
-                              {est.detected_room_type || est.room_type || 'room'}
+                              {(est.detected_room_type || est.room_type || 'room').replace(/_/g, ' ')}
                             </td>
                             <td className="p-2 text-right">{formatGBP(total)}</td>
                             <td className="p-2 text-right">{formatGBP(paint)}</td>
@@ -618,6 +632,7 @@ export default function Page() {
                             <td className="p-2 text-right">{formatGBP(damp)}</td>
                             <td className="p-2 text-right">{formatGBP(struct)}</td>
                             <td className="p-2 text-right">{formatGBP(other)}</td>
+                            <td className="p-2 text-right">{conf !== null ? `${conf}%` : '—'}</td>
                           </tr>
                         );
                       })}
@@ -627,6 +642,37 @@ export default function Page() {
               </>
             ) : (
               <p className="text-slate-600">No refurbishment rows were saved for this property.</p>
+            )}
+          </section>
+
+          {/* Financials */}
+          <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xl font-semibold">Financial Summary</h3>
+              {data.pdf_url && (
+                <a
+                  href={data.pdf_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm inline-flex items-center rounded-md border px-3 py-1.5 hover:bg-slate-50"
+                >
+                  Download PDF
+                </a>
+              )}
+            </div>
+            {data.financials ? (
+              <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
+                {Object.entries(data.financials)
+                  .filter(([k]) => !HIDE_FIN_KEYS.has(k))
+                  .map(([k, v]) => (
+                    <div key={k} className="flex justify-between border-b py-1">
+                      <dt className="capitalize text-slate-600">{titleize(k)}</dt>
+                      <dd className="font-medium text-right">{fmtValue(k, v)}</dd>
+                    </div>
+                  ))}
+              </dl>
+            ) : (
+              <p className="text-slate-600">No financials found for this property yet.</p>
             )}
           </section>
         </div>
