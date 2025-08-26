@@ -331,13 +331,6 @@ export default function Page() {
     return list;
   }, [data?.refurb_estimates, filterType, sortKey, minConfidence]);
 
-  const elapsedLabel = useMemo(() => {
-    const s = Math.floor(elapsedMs / 1000);
-    const m = Math.floor(s / 60);
-    const rs = s % 60;
-    return m ? `${m}m ${rs}s` : `${rs}s`;
-  }, [elapsedMs]);
-
   return (
     <main className="p-6 max-w-6xl mx-auto space-y-8">
       {/* Protected banner + logout */}
