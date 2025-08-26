@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { pollUntilDone, type RunStatus, startAnalyze } from '@/lib/api';
-import RoomCard, { RefurbRow } from '../../components/RoomCard'; // 👈 force relative import
+import RoomCard, { RefurbRow } from '../../components/RoomCard'; // relative, unambiguous
 
 /* ---------- helpers ---------- */
 function formatGBP(n?: number | string | null) {
@@ -359,12 +359,7 @@ export default function Page() {
         <div className="flex items-center gap-3">
           <StatusBadge status={status} />
           {(status === 'queued' || status === 'processing') && (
-            <span className="text-sm text-slate-600">Elapsed: {useMemo(() => {
-              const s = Math.floor(elapsedMs / 1000);
-              const m = Math.floor(s / 60);
-              const rs = s % 60;
-              return m ? `${m}m ${rs}s` : `${rs}s`;
-            }, [elapsedMs])}</span>
+            <span className="text-sm text-slate-600">Elapsed: {elapsedLabel}</span>
           )}
         </div>
       </header>
@@ -391,7 +386,7 @@ export default function Page() {
             className="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
-          <button
+        <button
             type="submit"
             disabled={running || !validUrl || (usage ? usage.remaining === 0 : false)}
             className="px-4 py-3 bg-blue-600 text-white rounded-lg disabled:opacity-50"

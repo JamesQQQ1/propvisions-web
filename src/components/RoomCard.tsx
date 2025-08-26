@@ -50,7 +50,7 @@ function pct(n?: number | null) {
 export default function RoomCard({ room }: { room: RefurbRow }) {
   const [open, setOpen] = useState(false);
 
-  // DEBUG signature so we can verify production is using THIS file
+  // Signature so we can confirm in console that this file is live
   console.log('RoomCard v2 loaded');
 
   // Parse works whether array or JSON string
@@ -87,7 +87,7 @@ export default function RoomCard({ room }: { room: RefurbRow }) {
 
   const worksSum = works.reduce((acc, w) => acc + toInt(w.subtotal_gbp), 0);
   const total = Math.max(toInt(room.estimated_total_gbp), catSum, worksSum);
-  const other = Math.max(0, total - catSum); // shows when itemised includes categories beyond the six
+  const other = Math.max(0, total - catSum);
 
   // Hide non-room/zero rows entirely
   if (!total || total <= 0) return null;
@@ -119,7 +119,7 @@ export default function RoomCard({ room }: { room: RefurbRow }) {
           </span>
         </div>
 
-        {/* Top-right chip: total (with v2 label so you can SEE it live) */}
+        {/* Top-right chip: total (with v2 label so we can see it live) */}
         <div className="absolute top-2 right-2">
           <span className="inline-block text-[11px] bg-black/70 text-white px-2 py-1 rounded-full shadow-sm">
             Total (v2) {formatGBP(total)}
