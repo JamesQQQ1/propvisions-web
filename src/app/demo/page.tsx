@@ -1,32 +1,35 @@
-// src/app/demo/page.tsx
-'use client'
+'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import Link from 'next/link'
-import { pollUntilDone, type RunStatus, startAnalyze } from '@/lib/api'
-import RoomCard from '@/components/RoomCard'
+import { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
+import { pollUntilDone, type RunStatus, startAnalyze } from '@/lib/api';
+import RoomCard, { RefurbRow } from '@/components/RoomCard';
 
 /* ---------- helpers ---------- */
 function formatGBP(n?: number | string | null) {
-  const v = typeof n === 'string' ? Number(n) : n
-  return Number.isFinite(v as number) ? `£${Math.round(v as number).toLocaleString()}` : '—'
+  const v = typeof n === 'string' ? Number(n) : n;
+  return Number.isFinite(v as number) ? `£${Math.round(v as number).toLocaleString()}` : '—';
 }
 function classNames(...xs: (string | false | null | undefined)[]) {
-  return xs.filter(Boolean).join(' ')
+  return xs.filter(Boolean).join(' ');
 }
-const HIDE_FIN_KEYS = new Set(['id', 'property_id', 'created_at', 'updated_at'])
-const isMoneyKey = (k: string) => k.endsWith('_gbp')
-const titleize = (k: string) => k.replace(/_/g, ' ')
+const HIDE_FIN_KEYS = new Set(['id', 'property_id', 'created_at', 'updated_at']);
+const isMoneyKey = (k: string) => k.endsWith('_gbp');
+const titleize = (k: string) => k.replace(/_/g, ' ');
 const fmtValue = (k: string, v: unknown) => {
-  if (v === null || v === undefined || v === '') return '—'
-  if (k === 'roi_percent') return `${Number(v).toFixed(2)}%`
-  if (isMoneyKey(k)) return formatGBP(v as any)
-  if (typeof v === 'number') return v.toLocaleString()
-  const n = Number(v)
-  return Number.isFinite(n) ? n.toLocaleString() : String(v)
+  if (v === null || v === undefined || v === '') return '—';
+  if (k === 'roi_percent') return `${Number(v).toFixed(2)}%`;
+  if (isMoneyKey(k)) return formatGBP(v as any);
+  if (typeof v === 'number') return v.toLocaleString();
+  const n = Number(v);
+  return Number.isFinite(n) ? n.toLocaleString() : String(v);
 }
+const toInt = (n: unknown) => {
+  const v = Math.round(Number(n ?? 0));
+  return Number.isFinite(v) && v > 0 ? v : 0;
+};
 
-type Usage = { count: number; limit: number; remaining: number } | null
+type Usage = { count: number; limit: number; remaining: number } | null;
 
 function StatusBadge({ status }: { status?: RunStatus | 'idle' }) {
   const color =
@@ -36,12 +39,12 @@ function StatusBadge({ status }: { status?: RunStatus | 'idle' }) {
       ? 'bg-red-100 text-red-800 border-red-200'
       : status === 'queued' || status === 'processing'
       ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      : 'bg-gray-100 text-gray-800 border-gray-200'
+      : 'bg-gray-100 text-gray-800 border-gray-200';
   return (
     <span className={classNames('inline-block px-2 py-0.5 text-xs rounded border', color)}>
       {status || 'idle'}
     </span>
-  )
+  );
 }
 
 /* ---------- tiny progress bar component ---------- */
@@ -55,161 +58,158 @@ function ProgressBar({ percent, show }: { percent: number; show: boolean }) {
         />
       </div>
     </div>
-  )
+  );
 }
 
 /* ---------- page ---------- */
 export default function Page() {
-  const [url, setUrl] = useState('')
-  const [status, setStatus] = useState<RunStatus | 'idle'>('idle')
-  const [error, setError] = useState<string>()
-  const [elapsedMs, setElapsedMs] = useState(0)
-  const [usage, setUsage] = useState<Usage>(null)
+  const [url, setUrl] = useState('');
+  const [status, setStatus] = useState<RunStatus | 'idle'>('idle');
+  const [error, setError] = useState<string>();
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [usage, setUsage] = useState<Usage>(null);
   const [data, setData] = useState<{
-    property_id: string | null
-    property: any
-    financials: Record<string, unknown> | null
-    refurb_estimates: any[]
-    pdf_url?: string | null
-  } | null>(null)
+    property_id: string | null;
+    property: any;
+    financials: Record<string, unknown> | null;
+    refurb_estimates: RefurbRow[];
+    pdf_url?: string | null;
+  } | null>(null);
+
+  // UI state: filters + sort
+  const [filterType, setFilterType] = useState<string>('All');
+  const [sortKey, setSortKey] = useState<'total_desc' | 'total_asc' | 'room_asc'>('total_desc');
 
   // Keep the current run + exec ids so Stop can hard-cancel via API
-  const runIdRef = useRef<string | null>(null)
-  const execIdRef = useRef<string | null>(null)
+  const runIdRef = useRef<string | null>(null);
+  const execIdRef = useRef<string | null>(null);
 
-  const running = status === 'queued' || status === 'processing'
-  const timerRef = useRef<NodeJS.Timeout | null>(null)
-  const abortRef = useRef<AbortController | null>(null)
-  const startedAtRef = useRef<number | null>(null)
-  const submittingRef = useRef(false) // client-side debounce
+  const running = status === 'queued' || status === 'processing';
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const startedAtRef = useRef<number | null>(null);
+  const submittingRef = useRef(false); // client-side debounce
 
   /* ---------- PROTECTED DEMO: logout control ---------- */
   async function handleLogout() {
     try {
-      await fetch('/api/demo-logout', { method: 'POST' })
+      await fetch('/api/demo-logout', { method: 'POST' });
     } catch (_) { /* ignore */ }
     // send the user to the unlock page with a redirect back to /demo
-    window.location.href = '/demo-access?next=/demo'
+    window.location.href = '/demo-access?next=/demo';
   }
 
   /* ---------- PROGRESS: slow ramp for 5 minutes then snap ---------- */
-  const [progress, setProgress] = useState(0)
-  const progressTickRef = useRef<NodeJS.Timeout | null>(null)
-  const RAMP_MS = 5 * 60 * 1000 // 5 minutes
-  const MAX_DURING_RUN = 97 // never exceed this until complete
+  const [progress, setProgress] = useState(0);
+  const progressTickRef = useRef<NodeJS.Timeout | null>(null);
+  const RAMP_MS = 5 * 60 * 1000; // 5 minutes
+  const MAX_DURING_RUN = 97; // never exceed this until complete
 
   // when running, track elapsed for label and for progress ramp
   useEffect(() => {
     if (!running) {
-      if (timerRef.current) clearInterval(timerRef.current)
-      timerRef.current = null
-      return
+      if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = null;
+      return;
     }
-    startedAtRef.current = Date.now()
-    setElapsedMs(0)
+    startedAtRef.current = Date.now();
+    setElapsedMs(0);
     timerRef.current = setInterval(() => {
-      if (startedAtRef.current) setElapsedMs(Date.now() - startedAtRef.current)
-    }, 250)
+      if (startedAtRef.current) setElapsedMs(Date.now() - startedAtRef.current);
+    }, 250);
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
-      timerRef.current = null
-    }
-  }, [running])
+      if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = null;
+    };
+  }, [running]);
 
   // progress ramp controller
   useEffect(() => {
     if (!running) {
-      if (progressTickRef.current) clearInterval(progressTickRef.current)
-      progressTickRef.current = null
-      return
+      if (progressTickRef.current) clearInterval(progressTickRef.current);
+      progressTickRef.current = null;
+      return;
     }
-
-    // kick visible start
-    setProgress((p) => (p < 6 ? 6 : p))
-
+    setProgress((p) => (p < 6 ? 6 : p));
     progressTickRef.current = setInterval(() => {
-      if (!startedAtRef.current) return
-      const elapsed = Date.now() - startedAtRef.current
-      // linear ramp toward MAX_DURING_RUN during RAMP_MS
-      const target = Math.min(MAX_DURING_RUN, (elapsed / RAMP_MS) * MAX_DURING_RUN)
-      // ease current progress toward target
-      setProgress((p) => (p < target ? p + Math.min(0.8, target - p) : p))
-    }, 300)
-
+      if (!startedAtRef.current) return;
+      const elapsed = Date.now() - startedAtRef.current;
+      const target = Math.min(MAX_DURING_RUN, (elapsed / RAMP_MS) * MAX_DURING_RUN);
+      setProgress((p) => (p < target ? p + Math.min(0.8, target - p) : p));
+    }, 300);
     return () => {
-      if (progressTickRef.current) clearInterval(progressTickRef.current)
-      progressTickRef.current = null
-    }
-  }, [running])
+      if (progressTickRef.current) clearInterval(progressTickRef.current);
+      progressTickRef.current = null;
+    };
+  }, [running]);
 
-  // snap to 100 on completion; reset on failure/idle (when not running)
+  // snap to 100 on completion; reset on failure/idle
   useEffect(() => {
     if (status === 'completed') {
-      setProgress(100)
+      setProgress(100);
     } else if ((status === 'failed' || status === 'idle') && !running) {
-      setProgress(0)
+      setProgress(0);
     }
-  }, [status, running])
+  }, [status, running]);
 
   const elapsedLabel = useMemo(() => {
-    const s = Math.floor(elapsedMs / 1000)
-    const m = Math.floor(s / 60)
-    const rs = s % 60
-    return m ? `${m}m ${rs}s` : `${rs}s`
-  }, [elapsedMs])
+    const s = Math.floor(elapsedMs / 1000);
+    const m = Math.floor(s / 60);
+    const rs = s % 60;
+    return m ? `${m}m ${rs}s` : `${rs}s`;
+  }, [elapsedMs]);
 
   const validUrl = useMemo(() => {
     try {
-      if (!url) return false
-      const u = new URL(url)
-      return !!u.protocol && !!u.hostname
+      if (!url) return false;
+      const u = new URL(url);
+      return !!u.protocol && !!u.hostname;
     } catch {
-      return false
+      return false;
     }
-  }, [url])
+  }, [url]);
 
   const sampleUrls = [
     'https://auctions.savills.co.uk/auctions/19-august-2025-211/152-154-crockhamwell-road-woodley-reading-rg5-3jh-18173',
     'https://auctions.savills.co.uk/auctions/19-august-2025-211/9-seedhill-road-11942',
     'https://www.rightmove.co.uk/properties/123456789#/',
-  ]
+  ];
 
   async function handleStart(e: React.FormEvent) {
-    e.preventDefault()
-    if (submittingRef.current) return
-    submittingRef.current = true
+    e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
 
     try {
-      setError(undefined)
-      setData(null)
+      setError(undefined);
+      setData(null);
 
       if (usage && usage.remaining === 0) {
-        setStatus('failed')
-        setError('Daily demo limit reached.')
-        return
+        setStatus('failed');
+        setError('Daily demo limit reached.');
+        return;
       }
 
-      setStatus('queued')
-      setProgress((p) => (p < 6 ? 6 : p)) // ensure bar shows immediately
+      setStatus('queued');
+      setProgress((p) => (p < 6 ? 6 : p));
 
-      // Kick off the workflow; now captures execution_id (if available)
-      let kickoff: { run_id: string; execution_id?: string; usage?: Usage }
+      let kickoff: { run_id: string; execution_id?: string; usage?: Usage };
       try {
-        kickoff = await startAnalyze(url)
+        kickoff = await startAnalyze(url);
       } catch (err: any) {
-        setStatus('failed')
-        setError(err?.message || 'Failed to start analysis')
-        if (err?.usage) setUsage(err.usage as Usage)
-        return
+        setStatus('failed');
+        setError(err?.message || 'Failed to start analysis');
+        if (err?.usage) setUsage(err.usage as Usage);
+        return;
       }
 
-      if (kickoff.usage) setUsage(kickoff.usage as Usage)
+      if (kickoff.usage) setUsage(kickoff.usage as Usage);
 
-      runIdRef.current = kickoff.run_id || null
-      execIdRef.current = kickoff.execution_id ?? null
+      runIdRef.current = kickoff.run_id || null;
+      execIdRef.current = kickoff.execution_id ?? null;
 
-      const controller = new AbortController()
-      abortRef.current = controller
+      const controller = new AbortController();
+      abortRef.current = controller;
 
       try {
         const result: any = await pollUntilDone(kickoff.run_id, {
@@ -217,51 +217,97 @@ export default function Page() {
           timeoutMs: 10 * 60 * 1000,
           onTick: (s) => setStatus(s),
           signal: controller.signal,
-        })
+        });
 
-        setStatus('completed')
-        setProgress(100) // snap to full on success
+        setStatus('completed');
+        setProgress(100);
         setData({
           property_id: result.property_id ?? null,
           property: result.property ?? null,
           financials: result.financials ?? null,
           refurb_estimates: Array.isArray(result.refurb_estimates) ? result.refurb_estimates : [],
           pdf_url: result.pdf_url ?? null,
-        })
+        });
       } catch (err: any) {
-        setError(err?.message === 'Polling aborted' ? 'Cancelled.' : (err?.message || 'Run failed'))
-        setStatus('failed')
-        // progress will reset via effect above
+        setError(err?.message === 'Polling aborted' ? 'Cancelled.' : err?.message || 'Run failed');
+        setStatus('failed');
       } finally {
-        abortRef.current = null
+        abortRef.current = null;
       }
     } finally {
       setTimeout(() => {
-        submittingRef.current = false
-      }, 300)
+        submittingRef.current = false;
+      }, 300);
     }
   }
 
   async function handleCancel() {
-    // 1) Tell the server to cancel (co-op + hard kill if exec id exists)
-    const run_id = runIdRef.current
-    const execution_id = execIdRef.current
+    const run_id = runIdRef.current;
+    const execution_id = execIdRef.current;
     try {
       await fetch('/api/run/cancel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ run_id, execution_id }),
-      })
-    } catch {
-      // ignore network error; we'll still stop polling locally
+      });
+    } catch {}
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setStatus('failed');
+    setError(execution_id ? 'Stop requested.' : 'Stopped locally (no execution id).');
+  }
+
+  // Build filter chips and sorted/filtered refurb list
+  const roomTypes = useMemo(() => {
+    const set = new Set<string>();
+    (data?.refurb_estimates || []).forEach((r) => {
+      const t = (r.detected_room_type || r.room_type || 'Other').toString();
+      set.add(t.charAt(0).toUpperCase() + t.slice(1));
+    });
+    return ['All', ...Array.from(set).sort()];
+  }, [data?.refurb_estimates]);
+
+  const refinedRefurbs = useMemo(() => {
+    let list = (data?.refurb_estimates || []) as RefurbRow[];
+
+    if (filterType !== 'All') {
+      list = list.filter((r) => {
+        const t = (r.detected_room_type || r.room_type || 'Other').toString();
+        const norm = t.charAt(0).toUpperCase() + t.slice(1);
+        return norm === filterType;
+      });
     }
 
-    // 2) Stop polling immediately on the client
-    abortRef.current?.abort()
-    abortRef.current = null
-    setStatus('failed')
-    setError(execution_id ? 'Stop requested.' : 'Stopped locally (no execution id).')
-  }
+    // Sort
+    const totalOf = (r: RefurbRow) => {
+      const catSum =
+        toInt(r.wallpaper_or_paint_gbp) +
+        toInt(r.flooring_gbp) +
+        toInt(r.plumbing_gbp) +
+        toInt(r.electrics_gbp) +
+        toInt(r.mould_or_damp_gbp) +
+        toInt(r.structure_gbp);
+      const worksArr =
+        Array.isArray(r.works)
+          ? (r.works as any[])
+          : typeof r.works === 'string'
+            ? (() => { try { const p = JSON.parse(r.works as string); return Array.isArray(p) ? p : []; } catch { return []; } })()
+            : [];
+      const worksSum = worksArr.reduce((acc, w) => acc + toInt(w?.subtotal_gbp), 0);
+      return Math.max(toInt(r.estimated_total_gbp), catSum, worksSum);
+    };
+
+    const byRoom = (r: RefurbRow) =>
+      (r.detected_room_type || r.room_type || 'Other').toString().toLowerCase();
+
+    list = [...list].sort((a, b) => {
+      if (sortKey === 'total_desc') return totalOf(b) - totalOf(a);
+      if (sortKey === 'total_asc') return totalOf(a) - totalOf(b);
+      return byRoom(a).localeCompare(byRoom(b));
+    });
+
+    return list;
+  }, [data?.refurb_estimates, filterType, sortKey]);
 
   return (
     <main className="p-6 max-w-6xl mx-auto space-y-8">
@@ -286,7 +332,6 @@ export default function Page() {
           <p className="text-slate-600">
             Paste a listing URL to generate valuations, refurb breakdown, and financials.
           </p>
-          {/* Progress bar shows while queued/processing; slow-ramp for 5 mins */}
           <ProgressBar percent={progress} show={status === 'queued' || status === 'processing'} />
         </div>
         <div className="flex items-center gap-3">
@@ -425,6 +470,7 @@ export default function Page() {
                       src={data.property.image_url}
                       alt="Property"
                       className="w-full h-48 object-cover"
+                      loading="lazy"
                     />
                   ) : (
                     <div className="w-full h-48 flex items-center justify-center text-slate-500">
@@ -483,18 +529,46 @@ export default function Page() {
 
           {/* Refurbishment */}
           <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-            <h3 className="text-xl font-semibold mb-3">Refurbishment Estimates</h3>
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <h3 className="text-xl font-semibold">Refurbishment Estimates</h3>
 
-            {Array.isArray(data.refurb_estimates) && data.refurb_estimates.length ? (
+              <div className="flex flex-wrap items-center gap-2 ml-auto">
+                {/* Filter */}
+                <label className="text-xs text-slate-600">Filter:</label>
+                <select
+                  className="text-sm border rounded-md px-2 py-1"
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                >
+                  {roomTypes.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+
+                {/* Sort */}
+                <label className="text-xs text-slate-600 ml-2">Sort:</label>
+                <select
+                  className="text-sm border rounded-md px-2 py-1"
+                  value={sortKey}
+                  onChange={(e) => setSortKey(e.target.value as any)}
+                >
+                  <option value="total_desc">Total (high → low)</option>
+                  <option value="total_asc">Total (low → high)</option>
+                  <option value="room_asc">Room (A → Z)</option>
+                </select>
+              </div>
+            </div>
+
+            {Array.isArray(refinedRefurbs) && refinedRefurbs.length ? (
               <>
-                {/* NEW: Photo + itemised reasons */}
+                {/* Photo + itemised reasons */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                  {data.refurb_estimates.map((est, idx) => (
+                  {refinedRefurbs.map((est, idx) => (
                     <RoomCard key={est.id ?? idx} room={est} />
                   ))}
                 </div>
 
-                {/* EXISTING: totals table (kept for fast scanning) */}
+                {/* Totals table */}
                 <div className="overflow-x-auto">
                   <table className="w-full border text-sm">
                     <thead>
@@ -507,23 +581,46 @@ export default function Page() {
                         <th className="p-2 text-right">Electrics</th>
                         <th className="p-2 text-right">Mould/Damp</th>
                         <th className="p-2 text-right">Structure</th>
+                        <th className="p-2 text-right">Other</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {data.refurb_estimates.map((est, i) => (
-                        <tr key={est.id ?? `row-${i}`} className="border-t">
-                          <td className="p-2 capitalize">
-                            {est.detected_room_type || est.room_type || 'room'}
-                          </td>
-                          <td className="p-2 text-right">{formatGBP(est.estimated_total_gbp)}</td>
-                          <td className="p-2 text-right">{formatGBP(est.wallpaper_or_paint_gbp)}</td>
-                          <td className="p-2 text-right">{formatGBP(est.flooring_gbp)}</td>
-                          <td className="p-2 text-right">{formatGBP(est.plumbing_gbp)}</td>
-                          <td className="p-2 text-right">{formatGBP(est.electrics_gbp)}</td>
-                          <td className="p-2 text-right">{formatGBP(est.mould_or_damp_gbp)}</td>
-                          <td className="p-2 text-right">{formatGBP(est.structure_gbp)}</td>
-                        </tr>
-                      ))}
+                      {refinedRefurbs.map((est, i) => {
+                        const paint = toInt(est.wallpaper_or_paint_gbp);
+                        const floor = toInt(est.flooring_gbp);
+                        const plumb = toInt(est.plumbing_gbp);
+                        const elec = toInt(est.electrics_gbp);
+                        const damp = toInt(est.mould_or_damp_gbp);
+                        const struct = toInt(est.structure_gbp);
+                        const catSum = paint + floor + plumb + elec + damp + struct;
+
+                        const worksArr =
+                          Array.isArray(est.works)
+                            ? (est.works as any[])
+                            : typeof est.works === 'string'
+                              ? (() => { try { const p = JSON.parse(est.works as string); return Array.isArray(p) ? p : []; } catch { return []; } })()
+                              : [];
+                        const worksSum = worksArr.reduce((acc, w) => acc + toInt(w?.subtotal_gbp), 0);
+
+                        const total = Math.max(toInt(est.estimated_total_gbp), catSum, worksSum);
+                        const other = Math.max(0, total - catSum);
+
+                        return (
+                          <tr key={est.id ?? `row-${i}`} className="border-t">
+                            <td className="p-2 capitalize">
+                              {est.detected_room_type || est.room_type || 'room'}
+                            </td>
+                            <td className="p-2 text-right">{formatGBP(total)}</td>
+                            <td className="p-2 text-right">{formatGBP(paint)}</td>
+                            <td className="p-2 text-right">{formatGBP(floor)}</td>
+                            <td className="p-2 text-right">{formatGBP(plumb)}</td>
+                            <td className="p-2 text-right">{formatGBP(elec)}</td>
+                            <td className="p-2 text-right">{formatGBP(damp)}</td>
+                            <td className="p-2 text-right">{formatGBP(struct)}</td>
+                            <td className="p-2 text-right">{formatGBP(other)}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -535,5 +632,5 @@ export default function Page() {
         </div>
       )}
     </main>
-  )
+  );
 }
