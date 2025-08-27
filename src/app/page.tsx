@@ -376,11 +376,37 @@ function TopStrip() {
   );
 }
 
+// In src/app/page.tsx – replace your FloatingCTA with this version
 function FloatingCTA({ show }: { show: boolean }) {
+  const [offset, setOffset] = useState(16); // px from bottom when footer is visible
+
+  useEffect(() => {
+    const footer = document.getElementById("site-footer");
+    if (!footer) return;
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const e = entries[0];
+        // if footer is visible, lift the CTA by footer height + 16px; else sit 16px from bottom
+        if (e.isIntersecting) {
+          const h = e.target.getBoundingClientRect().height;
+          setOffset(h + 16);
+        } else {
+          setOffset(16);
+        }
+      },
+      { threshold: 0 }
+    );
+
+    obs.observe(footer);
+    return () => obs.disconnect();
+  }, []);
+
   return (
     <div
       aria-hidden={!show}
-      className={`fixed bottom-4 inset-x-0 z-40 transition-all duration-300 ${show ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10 pointer-events-none"}`}
+      style={{ bottom: offset }}
+      className={`fixed inset-x-0 z-40 transition-all duration-300 ${show ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10 pointer-events-none"}`}
     >
       <div className="container">
         <div className="rounded-2xl bg-slate-900 text-white px-4 py-3 flex items-center justify-between shadow-2xl">
@@ -396,6 +422,7 @@ function FloatingCTA({ show }: { show: boolean }) {
     </div>
   );
 }
+
 
 function LogoRow() {
   return (
