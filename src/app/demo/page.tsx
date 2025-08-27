@@ -1,9 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { pollUntilDone, type RunStatus, startAnalyze } from '@/lib/api';
 import RoomCard, { RefurbRow } from '../../components/RoomCard'; // relative, unambiguous
+
+/* ---------- branding ---------- */
+const LOGO_SRC = '/PropVisions_Logo.png'; // place your logo in /public
 
 /* ---------- helpers ---------- */
 function formatGBP(n?: number | string | null) {
@@ -350,8 +354,18 @@ export default function Page() {
       {/* Header */}
       <header className="flex items-start md:items-center justify-between gap-4">
         <div className="flex-1">
-          <h1 className="text-3xl font-bold tracking-tight">PropVisions Demo</h1>
-          <p className="text-slate-600">
+          <div className="flex items-center gap-3">
+            <Image
+              src={LOGO_SRC}
+              alt="PropVisions"
+              width={120}
+              height={32}
+              priority
+              className="h-9 w-auto md:h-10"
+            />
+            <h1 className="text-3xl font-bold tracking-tight">PropVisions Demo</h1>
+          </div>
+          <p className="text-slate-600 mt-1">
             Paste a listing URL to generate valuations, refurb breakdown, and financials.
           </p>
           <ProgressBar percent={progress} show={status === 'queued' || status === 'processing'} />
@@ -386,7 +400,7 @@ export default function Page() {
             className="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
-        <button
+          <button
             type="submit"
             disabled={running || !validUrl || (usage ? usage.remaining === 0 : false)}
             className="px-4 py-3 bg-blue-600 text-white rounded-lg disabled:opacity-50"
