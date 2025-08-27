@@ -20,18 +20,25 @@
 \usepackage{listings}
 \usepackage[ruled,vlined]{algorithm2e}
 \usepackage{tikz}
+\usepackage{fancyhdr} % header/footer control for small logo
 \usetikzlibrary{arrows.meta,positioning,fit,calc,shapes.misc,shapes.geometric}
 
 % --- Branding ---
 \definecolor{brandblue}{RGB}{14,75,140}
 \definecolor{brandgreen}{RGB}{25,135,84}
 \definecolor{brandgray}{RGB}{90,90,100}
+
 \hypersetup{
   colorlinks=true,
   linkcolor=brandblue,
   citecolor=brandblue,
-  urlcolor=brandblue
+  urlcolor=brandblue,
+  pdftitle={PropVisions White Paper},
+  pdfauthor={PropVisions},
+  pdfsubject={The Complete AI-Powered Property Investment Platform}
 }
+
+\newcommand{\logoPath}{/Users/jamesquessy/Desktop/property-scout-ui/PropVisions_Logo.png}
 
 % --- Section style ---
 \titleformat{\section}{\color{brandblue}\normalfont\Large\bfseries}{}{0em}{}
@@ -50,82 +57,118 @@
   showstringspaces=false
 }
 
-% --- Title ---
-\title{\vspace{-2em}\textbf{PropertyScout}\\[0.4em]\large The Complete AI-Powered Property Investment Platform}
-\author{White Paper}
-\date{\today}
-
 \begin{document}
-\maketitle
-\begin{center}
-\textit{Version 1.0 \quad | \quad Confidential Draft for Early Partners and Reviewers}
-\end{center}
-\vspace{1em}
+
+% ------------------------- COVER PAGE -------------------------
+\begin{titlepage}
+  \centering
+  \vspace*{1.5cm}
+
+  % Larger cover logo
+  \includegraphics[width=0.65\textwidth]{\logoPath}
+
+  \vspace{2.5cm}
+  {\fontsize{28}{30}\selectfont\bfseries PropVisions\par}
+  \vspace{0.6em}
+  {\Large The Complete AI-Powered Property Investment Platform\par}
+
+  \vspace{2.5cm}
+  {\large White Paper\par}
+  \vspace{0.4em}
+  {\normalsize Version 1.0 \quad | \quad Confidential Draft for Early Partners and Reviewers\par}
+
+  \vfill
+  \color{brandgray}
+  \rule{\textwidth}{0.6pt}\par
+  \vspace{0.6em}
+  {\small Last updated: \today \quad • \quad \textcolor{brandblue}{\href{https://www.propvisions.com}{www.propvisions.com}} \quad • \quad hello@propvisions.com\par}
+\end{titlepage}
+
+% ------------------------- HEADER WITH SMALL LOGO -------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\setlength{\headheight}{20pt}
+\renewcommand{\headrulewidth}{0pt}
+\fancyhead[L]{\textbf{\color{brandblue}PropVisions}\\\small White Paper}
+\fancyhead[R]{\raisebox{-0.2\height}{\includegraphics[height=14mm]{\logoPath}}} % increased to 14mm
+\fancyfoot[C]{\thepage}
+
+% ------------------------- FRONT MATTER -------------------------
+\pagenumbering{roman}
+\setcounter{page}{1}
+
 \tableofcontents
 \newpage
 
+% Switch to arabic numbering for the main body
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
 % =========================================================
 \section{Executive Summary}
-PropertyScout is an AI-first property investment platform that automates the end-to-end workflow of sourcing, underwriting, and monitoring UK residential deals. The system integrates automated scraping, robust data validation, AI-based refurbishment cost estimation from listing photos, rental forecasting, cashflow and ROI modeling, EPC matching, forecasting of value uplift, and report generation (PDF and Excel). It is designed for investors, sourcing agents, and estate agencies seeking faster, more consistent decisions with auditability and repeatability.
+\textbf{PropVisions} is an AI-first property investment platform that automates the end-to-end lifecycle of sourcing, underwriting, reporting, and monitoring UK residential deals. The system combines: robust ingestion from URLs/APIs; computer-vision-driven refurbishment estimation from listing photos; rent band forecasting using historical data and listing signals; full-stack financials; EPC enrichment; comparables sanity checks; high-quality PDF/Excel outputs; and ongoing alerts post-purchase (rates, remortgage timing, deal-status changes).
 
-This document details the current MVP, planned features, reference architecture, data models, algorithms, evaluation frameworks, regulatory controls, commercialization strategy, and a structured roadmap. The goal is to provide technical and commercial clarity for pilot customers, design partners, and potential investors.
+\paragraph{What this document covers.} Current MVP and near-term roadmap, reference architecture, canonical schemas, algorithms, operational controls, security \& GDPR posture, evaluation methodology, commercialization path, and pilot structure.
 
-\paragraph{Positioning.} Unlike calculators or point tools, PropertyScout focuses on (i) automation across upstream data capture, (ii) AI-driven analysis with human-in-the-loop validation, and (iii) post-purchase monitoring and alerts—creating a continuous value loop.
+\paragraph{Positioning.} Unlike calculators or point tools, PropVisions provides: (i) automated upstream data capture, (ii) transparent, AI-assisted analysis with human-in-the-loop overrides, and (iii) post-purchase monitoring—forming a continuous improvement loop.
 
-\paragraph{Outcome.} Reduced analysis time from hours to minutes; consistent underwriting and documentation; proactive alerts; and the ability to scale to hundreds of deals per analyst per week.
+\paragraph{Outcome.} Reduce analysis time from hours to minutes; standardise underwriting; deliver client-ready packs; and scale to hundreds of deals per analyst per week with auditable assumptions.
 
 % =========================================================
-\section{Problem and Opportunity}
-\subsection{Industry Pain Points}
-\begin{itemize}[leftmargin=1.5em]
-  \item \textbf{Fragmented tooling:} Data sourcing, underwriting, EPC checks, and reporting often require multiple systems and manual reconciliation.
-  \item \textbf{Latency and inconsistency:} Human analysis varies widely; many deals are lost due to slow turnarounds or inconsistent assumptions.
-  \item \textbf{Lack of monitoring:} After purchase, few tools track remortgage windows, interest-rate impacts, or portfolio KPIs in real time.
-  \item \textbf{Regional nuance:} Refurb costs and rents are hyper-local; generic calculators miss local reality.
-\end{itemize}
+\section{Beta Status and Transparency}
+\textbf{Active beta.} Fast progress; imperfect outputs. UI is practical-first. Accuracy is variable by area and listing quality. We publish baseline accuracy metrics and expose confidence bands and editable assumptions.
 
-\subsection{Why Now}
 \begin{itemize}[leftmargin=1.5em]
-  \item \textbf{Mature LLMs and vision models} enable robust extraction and estimation from messy sources (HTML, images).
-  \item \textbf{API growth} (EPC, ONS, Land Registry, portal data) improves coverage and freshness.
-  \item \textbf{Investor demand} for faster, defensible underwriting and automated sourcing/alerts is rising as yields compress.
+  \item \textbf{Target accuracy (near-term):} rent band hit-rate $\geq 80\%$; refurb total MAPE $\leq 20$--$25\%$ with 10+ images; EPC match $\geq 95\%$ on clean addresses.
+  \item \textbf{Levers you can edit:} management\%, voids, maintenance, fees, growth assumptions, refurb line items, rent bands.
+  \item \textbf{Human judgement remains central:} we provide structure, speed, and signal—not guarantees.
 \end{itemize}
 
 % =========================================================
 \section{Product Overview}
 \subsection{Elevator Pitch}
-PropertyScout is the ultimate AI-powered investment assistant that ingests a property link, extracts structured data, estimates refurb costs from photos, forecasts rents and values, computes full-stack financials, attaches EPC data, and generates client-ready reports—then continues to monitor and alert post-purchase.
+Paste a property link (or run a saved search) and PropVisions outputs a complete investment snapshot—refurb costs by room, rent band with confidence, yield/ROI/cashflow, EPC, comps, and report files—then watches for updates (price drops, back-on-market, remortgage windows) and alerts you.
 
-\subsection{Current MVP Capabilities}
+\subsection{What Works Today (MVP)}
 \begin{enumerate}[leftmargin=1.5em]
-  \item URL input $\rightarrow$ \textbf{scrape \& parse} (price, agent, layout, media, key features).
-  \item \textbf{AI refurbishment estimation} from images with room-level breakdowns.
-  \item \textbf{Rental estimation} using GPT with postcode comparables.
-  \item \textbf{Financial stack:} stamp duty, legal/survey/insurance, management fees, yield \& ROI.
-  \item \textbf{Value uplift} via HPI-baseline + AI adjustment.
-  \item \textbf{EPC matching} to retrieve rating and details.
-  \item \textbf{Reporting:} PDF and Excel export; Slack notification with attachments.
+  \item \textbf{URL ingestion} $\rightarrow$ scrape \& parse: price, address/postcode, layout, features, images, agent details.
+  \item \textbf{Refurb from photos} (vision-guided): per-room items; regional cost indices; editable totals \& contingencies.
+  \item \textbf{Rent estimation:} historical rent data + listing features $\rightarrow$ monthly/annual band with rationale \& confidence.
+  \item \textbf{Financials:} stamp duty, legal/survey/insurance, management\%, voids, maintenance \textrightarrow{} yield, ROI, cashflow.
+  \item \textbf{EPC enrichment:} rating \& recommended measures; record stored for reporting.
+  \item \textbf{Comps sanity checks:} recent locals; £/sqft bands; outlier flags.
+  \item \textbf{Outputs \& alerts:} PDF/Excel; Slack/email notification with links.
 \end{enumerate}
 
 \subsection{Planned Features (Highlights)}
 \begin{itemize}[leftmargin=1.5em]
-  \item Live portal integrations (Rightmove, Zoopla, auctions) with filters, de-dup, and watchlists.
-  \item User-configurable alerting on yields, price drops, new listings.
-  \item Post-purchase mortgage optimisation, remortgage timing alerts.
-  \item Portfolio dashboard, deal comparisons, and client-shareable views.
-  \item Off-market CRM tools (compliant outreach) and letter generation.
+  \item \textbf{Unified search \& APIs:} Rightmove, Zoopla, OnTheMarket, auction platforms; de-dup, canonicalisation, watchlists.
+  \item \textbf{Deal-status watcher:} new/returning, price drops, time-on-market; filters by postcode/price/bed/yield/refurb budget.
+  \item \textbf{Mortgage module:} product types (IO/repayment), fees/ERCs, ICR/DSCR, forward curve scenarios, remortgage assistant.
+  \item \textbf{Portfolio \& sharing:} multi-deal comparisons, read-only client views, white-label branding.
+  \item \textbf{Off-market assistants:} GDPR-compliant outreach, probate/distress signals, light CRM for cadence tracking.
+\end{itemize}
+
+% =========================================================
+\section{Design Principles \& Defaults}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Transparency over black-box:} show bands, confidence, and levers; capture overrides and provenance.
+  \item \textbf{Speed with correctness:} deterministic parsers \& validations first; LLMs only where they add value.
+  \item \textbf{Local realism:} regional cost indices for refurb; postcode priors for rent.
+  \item \textbf{Secure by default:} least-privilege, audited access, encrypted storage, no secrets in code.
+  \item \textbf{Human-in-the-loop:} every estimate is editable; edits feed calibration.
 \end{itemize}
 
 % =========================================================
 \section{User Personas \& Jobs-To-Be-Done}
 \subsection{Professional Investor}
-\textbf{JTBD:} “Underwrite deals consistently and fast; produce investor-ready packs; monitor portfolio KPIs and remortgage opportunities.”
+\textit{JTBD:} underwrite consistently; generate investor packs; track portfolio KPIs; spot remortgage opportunities.
 
 \subsection{Sourcing Agent}
-\textbf{JTBD:} “Scan and qualify many deals daily; package them for buyers with credible numbers; run targeted alerts.”
+\textit{JTBD:} scan many deals; qualify quickly; package for buyers with credible numbers; automate alerts.
 
-\subsection{Estate Agency (Partner)}
-\textbf{JTBD:} “Provide value-add analytics to buyers; white-label reporting; convert more instructions; evidence-based pricing.”
+\subsection{Estate Agency / Partner}
+\textit{JTBD:} add value to buyers with analytics; white-label reports; evidence-based pricing; improve conversion.
 
 % =========================================================
 \section{System Architecture}
@@ -138,10 +181,10 @@ PropertyScout is the ultimate AI-powered investment assistant that ingests a pro
 \node[box, right=2.8cm of user, fill=gray!10] (api) {API Layer \\ (FastAPI/Node)};
 \node[box, right=2.8cm of api, fill=gray!10] (n8n) {n8n Workflows \\ (Ingestion/AI/Reports)};
 \node[box, below=1.4cm of api, fill=gray!10] (db) {Supabase \\ (DB + Auth + Storage)};
-\node[box, above=1.4cm of n8n, fill=gray!10] (models) {LLM/Vision \\ (GPT-4 class, CV)};
+\node[box, above=1.4cm of n8n, fill=gray!10] (models) {LLM/Vision \\ (GPT-class, CV)};
 \node[box, right=2.8cm of n8n, fill=gray!10] (ext) {External APIs \\ (Portals, EPC, ONS, HPI)};
 
-\draw[->] (user) -- (api) node[midway, above]{Submit URL};
+\draw[->] (user) -- (api) node[midway, above]{Submit URL / Search};
 \draw[->] (api) -- (n8n) node[midway, above]{Kick job};
 \draw[->] (n8n) -- (models) node[midway, right]{Prompts/Images};
 \draw[->] (n8n) -- (ext) node[midway, above]{Fetch data};
@@ -149,212 +192,240 @@ PropertyScout is the ultimate AI-powered investment assistant that ingests a pro
 \draw[->] (db) -- (api) node[midway, left]{Query/read};
 \draw[->] (api) -- (user) node[midway, below]{Results/Links};
 \end{tikzpicture}
-\caption{PropertyScout high-level architecture.}
+\caption{PropVisions high-level architecture.}
 \end{figure}
 
 \subsection{Workflow Orchestration (n8n)}
 \begin{enumerate}[leftmargin=1.5em]
-  \item \textbf{Scrape Node:} Fetch HTML and media links.
-  \item \textbf{Clean \& Parse Agent:} Convert HTML to structured JSON (price, address, features).
-  \item \textbf{Image Loop:} For each image, run a refurb-estimate prompt, aggregate per room.
-  \item \textbf{Rent Agent:} Estimate rent using postcode/regression prior + GPT adjustment.
-  \item \textbf{Fees \& ROI Node:} Compute stamp duty, legal, management, net yield, ROI, cashflow.
-  \item \textbf{HPI \& Uplift Node:} Calculate baseline uplift; optional AI adjustment.
-  \item \textbf{EPC Match Agent:} Find EPC record and extract rating + fields.
-  \item \textbf{PDF \& Excel Nodes:} Generate reports; upload to storage.
-  \item \textbf{Notify:} Slack/email with links and summary metrics.
+  \item \textbf{Scrape Node:} fetch HTML/media with retries, backoff, \& robots/T\&Cs respect.
+  \item \textbf{Clean \& Parse:} deterministic selectors + LLM cleanup; strong schema validation.
+  \item \textbf{Image Loop:} refurb agent per image; classify room, extract conditions; aggregate by room type.
+  \item \textbf{Rent Agent:} regression prior + LLM adjustment (listing text, amenities, finish).
+  \item \textbf{Fees \& ROI:} stamp duty, legal, insurance, mgmt, maintenance, voids; yield, ROI, cashflow.
+  \item \textbf{HPI/Uplift:} baseline growth; optional AI uplift vs comps; sensitivity ranges.
+  \item \textbf{EPC Match:} heuristic + LLM fallback; store matched record + recommended measures.
+  \item \textbf{Reporting:} render PDF/Excel; upload artifacts; generate share links.
+  \item \textbf{Notify:} Slack/email with KPIs and download URLs.
 \end{enumerate}
 
 \subsection{Data Stores}
-\textbf{Supabase:} Postgres for canonical tables (properties, analyses, comps, epc, runs), Storage for PDF/Excel artifacts, Auth for users/teams.
+\textbf{Supabase Postgres:} canonical tables for properties, analyses, refurb/rent/EPC/comps, runs, and reports. \\
+\textbf{Supabase Storage:} artifact storage (PDF/Excel). \\
+\textbf{Auth:} users, teams, roles; future SSO.
 
 % =========================================================
-\section{Data Model (Canonical Schemas)}
+\section{Canonical Schemas (Selected)}
 \subsection{Core Entities}
 \begin{longtable}{@{}p{3.2cm}p{12.4cm}@{}}
 \toprule
 \textbf{Table} & \textbf{Purpose \& Key Fields} \\
 \midrule
-\texttt{properties} & Canonical property identity. \textit{Key fields:} id (uuid), url, address\_full, postcode, source, first\_seen, last\_seen, status. \\
-\texttt{analyses} & One analysis per run/version. \textit{Key fields:} id, property\_id (fk), run\_timestamp, price, sq\_ft, bedrooms, bathrooms, assumptions jsonb, results jsonb. \\
-\texttt{refurb\_estimates} & Room- or item-level refurb costs. \textit{Key fields:} id, analysis\_id (fk), room\_type, items jsonb, subtotal, confidence. \\
-\texttt{rent\_estimates} & Rent predictions and sources. \textit{Key fields:} id, analysis\_id (fk), monthly\_rent, method, comps jsonb, confidence. \\
-\texttt{fees} & Stamp duty, legal, survey, insurance, mgmt. \textit{Key fields:} id, analysis\_id (fk), duty, legal, survey, insurance, mgmt\_pct, total. \\
-\texttt{sales\_comps} & Nearby sales comparables. \textit{Key fields:} id, analysis\_id (fk), address, distance\_m, price, date, sqft, ppsf. \\
-\texttt{rental\_comps} & Nearby rental comparables. Fields similar to sales comps. \\
-\texttt{epc\_records} & EPC details linked to property. \textit{Key fields:} id, analysis\_id, rating, uprn, lmk\_key, measures jsonb, full\_record jsonb. \\
-\texttt{reports} & Generated artifacts. \textit{Key fields:} id, analysis\_id, type (pdf/xlsx), storage\_path, size\_bytes, checksum. \\
-\texttt{runs} & Orchestration metadata. \textit{Key fields:} id, user\_id, workflow\_id, duration\_ms, status, error\_log. \\
+\texttt{properties} & Canonical property identity. \textit{Fields:} id, url, address\_full, postcode, source, first\_seen, last\_seen, status, agent jsonb. \\
+\texttt{analyses} & One analysis per run/version. \textit{Fields:} id, property\_id, run\_timestamp, price, layout jsonb, assumptions jsonb, results jsonb, confidence jsonb. \\
+\texttt{refurb\_estimates} & Room-/item-level refurb costs. \textit{Fields:} id, analysis\_id, room\_type, items jsonb, subtotal, contingency, confidence. \\
+\texttt{rent\_estimates} & Rent predictions and sources. \textit{Fields:} id, analysis\_id, monthly\_rent, band\_low, band\_high, method, comps jsonb, confidence, rationale text. \\
+\texttt{sales\_comps} & Nearby sales comparables. \textit{Fields:} address, distance\_m, price, date, sqft, ppsf, weight. \\
+\texttt{rental\_comps} & Nearby rental comparables. Similar to sales comps, with monthly rent. \\
+\texttt{epc\_records} & EPC details. \textit{Fields:} rating, uprn, lmk\_key, measures jsonb, full\_record jsonb. \\
+\texttt{reports} & Generated artifacts. \textit{Fields:} type (pdf/xlsx), storage\_path, size\_bytes, checksum. \\
+\texttt{runs} & Orchestration metadata. \textit{Fields:} workflow\_id, duration\_ms, status, error\_log, tokens\_used. \\
 \bottomrule
 \end{longtable}
 
-
 % =========================================================
 \section{Algorithms \& Methods}
-\subsection{HTML \texorpdfstring{$\rightarrow$}{->} JSON Extraction}
-\textbf{Method:} Heuristic tag selection $+$ LLM cleanup. We use deterministic rules for price/address hints, and an LLM to standardise fields and fill light gaps. Ambiguous fields produce warnings rather than hallucinated values.
+\subsection{HTML $\rightarrow$ JSON Extraction}
+Deterministic tag/attribute rules to collect candidates (price, address, beds/baths, agent, features), then an LLM cleans/standardises. Ambiguity yields warnings; never fabricate. \textbf{Validation:} regex \& unit checks, currency normalisation, postcode parsing, and required-field gating.
 
 \subsection{Vision-Guided Refurb Estimation}
-\textbf{Input:} Listing photos; optional captions. \\
-\textbf{Process:}
+\textbf{Input:} photos (kitchen, bathroom, bedroom, lounge, hallway, exterior). \\
+\textbf{Pipeline:}
 \begin{enumerate}[leftmargin=1.5em]
-  \item Image classification: detect room type (kitchen, bathroom, bedroom, lounge, hallway, exterior).
-  \item Condition assessment: extract cues (e.g., old cabinets, tile condition, damp marks).
-  \item Bill-of-quantities template: map detected items to line-items (e.g., “replace cabinets”, “rewire room”).
-  \item Regional cost adjustment: apply postcode-based cost indices.
-  \item Confidence scoring: reflect image quality, occlusion, and ambiguity.
+  \item \textbf{Room classification} (CV cues + prompt heuristics).
+  \item \textbf{Condition extraction} (cabinet age, tiles, damp marks, flooring wear).
+  \item \textbf{Bill-of-quantities map} (replace cabinets, re-tile, rewire room, paint, flooring).
+  \item \textbf{Regional cost index} by postcode; labour/material splits.
+  \item \textbf{Confidence scoring} and \textbf{contingency} policy (e.g., 10--15\%).
 \end{enumerate}
 
-\subsection{EPC Matching (Robust Heuristic)}
-\textbf{Goal:} From candidate EPC records, select the best match for a given \texttt{propertyTitle} and \texttt{postcode}. \\
-\textbf{Steps:}
-\begin{enumerate}[leftmargin=1.5em]
-  \item Normalise: uppercase; remove punctuation; collapse whitespace.
-  \item Extract tokens: house number \& primary street tokens.
-  \item Filter by postcode equality (normalised).
-  \item Score each record: 
-  \[
-    s = w_h \cdot \mathbb{1}[\text{house\# match}] + w_s \cdot \text{Jaccard}(street~tokens) - w_e \cdot \text{editDist}(title, address)
-  \]
-  \item Choose max-$s$; threshold; else null.
-\end{enumerate}
-Weights $w_h, w_s, w_e$ are tuned from labeled pairs. This approach is fast (linear in candidates) and avoids LLM latency.
-
-\subsection{Rent Estimation}
-\textbf{Hybrid model:} Baseline regression using postcode + property features; GPT layer adjusts based on unstructured signals (listing language, amenities, finish quality). Final:
+\subsection{Rent Estimation (Hybrid)}
+Regression prior on postcode + features (\emph{beds, type, EPC, finish proxies}) blended with LLM adjustment from listing signals:
 \[
-\hat{R} = \alpha \cdot R_{\text{regression}} + (1-\alpha)\cdot R_{\text{GPT}}
+\hat{R} = \alpha R_{\text{prior}} + (1-\alpha)R_{\text{LLM}},\quad \alpha \in [0.5, 0.8] \text{ by region}
 \]
-with $\alpha$ calibrated by backtesting per region.
+Band and confidence reflect historical dispersion and text cues.
 
-\subsection{Fees \& ROI}
-Given purchase price $P$, refurb cost $C_r$, other fees $F$, annual rent $R_a$, operating expense ratio $e$, and management fee $\mu$:
+\subsection{EPC Matching (Heuristic + Fallback)}
+Normalise strings; extract house number \& street tokens; filter exact postcode; score candidates with house\# match, Jaccard of street tokens, and edit distance; threshold or null. Fallback LLM comparison if borderline.
+
+\subsection{Financials \& Mortgage}
+Given price $P$, refurb $C_r$, other fees $F$, annual rent $R_a$, expense ratio $e$, mgmt $\mu$:
 \[
-\text{NOI} = R_a\cdot(1-e-\mu)
-\qquad
+\text{NOI} = R_a(1 - e - \mu),\quad
 \text{Yield} = \frac{\text{NOI}}{P + C_r + F}
 \]
-For leverage, monthly mortgage $M$ via standard amortisation; monthly cashflow $\text{CF}_m = \frac{\text{NOI}}{12} - M$.
+Mortgage cashflow with amortisation or IO; ICR/DSCR computed against stressed rates; sensitivity tables across rates and voids.
 
 \subsection{Uplift \& Forecasting}
-\textbf{Baseline:} Apply HPI growth to $P$; \textbf{Post-refurb uplift} $\Delta$ from comps or AI adjustment; forecast price $P'$:
+Baseline HPI growth and comparable uplift $\Delta$:
 \[
-P' = (P + C_r)\cdot(1 + g_{\text{HPI}}) + \Delta
+P' = (P + C_r)(1 + g_{\text{HPI}}) + \Delta
 \]
-Sensitivity analysis runs scenarios over $g_{\text{HPI}}$, $R_a$, and $C_r$ with tornado chart outputs (in Excel/PDF).
+Scenarios sweep $g_{\text{HPI}}$, rent, and refurb to produce tornado/range outputs in Excel/PDF.
 
 % =========================================================
-\section{Prompts \& Guardrails (Selected)}
-\subsection{HTML-to-JSON Prompt (Skeleton)}
+\section{Prompts \& Guardrails}
+\subsection{Strict JSON Output Guard (Global)}
+\begin{lstlisting}
+System: Output only VALID JSON. No markdown, no comments. If unsure, use null.
+User: If any schema key is missing, include it with null. Prefer empty arrays to missing arrays.
+\end{lstlisting}
+
+\subsection{HTML-to-JSON}
 \begin{lstlisting}
 System: You are a strict data extractor. If a field is unknown, return null.
-User: Given raw HTML and images, return ONLY valid JSON with keys:
+User: Given raw HTML and images, return ONLY:
 {price_gbp, address, postcode, bedrooms, bathrooms, tenure, agent, features[]}
-Do not invent values. Use best-guess only if explicitly stated by the page.
+Do not invent values. If ambiguous, set null and add "warnings":[...].
 \end{lstlisting}
 
-\subsection{Refurb Estimation Prompt (Vision)}
+\subsection{Refurb (Vision)}
 \begin{lstlisting}
-System: You estimate refurbishment line-items from photos, using UK trade assumptions.
-User: For each image, classify room type, list line-items with qty, unit_cost_gbp, subtotal,
-and a confidence 0-1. Adjust costs for postcode if provided. Output valid JSON only.
+System: Estimate refurbishment line-items from photos using UK trade assumptions.
+User: For each image: classify room; list items {category, qty, unit, unit_rate_gbp, subtotal_gbp}.
+Adjust for postcode cost index if provided. Return JSON only with a "confidence" 0..1.
 \end{lstlisting}
 
-\subsection{Rent Estimation Prompt}
+\subsection{Rent}
 \begin{lstlisting}
-System: You estimate monthly rent in GBP for UK properties.
-User: Using the provided structured features and any text cues, output:
-{ monthly_rent_gbp, low, high, rationale, confidence }.
-Don't exceed local comparables by >15% without specific justification.
+System: Estimate monthly rent (GBP) given features + listing text cues.
+User: Return:
+{ monthly_rent_gbp, low, high, rationale, confidence }
+Do not exceed local comparables by >15% without explicit justification.
 \end{lstlisting}
 
-\subsection{EPC Matching Prompt (LLM fallback)}
+\subsection{EPC Fallback}
 \begin{lstlisting}
-System: You match a single EPC record to a title+postcode and return exactly one JSON object.
+System: Match a single EPC record to title+postcode and return exactly one JSON object.
 User: Inputs: propertyTitle, postcode, epcRecords[]. If unsure, return nulls (no guess).
-No markdown. Only JSON.
 \end{lstlisting}
 
 % =========================================================
-\section{Evaluation \& Accuracy Targets}
+\section{Evaluation \& Accuracy}
 \subsection{Metrics}
 \begin{itemize}[leftmargin=1.5em]
-  \item \textbf{Rent MAE / MAPE:} $| \hat{R} - R |$, percentage error vs. let-agreed rents.
-  \item \textbf{Refurb Cost Error:} absolute/relative error vs. post-job invoices or QS estimates.
-  \item \textbf{EPC Match Precision/Recall:} on a labeled set.
-  \item \textbf{Overall Deal Error:} \% error in Year-1 net yield and cashflow.
+  \item \textbf{Rent MAE/MAPE} vs let-agreed.
+  \item \textbf{Refurb error} vs invoices or QS estimates (room bundle and total).
+  \item \textbf{EPC precision/recall} on labelled set.
+  \item \textbf{Deal error} in Year-1 net yield and cashflow.
 \end{itemize}
 
-\subsection{Initial Targets (Beta)}
+\subsection{Targets (Beta)}
 \begin{itemize}[leftmargin=1.5em]
-  \item Rent MAPE: 10–15\% (postcode \& 1–2 bed flats), 15–20\% (mixed stock).
-  \item Refurb error: 20–30\% at room-bundle level; 15–25\% with >10 images.
-  \item EPC matching: $>$95\% precision on clean addresses; $>$90\% on messy.
-  \item Year-1 net yield error: $\pm 1$–1.5pp for standard BTL scenarios.
+  \item Rent MAPE: 10--15\% (1--2 bed flats); 15--20\% mixed stock.
+  \item Refurb: 20--30\% total; 15--25\% with $>$10 images.
+  \item EPC: $>$95\% precision on clean data; $>$90\% otherwise.
+  \item Net yield error: $\pm(1$--$1.5)$pp for standard BTL scenarios.
 \end{itemize}
 
-\subsection{Test Protocol}
-\begin{enumerate}[leftmargin=1.5em]
-  \item Build hold-out set by region and property type.
-  \item Backtest on historical listings with known outcomes (rents, invoices).
-  \item Report aggregate and per-region metrics; track drift monthly.
-\end{enumerate}
+\subsection{Protocol}
+Hold-out by region \& type; backtest against outcomes; publish aggregate, regional, and dispersion stats; monitor monthly drift.
 
 % =========================================================
 \section{Security, Compliance, and Data Governance}
 \subsection{GDPR}
-\begin{itemize}[leftmargin=1.5em]
-  \item Lawful basis (Legitimate Interests/Contract) for processing listing data.
-  \item Data minimisation: only persist fields needed for analysis/audit.
-  \item User consent flows for outreach features (opt-in).
-\end{itemize}
+Lawful bases (Legitimate Interests/Contract); data minimisation (only needed fields); opt-in flows for outreach; DPA on request; DPIA maintained.
 
-\subsection{Credentials}
-All secrets stored as environment variables or secret managers. Keys redacted in logs and reports. \textbf{Never embed API keys in code or documents.}
+\subsection{Credentials \& Secrets}
+Env vars/secret managers; never in code or reports; rotated; least-privilege access; redaction in logs.
 
-\subsection{PII and Retention}
-\begin{itemize}[leftmargin=1.5em]
-  \item Default retention: analysis artifacts retained 12 months (configurable).
-  \item Right to erasure pipeline; access logging; DPA-ready documentation.
-\end{itemize}
+\subsection{PII \& Retention}
+Default retention 12 months (configurable); right-to-erasure; access logging; subject access workflows.
 
 % =========================================================
-\section{Performance \& Cost}
-\subsection{Latency Budgets (MVP)}
+\section{Performance, Reliability \& Cost}
+\subsection{Latency Budgets}
 \begin{itemize}[leftmargin=1.5em]
-  \item End-to-end target: 30–90 seconds per property (depends on image count).
-  \item Sub-budgets: HTML parse $<$ 3s; images loop $<$ 40s (10–15 images); EPC/API calls $<$ 5s; PDF/Excel $<$ 7s.
+  \item End-to-end target: 30--90s per property (image count dependent).
+  \item HTML parse $<$ 3s; image loop $<$ 40s (10--15 images); EPC/API $<$ 5s; PDF/Excel $<$ 7s.
 \end{itemize}
 
-\subsection{Run Cost (Illustrative)}
-\begin{itemize}[leftmargin=1.5em]
-  \item LLM tokens (parse + images + rents + EPC): \pounds0.05–\pounds0.20 per run (model/size dependent).
-  \item Storage (PDF/Excel): pennies per artifact.
-  \item Overall COGS per run (MVP): \pounds0.10–\pounds0.40 typical.
-\end{itemize}
+\subsection{COGS (Illustrative)}
+LLM tokens across parse/images/rent/EPC: \pounds0.05--\pounds0.20; storage pennies per artifact; typical run \pounds0.10--\pounds0.40 (model/volume dependent). Caching, heuristics, and smaller models reduce cost at scale.
+
+\subsection{Reliability}
+Retries with backoff; circuit breakers on third-party APIs; idempotent writes; run journaling; dead-letter queues; error budgets and SLOs.
 
 % =========================================================
 \section{Commercial Strategy}
-\subsection{Pricing}
+\subsection{Pricing (Indicative)}
 \begin{itemize}[leftmargin=1.5em]
-  \item \textbf{Starter:} \pounds29/mo, 50 runs, pay-as-you-go at \pounds1/run thereafter.
-  \item \textbf{Pro:} \pounds99/mo, 300 runs, team seats, alerts, PDF/Excel branding.
-  \item \textbf{Team/Agency:} \pounds299+/mo, 1{,}000 runs, SSO, white-label, priority support.
-  \item \textbf{Custom Region Builds:} One-off setup \& premium monthly (e.g., North West focus), higher accuracy guarantees in coverage zone.
+  \item \textbf{Starter:} \pounds29/mo, 50 runs; \pounds1/run overage.
+  \item \textbf{Pro:} \pounds99/mo, 300 runs; team seats; alerts; branded outputs.
+  \item \textbf{Team/Agency:} \pounds299+/mo, 1000 runs; SSO; white-label; priority support.
+  \item \textbf{Custom Regions:} one-off setup + premium monthly; accuracy guarantees in coverage zones.
 \end{itemize}
 
 \subsection{GTM}
-\begin{itemize}[leftmargin=1.5em]
-  \item Beta cohort (10–20 users) with discounted lifetime tiers.
-  \item Partnerships with sourcing groups \& agents; co-marketed case studies.
-  \item Thought leadership: white papers, accuracy dashboards, regional insights.
-\end{itemize}
+Beta cohort (10--20 users) with discounted lifetime tiers; partnerships with sourcing groups \& agents; thought leadership (accuracy dashboards, regional insights); demo tours and case studies.
 
-\subsection{Unit Economics (Indicative)}
-\begin{itemize}[leftmargin=1.5em]
-  \item Gross margin target: $>$80\% at scale with caching and heuristics replacing some LLM calls.
-  \item Key levers: model selection, prompt efficiency, deduped runs, batch scoring, regional model fine-tunes.
-\end{itemize}
+\subsection{Unit Economics}
+Gross margin $>$80\% at scale; levers: prompt efficiency, model choice, deduped runs, batch scoring, regional fine-tunes.
+
+% =========================================================
+\section{Operational Playbooks}
+\subsection{Incident Response}
+Severity P1 (platform down), P2 (module degraded), P3 (single-integration issue). On-call rotation; status page; user comms templates; post-mortems within 72h.
+
+\subsection{Monitoring \& Observability}
+Run-level tracing (IDs across scrape/AI/report); latency histograms; token usage; error rates by node; alerting thresholds per integration.
+
+\subsection{Data Quality Gates}
+Schema validators; required-field gates; unit/currency checks; postcode validators; numerical bounds; \textit{warnings[]} propagated into UI/report.
+
+% =========================================================
+\section{Mortgage Module (Now \& Next)}
+\subsection{MVP}
+Standard assumptions (rates, LTV, product fee) included in cashflow and ROI; IO vs repayment switch; ICR check.
+
+\subsection{Next}
+Product matrices; ERC modelling; fee amortisation; forward curve scenarios; remortgage window alerts based on LTV and rate environment; DSCR/ICR charting in dashboard.
+
+% =========================================================
+\section{Deal Discovery \& Off-Market}
+\subsection{Watchers}
+New listings, price changes, back-on-market; filters across location/price/bed/yield/refurb-budget; digest emails/Slack.
+
+\subsection{Off-Market Assistant}
+GDPR-compliant outreach templates; agent cadence trackers; probate/distress signals where available; lightweight CRM to log replies and next actions.
+
+% =========================================================
+\section{Roadmap (Detailed)}
+\subsection{Weeks 1--6 (MVP Polishing)}
+\begin{longtable}{@{}p{2cm}p{13.6cm}@{}}
+\toprule
+\textbf{Week} & \textbf{Objectives} \\
+\midrule
+1 & Harden scraper; HTML$\to$JSON prompt v2; finalise canonical schemas; seed postcode priors. \\
+2 & Vision refurb v2 (better room detection); regional cost indices; contingency policy. \\
+3 & Rent hybrid v2; band confidence; export PDF/Excel v1. \\
+4 & EPC matcher v2; comps sanity checks; warnings pipeline; Slack/email alert polish. \\
+5 & Dashboard polish; scenario inputs; share links; onboarding walkthrough. \\
+6 & Stress tests; logging/observability; beta onboarding and support playbooks. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Launch (v1)}
+Unified search; API connectors (portals/auctions); de-dup \& canonicalisation; batch imports; saved searches; error dashboards; accuracy baselines published.
+
+\subsection{Q2}
+Watchers and off-market module; smarter comps; regional calibration; push rent-band hit-rate; reduce refurb variance; client-shareable read-only dashboards.
+
+\subsection{Q3}
+Mortgage types \& forward curves; live scenario dashboard; remortgage assistant; DSCR/ICR visuals; accuracy bands shrink with feedback.
+
+\subsection{Q4}
+White-label/embeddable widgets; team workflows; advanced portfolio analytics; acquisition-readiness hardening.
 
 % =========================================================
 \section{Risk Register \& Mitigations}
@@ -362,83 +433,47 @@ All secrets stored as environment variables or secret managers. Keys redacted in
 \toprule
 \textbf{Risk} & \textbf{Description} & \textbf{Mitigation} \\
 \midrule
-Data drift & Rents/refurb costs shift regionally. & Monthly backtests; retrain priors; add user feedback weighting. \\
+Data drift & Rents/refurb costs shift regionally. & Monthly backtests; retrain priors; user feedback weighting. \\
 API fragility & Portal/third-party API changes. & Abstraction layer; fallback scrapers; monitoring \& alerts. \\
-LLM variability & Different outputs/version changes. & Strict JSON schema validation; retries; guardrails; caching. \\
-Compliance & Outreach \& data usage. & GDPR DPIA; opt-in flows; audit logs; updated DPA. \\
-COGS creep & Token costs rise. & Smaller models for easy tasks; heuristic prefilters; batch calls. \\
+LLM variability & Output changes across versions. & Strict schemas; retries; guardrails; cache; unit tests on prompts. \\
+Compliance & Outreach \& data usage. & GDPR DPIA; opt-in; audit logs; DPA; rate-limiting. \\
+COGS creep & Token costs increase. & Smaller models; heuristics; caching; batch operations. \\
 \bottomrule
 \end{longtable}
-
-% =========================================================
-\section{Roadmap}
-\subsection{6-Week Plan (Detailed)}
-\begin{longtable}{@{}p{2cm}p{13.6cm}@{}}
-\toprule
-\textbf{Week} & \textbf{Objectives} \\
-\midrule
-1 & n8n + Supabase setup; scraper hardened; HTML$\to$JSON prompt; baseline schemas. \\
-2 & Basic dashboard; rent regression prior; parameter toggles; initial Excel layout. \\
-3 & E2E tests; Slack/email alerting; PDF polish; EPC matching hardening. \\
-4 & Off-market CRM MVP; probate/distressed alerts; basic outreach templates. \\
-5 & Post-purchase dashboard (rates feed stub); remortgage alert logic. \\
-6 & Stress test; docs; demo kit; beta onboarding; support playbooks. \\
-\bottomrule
-\end{longtable}
-
-\subsection{Post-MVP (Quarterly Themes)}
-\begin{itemize}[leftmargin=1.5em]
-  \item \textbf{Q1:} Interest-rate forward curve; prompt-tuning pipeline; API quotas \& scaling.
-  \item \textbf{Q2:} Regional fine-tunes; deeper comps; A/B of hybrid rent models.
-  \item \textbf{Q3:} White-label; embeddable widgets; team workflows.
-  \item \textbf{Q4:} Advanced portfolio analytics; acquisition-readiness hardening.
-\end{itemize}
 
 % =========================================================
 \section{Case Study (Illustrative)}
 \subsection{Deal Summary}
-\begin{itemize}[leftmargin=1.5em]
-  \item Guide price: \pounds525k; 2-bed flat; W2 postcode.
-  \item Refurb from images: kitchen refresh, bathroom mid-grade, redecoration.
-  \item Rent estimate: \pounds2{,}650/mo (low \pounds2{,}450, high \pounds2{,}850).
-\end{itemize}
+Guide price \pounds525k; 2-bed flat; W2 postcode. Refurb: kitchen refresh, bathroom mid-grade, redecoration. Rent estimate \pounds2{,}650/mo (low \pounds2{,}450, high \pounds2{,}850).
 
 \subsection{Outputs}
-\begin{itemize}[leftmargin=1.5em]
-  \item Year-1 net yield: 4.9\% (no leverage); ROI (with leverage): 6.8\%.
-  \item Uplift post-refurb: +\SI{6.5}{\percent} baseline; EPC: C (recommended measures: glazing).
-  \item PDF generated with breakdown; Slack alert to buyer and agent.
-\end{itemize}
+Year-1 net yield 4.9\% (no leverage); leveraged ROI 6.8\%; uplift +\SI{6.5}{\percent}; EPC C; PDF with breakdowns; Slack alert to buyer and agent.
 
 % =========================================================
 \section{Support, SLAs, and Operations}
 \subsection{Beta Support}
-\begin{itemize}[leftmargin=1.5em]
-  \item Email/Slack within 24h; incident comms; weekly build notes.
-  \item Feedback capture in-product; accuracy scorecards per user.
-\end{itemize}
+Email/Slack within 24h; incident comms; weekly build notes; in-product feedback capture; per-user accuracy scorecards.
 
 \subsection{SLA Targets (Post-Beta)}
-\begin{itemize}[leftmargin=1.5em]
-  \item 99.5\% uptime monthly; P1 incidents $<$ 4h to mitigate; P2 $<$ 1 business day.
-\end{itemize}
+99.5\% uptime; P1 $<$ 4h mitigate; P2 $<$ 1 business day; monthly availability reports; RCA on P1/P2.
 
 % =========================================================
 \section{Conclusion}
-PropertyScout delivers a practical, automation-first approach to deal analysis: fast ingestion, structured outputs, transparent assumptions, and continuous monitoring. The roadmap emphasizes accuracy, compliance, and operational reliability. With disciplined execution, the platform can become a category-defining operating system for UK residential investors and partners.
+PropVisions delivers a transparent, automation-first approach to deal analysis: fast ingestion, structured outputs, editable assumptions, and continuous monitoring. With disciplined execution, the platform aims to be the operating system for UK residential investors, sourcing agents, and partner estate agencies.
 
 % =========================================================
 \appendix
 \section*{Appendix A: Supabase SQL DDL (Selected)}
 \addcontentsline{toc}{section}{Appendix A: Supabase SQL DDL (Selected)}
 \begin{lstlisting}[language=SQL]
--- Note: replace schema and tighten types/constraints per environment.
+-- Note: tighten types/constraints per environment.
 create table public.properties (
   id uuid primary key default gen_random_uuid(),
   url text not null,
   address_full text,
   postcode text,
   source text,
+  agent jsonb,
   first_seen timestamptz default now(),
   last_seen timestamptz default now(),
   status text default 'active'
@@ -449,11 +484,10 @@ create table public.analyses (
   property_id uuid references public.properties(id) on delete cascade,
   run_timestamp timestamptz default now(),
   price numeric,
-  sq_ft numeric,
-  bedrooms int,
-  bathrooms int,
+  layout jsonb,
   assumptions jsonb not null default '{}',
-  results jsonb not null default '{}'
+  results jsonb not null default '{}',
+  confidence jsonb not null default '{}'
 );
 
 create table public.refurb_estimates (
@@ -462,6 +496,7 @@ create table public.refurb_estimates (
   room_type text,
   items jsonb not null,
   subtotal numeric,
+  contingency numeric,
   confidence numeric
 );
 
@@ -469,9 +504,12 @@ create table public.rent_estimates (
   id uuid primary key default gen_random_uuid(),
   analysis_id uuid references public.analyses(id) on delete cascade,
   monthly_rent numeric,
+  band_low numeric,
+  band_high numeric,
   method text,
   comps jsonb,
-  confidence numeric
+  confidence numeric,
+  rationale text
 );
 
 create table public.epc_records (
@@ -500,13 +538,14 @@ create table public.reports (
 \begin{lstlisting}
 nodes:
   - Webhook: trigger { url, userId }
-  - HTTP: fetch HTML
+  - HTTP: fetch HTML (retries/backoff)
+  - Code: sanitize & canonicalize URL
   - Agent: clean HTML -> JSON (price, address, features)
   - Loop: images[]
       - Agent: refurb estimate per image
-  - Code: aggregate refurb lines -> totals
-  - Agent: rent estimate (postcodes + comps)
-  - Code: fees, stamp duty, management, ROI
+  - Code: aggregate refurb lines -> totals + contingency
+  - Agent: rent estimate (priors + listing signals)
+  - Code: fees, mgmt, voids, maintenance, ROI
   - HTTP: HPI fetch -> uplift baseline
   - HTTP: EPC API -> candidate records
   - Agent: EPC match -> rating + record
@@ -518,8 +557,8 @@ nodes:
 
 \section*{Appendix C: Report Structure (PDF/Excel)}
 \addcontentsline{toc}{section}{Appendix C: Report Structure (PDF/Excel)}
-\textbf{PDF Sections:} Cover $\rightarrow$ Summary KPIs $\rightarrow$ Financials $\rightarrow$ Refurb lines $\rightarrow$ Rent \& comps $\rightarrow$ EPC $\rightarrow$ Forecasts $\rightarrow$ Disclaimers. \\
-\textbf{Excel Tabs:} Summary, Inputs, Refurb, Rent, Fees, EPC, Forecasts, Comps, Audit.
+\textbf{PDF:} Cover $\rightarrow$ KPI summary $\rightarrow$ Financials $\rightarrow$ Refurb (room items \& totals) $\rightarrow$ Rent \& comps $\rightarrow$ EPC $\rightarrow$ Forecasts $\rightarrow$ Assumptions \& Warnings $\rightarrow$ Disclaimer. \\
+\textbf{Excel:} Tabs: Summary, Inputs, Refurb, Rent, Fees, EPC, Forecasts, Comps, Audit.
 
 \section*{Appendix D: API Stubs (FastAPI)}
 \addcontentsline{toc}{section}{Appendix D: API Stubs (FastAPI)}
@@ -573,8 +612,9 @@ Output schema:
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{EPC:} Energy Performance Certificate.
   \item \textbf{HPI:} House Price Index.
-  \item \textbf{NOI:} Net Operating Income.
+  \item \textbf{ICR/DSCR:} Interest Coverage / Debt Service Coverage Ratios.
   \item \textbf{MAPE:} Mean Absolute Percentage Error.
+  \item \textbf{NOI:} Net Operating Income.
 \end{itemize}
 
 \end{document}
