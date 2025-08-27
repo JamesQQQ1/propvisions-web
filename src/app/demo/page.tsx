@@ -7,7 +7,7 @@ import { pollUntilDone, type RunStatus, startAnalyze } from '@/lib/api';
 import RoomCard, { RefurbRow } from '../../components/RoomCard'; // relative, unambiguous
 
 /* ---------- branding ---------- */
-const LOGO_SRC = '/Users/jamesquessy/Desktop/property-scout-ui/public/PropVisions_Logo.png'; // place your logo in /public
+const LOGO_SRC = '/propvisions_logo.png'; // lives in /public
 
 /* ---------- helpers ---------- */
 function formatGBP(n?: number | string | null) {
@@ -27,7 +27,7 @@ const fmtValue = (k: string, v: unknown) => {
   if (typeof v === 'number') return v.toLocaleString();
   const n = Number(v);
   return Number.isFinite(n) ? n.toLocaleString() : String(v);
-}
+};
 const toInt = (n: unknown) => {
   const v = Math.round(Number(n ?? 0));
   return Number.isFinite(v) && v > 0 ? v : 0;
@@ -54,13 +54,56 @@ function StatusBadge({ status }: { status?: RunStatus | 'idle' }) {
 /* ---------- tiny progress bar component ---------- */
 function ProgressBar({ percent, show }: { percent: number; show: boolean }) {
   return (
-    <div className={classNames('mt-3 w-full', !show && 'hidden')}>
+    <div className={classNames('mt-3 w-full', !show && 'hidden')} aria-hidden={!show}>
       <div className="h-2 w-full bg-slate-200/70 rounded overflow-hidden">
         <div
           className="h-2 bg-blue-600 transition-[width] duration-300 ease-out will-change-[width]"
           style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
         />
       </div>
+    </div>
+  );
+}
+
+/* ---------- tiny feedback widget (local state; wire up later) ---------- */
+function FeedbackBar({ onSubmit }: { onSubmit: (v: 'up' | 'down') => void }) {
+  const [choice, setChoice] = useState<'up' | 'down' | null>(null);
+  return (
+    <div className="mt-4 flex items-center gap-2 text-sm">
+      <span className="text-slate-600">Was this accurate?</span>
+      <button
+        type="button"
+        onClick={() => {
+          setChoice('up');
+          onSubmit('up');
+        }}
+        className={classNames(
+          'inline-flex items-center gap-1 rounded-md border px-2 py-1',
+          choice === 'up' ? 'bg-green-50 border-green-200 text-green-700' : 'hover:bg-slate-50'
+        )}
+        aria-pressed={choice === 'up'}
+      >
+        <span aria-hidden>👍</span> Yes
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          setChoice('down');
+          onSubmit('down');
+        }}
+        className={classNames(
+          'inline-flex items-center gap-1 rounded-md border px-2 py-1',
+          choice === 'down' ? 'bg-red-50 border-red-200 text-red-700' : 'hover:bg-slate-50'
+        )}
+        aria-pressed={choice === 'down'}
+      >
+        <span aria-hidden>👎</span> No
+      </button>
+      {choice && (
+        <span className="ml-2 text-slate-500">
+          {choice === 'up' ? 'Thanks!' : 'Noted — we’ll use this to improve.'}
+        </span>
+      )}
     </div>
   );
 }
@@ -99,7 +142,7 @@ export default function Page() {
   async function handleLogout() {
     try {
       await fetch('/api/demo-logout', { method: 'POST' });
-    } catch (_) {}
+    } catch {}
     window.location.href = '/demo-access?next=/demo';
   }
 
@@ -171,9 +214,9 @@ export default function Page() {
   }, [url]);
 
   const sampleUrls = [
-    'https://auctions.savills.co.uk/auctions/19-august-2025-211/152-154-crockhamwell-road-woodley-reading-rg5-3jh-18173',
-    'https://auctions.savills.co.uk/auctions/19-august-2025-211/9-seedhill-road-11942',
+    // safe to keep a couple of examples
     'https://www.rightmove.co.uk/properties/123456789#/',
+    'https://auctions.savills.co.uk/auctions/19-august-2025-211/9-seedhill-road-11942',
   ];
 
   async function handleStart(e: React.FormEvent) {
@@ -373,7 +416,9 @@ export default function Page() {
         <div className="flex items-center gap-3">
           <StatusBadge status={status} />
           {(status === 'queued' || status === 'processing') && (
-            <span className="text-sm text-slate-600">Elapsed: {elapsedLabel}</span>
+            <span className="text-sm text-slate-600" aria-live="polite">
+              Elapsed: {elapsedLabel}
+            </span>
           )}
         </div>
       </header>
@@ -391,7 +436,7 @@ export default function Page() {
 
       {/* URL form */}
       <section className="space-y-3">
-        <form onSubmit={handleStart} className="flex gap-2">
+        <form onSubmit={handleStart} className="flex gap-2" aria-label="Analyze property URL">
           <input
             type="url"
             placeholder="https://… listing or auction URL"
@@ -399,6 +444,8 @@ export default function Page() {
             onChange={(e) => setUrl(e.target.value)}
             className="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
+            inputMode="url"
+            aria-invalid={!validUrl && url.length > 0}
           />
           <button
             type="submit"
@@ -444,7 +491,9 @@ export default function Page() {
 
       {/* Errors */}
       {error && (
-        <div className="border border-red-200 bg-red-50 text-red-800 rounded-lg p-3">{error}</div>
+        <div role="alert" className="border border-red-200 bg-red-50 text-red-800 rounded-lg p-3">
+          {error}
+        </div>
       )}
 
       {/* Results */}
@@ -496,6 +545,9 @@ export default function Page() {
                     </a>
                   )}
                 </div>
+
+                {/* quick feedback */}
+                <FeedbackBar onSubmit={() => { /* TODO: POST to /api/feedback */ }} />
               </div>
 
               <div>
@@ -680,6 +732,9 @@ export default function Page() {
             ) : (
               <p className="text-slate-600">No financials found for this property yet.</p>
             )}
+
+            {/* quick feedback */}
+            <FeedbackBar onSubmit={() => { /* TODO: POST to /api/feedback */ }} />
           </section>
         </div>
       )}
