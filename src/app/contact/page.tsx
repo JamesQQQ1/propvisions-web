@@ -21,12 +21,11 @@ export default function ContactPage() {
     topic: 'General',
     message: '',
     consent: false,
-    // honeypot for bots
-    website: '',
+    // anti-bot honeypot (must stay empty)
+    _hp: '',
   })
 
-  const validEmail = (e: string) =>
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim())
+  const validEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim())
 
   const canSubmit =
     form.name.trim().length > 1 &&
@@ -48,12 +47,12 @@ export default function ContactPage() {
       })
 
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
+        const body = await res.json().catch(() => ({} as any))
         throw new Error(body?.error || `Request failed (${res.status})`)
       }
 
       setState({ status: 'success' })
-      // Optional: clear the form
+      // reset form (keep topic default)
       setForm({
         name: '',
         email: '',
@@ -63,7 +62,7 @@ export default function ContactPage() {
         topic: 'General',
         message: '',
         consent: false,
-        website: '',
+        _hp: '',
       })
     } catch (err: any) {
       setState({ status: 'error', message: err?.message || 'Something went wrong' })
@@ -78,17 +77,10 @@ export default function ContactPage() {
           Have a quick look at the product or drop us a line.
         </div>
         <div className="flex items-center gap-2">
-          {/* 🔒 Route the demo CTA to the gate */}
-          <Link
-            href="/demo-access?next=/demo"
-            className="btn btn-primary"
-          >
+          <Link href="/demo-access?next=/demo" className="btn btn-primary">
             Try the Demo
           </Link>
-          <Link
-            href="/"
-            className="btn"
-          >
+          <Link href="/" className="btn">
             Home
           </Link>
         </div>
@@ -177,7 +169,7 @@ export default function ContactPage() {
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     className="mt-1 w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="james@propvisions.com"
+                    placeholder="jane@doe.com"
                     required
                   />
                 </div>
@@ -240,13 +232,14 @@ export default function ContactPage() {
                 <div className="mt-1 small text-slate-500">{form.message.length}/2000</div>
               </div>
 
-              {/* honeypot */}
+              {/* honeypot (must remain empty). Using uncommon name to avoid autofill. */}
               <input
                 type="text"
+                name="_hp"
                 tabIndex={-1}
                 autoComplete="off"
-                value={form.website}
-                onChange={(e) => setForm({ ...form, website: e.target.value })}
+                value={form._hp}
+                onChange={(e) => setForm({ ...form, _hp: e.target.value })}
                 className="hidden"
                 aria-hidden
               />

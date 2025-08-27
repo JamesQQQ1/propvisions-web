@@ -4,20 +4,29 @@ import { Resend } from "resend";
 
 // ---- config via env ----
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
-const CONTACT_FROM_EMAIL = process.env.CONTACT_FROM_EMAIL || "PropVisions <no-reply@propvisions.onresend.com>";
+const CONTACT_FROM_EMAIL =
+  process.env.CONTACT_FROM_EMAIL || "PropVisions <no-reply@propvisions.onresend.com>";
 const DEFAULT_TO = process.env.CONTACT_DEFAULT_TO || "hello@propvisions.com";
 const SALES_TO = process.env.CONTACT_SALES_TO || "sales@propvisions.com";
 const SUPPORT_TO = process.env.CONTACT_SUPPORT_TO || "support@propvisions.com";
 
-// small cap to avoid abuse
+// cap to avoid abuse
 const MAX_BODY = 10 * 1024; // 10KB
 
-function cleanFrom(value: string) {
-  if (!value) return value;
-  // strip accidental wrapping quotes; normalise escaped angle brackets
-  const stripped = value.replace(/^"+|"+$/g, "").trim();
-  return stripped.replace(/\\u003c/gi, "<").replace(/\\u003e/gi, ">");
+// clean up any bad env formatting
+function cleanFrom(value?: string) {
+  const s = (value || "").trim()
+    .replace(/^['"]+|['"]+$/g, "")    // strip leading/trailing quotes
+    .replace(/\\u003c/gi, "<")
+    .replace(/\\u003e/gi, ">")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">");
+  const valid =
+    /^[^<>@\s]+@[^<>@\s]+\.[^<>@\s]+$/.test(s) ||
+    /.+<[^<>@\s]+@[^<>@\s]+\.[^<>@\s]+>/.test(s);
+  return valid ? s : "no-reply@propvisions.onresend.com";
 }
+const FROM_EMAIL = cleanFrom(CONTACT_FROM_EMAIL);
 
 function pickRecipient(topic?: string) {
   const t = (topic || "").toLowerCase();
@@ -42,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {});
 
     // honeypot
-    if (body.website && String(body.website).trim().length > 0) {
+    if (body._hp && String(body._hp).trim().length > 0) {
       return res.status(200).json({ ok: true, skipped: "honeypot" });
     }
 
@@ -60,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (message.length < 6) return res.status(400).json({ error: "Message too short" });
 
     const to = pickRecipient(topic);
-    const bcc = [DEFAULT_TO]; // always copy hello@ so you never miss one
+    const bcc = [DEFAULT_TO]; // always copy hello@ to see every message
 
     const subject = `New contact: ${topic} — ${name} (${company || "No company"})`;
     const text = `From: ${name} <${email}>
@@ -74,8 +83,6 @@ Message:
 ${message}
 `;
 
-    const FROM_EMAIL = cleanFrom(CONTACT_FROM_EMAIL);
-
     if (!RESEND_API_KEY) {
       console.log("[contact] (DEV) Would send to:", to, "bcc:", bcc);
       console.log(text);
@@ -84,17 +91,17 @@ ${message}
 
     const resend = new Resend(RESEND_API_KEY);
 
-    // 1) send to internal mailbox(es)
+    // 1) internal send
     const internal = await resend.emails.send({
       from: FROM_EMAIL,
       to,
-      bcc,               // ✅ ensure hello@propvisions.com always gets a copy
-      replyTo: email,    // ✅ correct key
+      bcc,
+      replyTo: email,
       subject,
       text,
     });
 
-    // 2) auto-ack to sender (optional)
+    // 2) auto-ack
     const ack = await resend.emails.send({
       from: FROM_EMAIL,
       to: email,
