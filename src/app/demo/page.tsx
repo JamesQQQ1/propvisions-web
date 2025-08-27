@@ -7,7 +7,7 @@ import { pollUntilDone, type RunStatus, startAnalyze } from '@/lib/api';
 import RoomCard, { RefurbRow } from '../../components/RoomCard'; // relative, unambiguous
 
 /* ---------- branding ---------- */
-const LOGO_SRC = '/Users/jamesquessy/Desktop/property-scout-ui/PropVisions_Logo.png'; // place your logo in /public
+const LOGO_SRC = '/Users/jamesquessy/Desktop/property-scout-ui/public/PropVisions_Logo.png'; // place your logo in /public
 
 /* ---------- helpers ---------- */
 function formatGBP(n?: number | string | null) {
