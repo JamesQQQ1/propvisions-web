@@ -1,29 +1,13 @@
 // src/app/layout.tsx
+import Link from "next/link"
+import "./globals.css"
+import CookieBanner from "@/components/CookieBanner" // keep this separate
+
 export const metadata = {
   title: "PropVisions — From URL to investor-ready ROI",
   description:
     "Paste a listing URL and get valuation, refurb costs, and full financials. Export polished PDF & Excel.",
 }
-
-import Link from "next/link"
-import "./globals.css"
-
-// src/app/layout.tsx (excerpt)
-import CookieBanner from "@/components/CookieBanner";
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <body>
-        {/* ...header... */}
-        <main>{children}</main>
-        <CookieBanner />
-        {/* ...footer... */}
-      </body>
-    </html>
-  );
-}
-
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -43,12 +27,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         <main>{children}</main>
 
+        {/* Cookie banner is a separate client component */}
+        <CookieBanner />
+
         <footer className="border-t">
           <div className="container flex flex-wrap items-center justify-between gap-4 py-8 text-sm text-slate-600">
             <p>© {new Date().getFullYear()} PropVisions. All rights reserved.</p>
             <div className="flex gap-4">
               <Link href="/privacy" className="hover:text-brand-700">Privacy</Link>
               <Link href="/terms" className="hover:text-brand-700">Terms</Link>
+              <Link href="/cookies" className="hover:text-brand-700">Cookies</Link>
             </div>
           </div>
         </footer>
