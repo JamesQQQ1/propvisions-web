@@ -319,8 +319,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* FAQ (accordion) */}
-      <section id="faq" className="section">
+            {/* FAQ (accordion) */}
+            <section id="faq" className="section">
         <div className="container">
           <h2 className="heading-2">FAQs</h2>
           <Accordion
@@ -332,14 +332,23 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* --- ADD THIS SPACER --- */}
+      {/* Spacer so floating CTA never overlaps bottom content */}
+      <div className="h-28 md:h-32" />
+      {/* --- END SPACER --- */}
 
       {/* Samples modal */}
-      <Modal open={!!openSample} onClose={() => setOpenSample(null)} title={modalTitle(openSample)}>
+      <Modal
+        open={!!openSample}
+        onClose={() => setOpenSample(null)}
+        title={modalTitle(openSample)}
+      >
         {openSample && <SampleContent kind={openSample} />}
       </Modal>
-    </div>
+    </div> // ← closing wrapper from return()
   );
 }
+
 
 /* -----------------------------------------------------------
    Components
