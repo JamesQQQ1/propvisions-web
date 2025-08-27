@@ -18,16 +18,15 @@ export default function LandingPage() {
             </span>
 
             <h1 className="heading-hero">
-              From URL to <span className="text-gradient">investor-ready ROI</span> in minutes
+              From raw listing to <span className="text-gradient">investor-ready ROI</span> — fast, auditable, shareable
             </h1>
 
             <p className="subhead">
-              Paste a Rightmove/Zoopla/auction link. PropVisions cleans the data, estimates refurbishment,
-              and computes full financials with transparent assumptions — exportable to PDF &amp; Excel.
+              PropVisions ingests a property link, estimates refurbishment from photos, checks rents and values,
+              and computes full-stack financials with <em>every</em> assumption surfaced — exportable to PDF &amp; Excel.
             </p>
 
             <div className="flex flex-wrap gap-3">
-              {/* 🔑 /demo-access remains the primary flow */}
               <Link href="/demo-access" className="btn btn-primary" aria-label="Open PropVisions live demo">
                 Try the live demo <ArrowRight />
               </Link>
@@ -38,14 +37,14 @@ export default function LandingPage() {
 
             {/* Micro stats */}
             <div className="flex flex-wrap items-center gap-5 small" aria-label="Key product metrics">
-              <Chip color="emerald">~30s</Chip><span>Time to first pass</span>
-              <Chip color="sky">PDF • Excel</Chip><span>Exports</span>
+              <Chip color="emerald">~30–90s</Chip><span>End-to-end run</span>
+              <Chip color="sky">PDF • Excel</Chip><span>Client-ready</span>
               <Chip color="violet">Line-items</Chip><span>Fully traceable</span>
             </div>
 
             {/* Trust row */}
             <div className="mt-6 grid grid-cols-3 sm:grid-cols-6 gap-4 items-center opacity-70">
-              {["Agents", "Investors", "Auctions", "Lenders", "Analysts", "Sourcers"].map((label) => (
+              {["Investors", "Agents", "Sourcers", "Auctions", "Lenders", "Analysts"].map((label) => (
                 <div
                   key={label}
                   className="h-8 rounded-md border border-slate-200 grid place-items-center text-[11px] text-slate-500"
@@ -54,6 +53,13 @@ export default function LandingPage() {
                   {label}
                 </div>
               ))}
+            </div>
+
+            {/* Beta note (transparent) */}
+            <div className="mt-2 small text-slate-600">
+              <strong>Beta honesty:</strong> Rightmove/Zoopla ingestion is gated due to partner/API restrictions. The demo uses
+              agent/auction and open-sourceable pages. Full portal integrations are planned for public launch with compliant APIs,
+              de-duplication, and source prioritisation.
             </div>
           </div>
 
@@ -72,91 +78,40 @@ export default function LandingPage() {
                     allowFullScreen
                   />
                 ) : (
-                  <video
-                    className="h-full w-full"
-                    controls
-                    playsInline
-                    preload="metadata"
-                    poster="/demo-poster.jpg"
-                  >
+                  <video className="h-full w-full" controls playsInline preload="metadata" poster="/demo-poster.jpg">
                     <source src="/demo.mp4" type="video/mp4" />
                   </video>
                 )}
               </div>
               <div className="card-footer">
                 <span className="small">Two-minute overview of the core flow.</span>
-                <Link href="/demo-access" className="link" aria-label="Open the live demo">
-                  Open the live demo →
-                </Link>
+                <Link href="/demo-access" className="link" aria-label="Open the live demo">Open the live demo →</Link>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* HOW IT WORKS */}
-      <section className="section">
-        <div className="container">
-          <h2 className="heading-2">How PropVisions works</h2>
-          <p className="small mt-1 text-slate-600">
-            A compressed pipeline from link → analysis → shareable pack.
-          </p>
-
-          <ol className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-            {STEPS.map((s, i) => (
-              <li key={s.title} className="card p-6 relative">
-                <span className="step-index" aria-hidden>{i + 1}</span>
-                <div className="flex items-start gap-3">
-                  <div className="icon-wrap">{s.icon}</div>
-                  <div>
-                    <h3 className="card-title">{s.title}</h3>
-                    <p className="card-text">{s.desc}</p>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ol>
-
-          <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-3 small" aria-label="Pipeline overview">
-            <Pill>Scrape &amp; structure</Pill>
-            <ArrowDivider />
-            <Pill>Images → refurb lines</Pill>
-            <ArrowDivider />
-            <Pill>Fees/taxes/voids</Pill>
-            <ArrowDivider />
-            <Pill>Cash-flow &amp; ROI</Pill>
-            <ArrowDivider />
-            <Pill>PDF &amp; Excel exports</Pill>
-          </div>
-        </div>
-      </section>
-
-      {/* WHAT YOU GET */}
+      {/* WHAT WORKS TODAY */}
       <section className="section">
         <div className="container grid grid-cols-1 lg:grid-cols-12 gap-10">
           <div className="lg:col-span-7 space-y-4">
-            <h2 className="heading-2">What you get from a single URL</h2>
+            <h2 className="heading-2">What works today (live in the demo)</h2>
             <ul className="mt-3 space-y-3 small text-slate-700">
-              <ListItem bold="Post-refurb valuation." text="Transparent uplift assumptions with rationale." />
-              <ListItem
-                bold="Refurb cost breakdown."
-                text="Room-by-room with categories (paint, flooring, electrics, plumbing, damp, structure)."
-              />
-              <ListItem
-                bold="Financials."
-                text="Stamp duty, fees, interest, voids, management — net income, yield, and ROI."
-              />
-              <ListItem bold="Exports." text="A polished PDF deck and an Excel with every line item." />
-              <ListItem bold="Comparables (when available)." text="Basic sales/rental comps to sanity-check numbers." />
-              <ListItem bold="Scenario tweaks." text="Adjust rates, voids, maintenance — recalc instantly." />
+              <ListItem bold="URL → structured data." text="Ingests many agent/auction pages into clean fields (price, layout, images, agent, postcode)." />
+              <ListItem bold="Refurb from photos." text="Room-by-room line-items (paint, flooring, electrics, plumbing, damp, structure) with adjustable contingencies." />
+              <ListItem bold="Rent & value checks." text="Hybrid approach combining local priors and listing signals to produce rent bands and a post-refurb value." />
+              <ListItem bold="Full financials." text="Stamp duty, legals/survey/insurance, voids, management, leverage → net income, yield, ROI." />
+              <ListItem bold="Exports." text="Polished PDF deck + Excel with every line item; ready to share with investors and lenders." />
+              <ListItem bold="Alerts & logging." text="Run metadata, basic notifications, clean error handling." />
             </ul>
 
             <div className="mt-4 flex gap-3">
               <Link href="/demo-access" className="btn btn-primary" aria-label="Paste a property URL">
-                Paste a URL <ArrowRight />
+                Try it with a URL <ArrowRight />
               </Link>
-              <a href="#faq" className="btn btn-outline" aria-label="Read frequently asked questions">
-                Read FAQs
+              <a href="#limitations" className="btn btn-outline" aria-label="Read current limitations">
+                Read current limitations
               </a>
             </div>
           </div>
@@ -165,10 +120,8 @@ export default function LandingPage() {
           <div className="lg:col-span-5">
             <div className="card p-5">
               <div className="flex items-center justify-between">
-                <span className="small font-medium text-slate-900">Financial snapshot</span>
-                <span className="badge badge-emerald">
-                  <Spark /> Auto-computed
-                </span>
+                <span className="small font-medium text-slate-900">Financial snapshot (example)</span>
+                <span className="badge badge-emerald"><Spark /> Auto-computed</span>
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
@@ -215,7 +168,87 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* FEATURE DEEP DIVE */}
+      {/* LIMITATIONS & ROADMAP */}
+      <section id="limitations" className="section">
+        <div className="container grid grid-cols-1 lg:grid-cols-12 gap-10">
+          <div className="lg:col-span-7 space-y-4">
+            <h2 className="heading-2">Current limitations & what’s coming</h2>
+            <div className="card p-5 small text-slate-700 space-y-3">
+              <div>
+                <strong>Portal coverage (Rightmove/Zoopla):</strong> Not enabled in the public demo. We’re pursuing compliant API/partner routes.
+                At launch: unified search, de-duplication across sources, and prioritised canonical records by address+agent+media.
+              </div>
+              <div>
+                <strong>Accuracy bands:</strong> Estimates reflect listing quality and regional nuance. You’ll see confidence indicators and can
+                directly tweak assumptions (management%, voids, maintenance, leverage).
+              </div>
+              <div>
+                <strong>Mortgage module:</strong> Today we include standard assumptions. Launch will add IO/repayment, product fees, ERC modelling,
+                and forward-rate scenarios to optimise remortgage timing.
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {ROADMAP.map((r) => (
+                <div key={r.title} className="card p-4">
+                  <div className="small font-semibold">{r.title}</div>
+                  <ul className="mt-2 small text-slate-700 list-disc pl-5 space-y-1">
+                    {r.points.map((p, i) => <li key={i}>{p}</li>)}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Why we’re different */}
+          <div className="lg:col-span-5">
+            <div className="card p-6">
+              <h3 className="card-title">Why PropVisions is different</h3>
+              <ul className="mt-3 small text-slate-700 space-y-2 list-disc pl-5">
+                <li><strong>Automation across the flow:</strong> ingestion → analysis → reporting → alerts.</li>
+                <li><strong>Transparency by default:</strong> every figure maps back to a line-item and an assumption.</li>
+                <li><strong>Human-in-the-loop:</strong> quick tweaks become area priors to improve future runs.</li>
+                <li><strong>Shareable outputs:</strong> PDFs and spreadsheets your clients can actually use.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* HOW IT WORKS */}
+      <section className="section">
+        <div className="container">
+          <h2 className="heading-2">How the pipeline works</h2>
+          <p className="small mt-1 text-slate-600">
+            A compressed path from link → analysis → shareable pack, with validation and error handling at each step.
+          </p>
+
+          <ol className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+            {STEPS.map((s, i) => (
+              <li key={s.title} className="card p-6 relative">
+                <span className="step-index" aria-hidden>{i + 1}</span>
+                <div className="flex items-start gap-3">
+                  <div className="icon-wrap">{s.icon}</div>
+                  <div>
+                    <h3 className="card-title">{s.title}</h3>
+                    <p className="card-text">{s.desc}</p>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ol>
+
+          <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-3 small" aria-label="Pipeline overview">
+            <Pill>Scrape &amp; structure</Pill><ArrowDivider />
+            <Pill>Images → refurb lines</Pill><ArrowDivider />
+            <Pill>Fees/taxes/voids</Pill><ArrowDivider />
+            <Pill>Cash-flow &amp; ROI</Pill><ArrowDivider />
+            <Pill>PDF &amp; Excel exports</Pill>
+          </div>
+        </div>
+      </section>
+
+      {/* MODULE DEEP DIVE */}
       <section className="section">
         <div className="container">
           <h2 className="heading-2">Deep-dive on the core modules</h2>
@@ -230,9 +263,7 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <ul className="mt-4 list-disc pl-5 small text-slate-600 space-y-1">
-                  {f.points.map((p, idx) => (
-                    <li key={idx}>{p}</li>
-                  ))}
+                  {f.points.map((p, idx) => <li key={idx}>{p}</li>)}
                 </ul>
               </article>
             ))}
@@ -292,15 +323,9 @@ export default function LandingPage() {
         <div className="container card p-6">
           <h2 className="heading-2">Data handling &amp; privacy</h2>
           <ul className="mt-3 small text-slate-700 space-y-2 list-disc pl-5">
-            <li>
-              <strong>GDPR-aligned by design:</strong> clear consent flows; minimal personal data by default.
-            </li>
-            <li>
-              <strong>Export control:</strong> you choose what to share — PDFs and spreadsheets are generated on demand.
-            </li>
-            <li>
-              <strong>Traceability:</strong> every financial figure links back to a line item and assumption.
-            </li>
+            <li><strong>GDPR-aligned by design:</strong> clear consent flows; minimal personal data by default.</li>
+            <li><strong>Export control:</strong> you choose what to share — PDFs and spreadsheets are generated on demand.</li>
+            <li><strong>Traceability:</strong> every financial figure maps to a line-item and assumption.</li>
           </ul>
         </div>
       </section>
@@ -326,9 +351,7 @@ export default function LandingPage() {
           <div className="cta">
             <div>
               <h3 className="heading-cta">See your deal in minutes</h3>
-              <p className="cta-copy">
-                Paste a URL — get value, refurb lines, and ROI, ready to share.
-              </p>
+              <p className="cta-copy">Paste a URL — get refurb lines, value, and ROI you can share immediately.</p>
             </div>
             <Link href="/demo-access" className="btn btn-onColor" aria-label="Open PropVisions live demo">
               Open the live demo <ArrowRight />
@@ -351,9 +374,7 @@ function ListItem({ bold, text }: { bold: string; text: string }) {
   return (
     <li className="flex items-start gap-2">
       <Check />
-      <span>
-        <strong>{bold}</strong> {text}
-      </span>
+      <span><strong>{bold}</strong> {text}</span>
     </li>
   )
 }
@@ -410,52 +431,22 @@ function Dot({ color = "#16a34a" }: { color?: string }) {
 
 /* ----------------- data ----------------- */
 
-const STEPS = [
-  {
-    title: "Paste a URL",
-    desc: "Rightmove, Zoopla, or auctions — if it’s public and structured, we can ingest it.",
-    icon: (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
-        <path d="M4 7h16M4 12h10M4 17h7" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    title: "We fetch & compute",
-    desc: "Extraction, refurb modelling, fees, and rent/value checks — computed in seconds.",
-    icon: (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
-        <path d="M12 3v6m0 6v6M3 12h6m6 0h6" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    title: "You export & share",
-    desc: "Outputs designed for investors, lenders, and partners.",
-    icon: (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
-        <path d="M4 4h16v16H4z" />
-      </svg>
-    ),
-  },
-] as const
-
 const FEATURES = [
   {
     title: "Refurb engine",
     desc: "Room-by-room costing with configurable bands and contingency.",
-    points: ["Auto-detects kitchens/bathrooms", "Handles damp & structural items", "Custom bands per investor"],
+    points: ["Auto-detects kitchens/bathrooms", "Handles damp & structural", "Per-investor cost bands"],
     icon: <Spark />,
   },
   {
     title: "Financial stack",
-    desc: "Purchase → exit: yields, ROI, and sensitivity toggles.",
-    points: ["Stamp duty, legal, survey", "Void assumptions", "Variable leverage"],
+    desc: "Purchase → exit: yields, ROI, leverage, and sensitivity toggles.",
+    points: ["Stamp duty, legals, survey", "Voids & management", "Debt modelling"],
     icon: <Spark />,
   },
   {
     title: "Export suite",
-    desc: "Client-ready docs, instantly shareable.",
+    desc: "Client-ready documents, instantly shareable.",
     points: ["Polished PDF deck", "Excel with line items", "White-label options"],
     icon: <Spark />,
   },
@@ -474,21 +465,66 @@ const AUDIENCES = [
   { title: "Lenders", desc: "Consistent inputs for credit models.", icon: <Spark /> },
 ] as const
 
+const STEPS = [
+  {
+    title: "Paste a URL",
+    desc: "Agent/auction and other compatible pages ingest to clean fields.",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
+        <path d="M4 7h16M4 12h10M4 17h7" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    title: "We fetch & compute",
+    desc: "Extraction, refurb modelling, fee math, rents/values checks — computed in seconds.",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
+        <path d="M12 3v6m0 6v6M3 12h6m6 0h6" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    title: "You export & share",
+    desc: "Outputs designed for investors, lenders, and partners.",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
+        <path d="M4 4h16v16H4z" />
+      </svg>
+    ),
+  },
+] as const
+
+const ROADMAP = [
+  {
+    title: "Launch (Public)",
+    points: [
+      "Unified search across integrated sources",
+      "Compliant Rightmove/Zoopla ingestion",
+      "De-duplication & canonical records",
+    ],
+  },
+  {
+    title: "Off-Market & Alerts",
+    points: [
+      "GDPR-compliant outreach toolkit",
+      "Status-change watcher: new/price-drop/returning",
+      "Saved searches & daily digests",
+    ],
+  },
+  {
+    title: "Mortgage & Forecasts",
+    points: [
+      "IO/repayment, product fees, ERCs",
+      "Forward-rate scenarios & DSCR/ICR",
+      "Remortgage timing assistant",
+    ],
+  },
+] as const
+
 const FAQS = [
-  {
-    q: "Can I export the analysis?",
-    a: "Yes. Polished PDF for clients; Excel for deeper analysis.",
-  },
-  {
-    q: "How accurate are refurb estimates?",
-    a: "They are banded by room type and adjustable per investor. Always validate before offers.",
-  },
-  {
-    q: "Do you store my URLs?",
-    a: "Only transiently for computation. No resale or secondary use.",
-  },
-  {
-    q: "Can I customise assumptions?",
-    a: "Yes. Yields, voids, fees, and maintenance are fully tweakable.",
-  },
+  { q: "Do you support Rightmove & Zoopla?", a: "Not in the public demo. We plan compliant integrations at launch with de-duplication and source prioritisation." },
+  { q: "How accurate are refurb estimates?", a: "Banded by room type and region; confidence depends on image quality. Always validate before offers." },
+  { q: "Can I export the analysis?", a: "Yes — polished PDF for clients, and Excel with every line item for deep dives." },
+  { q: "Can I customise assumptions?", a: "Yes — voids, management, maintenance, leverage, and more — recalc instantly." },
 ] as const
