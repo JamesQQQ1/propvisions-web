@@ -8,6 +8,23 @@ export const metadata = {
 import Link from "next/link"
 import "./globals.css"
 
+// src/app/layout.tsx (excerpt)
+import CookieBanner from "@/components/CookieBanner";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        {/* ...header... */}
+        <main>{children}</main>
+        <CookieBanner />
+        {/* ...footer... */}
+      </body>
+    </html>
+  );
+}
+
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
