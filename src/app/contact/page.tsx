@@ -177,7 +177,7 @@ export default function ContactPage() {
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     className="mt-1 w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="jane@company.co.uk"
+                    placeholder="james@propvisions.com"
                     required
                   />
                 </div>
@@ -258,7 +258,7 @@ export default function ContactPage() {
                   onChange={(e) => setForm({ ...form, consent: e.target.checked })}
                   className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                 />
-                I agree to be contacted about PropertyVisions and understand I can opt out at any time.
+                I agree to be contacted about PropVisions and understand I can opt out at any time.
               </label>
 
               {state.status === 'error' && (
