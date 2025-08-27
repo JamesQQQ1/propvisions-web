@@ -4,14 +4,20 @@ import { Resend } from "resend";
 
 // ---- config via env ----
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
-const FROM_EMAIL =
-  process.env.CONTACT_FROM_EMAIL || "PropVisions <no-reply@propvisions.onresend.com>";
+const CONTACT_FROM_EMAIL = process.env.CONTACT_FROM_EMAIL || "PropVisions <no-reply@propvisions.onresend.com>";
 const DEFAULT_TO = process.env.CONTACT_DEFAULT_TO || "hello@propvisions.com";
 const SALES_TO = process.env.CONTACT_SALES_TO || "sales@propvisions.com";
 const SUPPORT_TO = process.env.CONTACT_SUPPORT_TO || "support@propvisions.com";
 
 // small cap to avoid abuse
 const MAX_BODY = 10 * 1024; // 10KB
+
+function cleanFrom(value: string) {
+  if (!value) return value;
+  // strip accidental wrapping quotes; normalise escaped angle brackets
+  const stripped = value.replace(/^"+|"+$/g, "").trim();
+  return stripped.replace(/\\u003c/gi, "<").replace(/\\u003e/gi, ">");
+}
 
 function pickRecipient(topic?: string) {
   const t = (topic || "").toLowerCase();
@@ -27,7 +33,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
-  // content-length guard (fetch sets it; in some cases it can be absent)
   const len = parseInt((req.headers["content-length"] as string) || "0", 10);
   if (Number.isFinite(len) && len > MAX_BODY) {
     return res.status(413).json({ error: "Payload too large" });
@@ -38,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // honeypot
     if (body.website && String(body.website).trim().length > 0) {
-      return res.status(200).json({ ok: true });
+      return res.status(200).json({ ok: true, skipped: "honeypot" });
     }
 
     const name = String(body.name || "").trim();
@@ -55,6 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (message.length < 6) return res.status(400).json({ error: "Message too short" });
 
     const to = pickRecipient(topic);
+    const bcc = [DEFAULT_TO]; // always copy hello@ so you never miss one
 
     const subject = `New contact: ${topic} — ${name} (${company || "No company"})`;
     const text = `From: ${name} <${email}>
@@ -62,40 +68,30 @@ Company: ${company}
 Role: ${role}
 Phone: ${phone}
 Topic: ${topic}
-Source: ${body.source || "unknown"}
+Source: ${body.source || "contact_page"}
 
 Message:
 ${message}
 `;
-    const html = `
-      <div style="font-family:Arial,sans-serif;line-height:1.5">
-        <h2 style="margin:0 0 8px">New contact</h2>
-        <p><strong>Topic:</strong> ${topic}</p>
-        <p><strong>From:</strong> ${name} &lt;${email}&gt;</p>
-        ${company ? `<p><strong>Company:</strong> ${company}</p>` : ""}
-        ${role ? `<p><strong>Role:</strong> ${role}</p>` : ""}
-        ${phone ? `<p><strong>Phone:</strong> ${phone}</p>` : ""}
-        <pre style="white-space:pre-wrap;background:#f6f7f9;padding:12px;border-radius:8px">${message}</pre>
-      </div>
-    `;
 
-    // Dev fallback
+    const FROM_EMAIL = cleanFrom(CONTACT_FROM_EMAIL);
+
     if (!RESEND_API_KEY) {
-      console.log("[contact] (DEV) Would send to:", to);
+      console.log("[contact] (DEV) Would send to:", to, "bcc:", bcc);
       console.log(text);
       return res.status(200).json({ ok: true, dev: true });
     }
 
     const resend = new Resend(RESEND_API_KEY);
 
-    // 1) send to internal mailbox
+    // 1) send to internal mailbox(es)
     const internal = await resend.emails.send({
       from: FROM_EMAIL,
       to,
-      replyTo: email, // ✅ correct key
+      bcc,               // ✅ ensure hello@propvisions.com always gets a copy
+      replyTo: email,    // ✅ correct key
       subject,
       text,
-      html,
     });
 
     // 2) auto-ack to sender (optional)
@@ -112,14 +108,13 @@ If it’s urgent, feel free to reply to this email.
 — PropVisions`,
     });
 
-    return res.status(200).json({ ok: true, internal, ack });
+    return res.status(200).json({
+      ok: true,
+      internal: { id: (internal as any)?.data?.id ?? null, error: (internal as any)?.error ?? null },
+      ack:      { id: (ack as any)?.data?.id ?? null, error: (ack as any)?.error ?? null },
+    });
   } catch (err: any) {
-    // try to bubble up Resend error details if present
-    const msg =
-      err?.message ||
-      err?.name ||
-      (typeof err === "string" ? err : "Failed to send");
     console.error("[contact] error:", err);
-    return res.status(500).json({ error: msg });
+    return res.status(500).json({ error: err?.message || "Failed to send" });
   }
 }
