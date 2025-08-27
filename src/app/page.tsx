@@ -332,20 +332,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* FINAL CTA */}
-      <section className="section">
-        <div className="container">
-          <div className="cta">
-            <div>
-              <h3 className="heading-cta">See your deal in minutes</h3>
-              <p className="cta-copy">Paste a URL — get refurb lines, value, and ROI you can share immediately.</p>
-            </div>
-            <Link href="/demo-access" className="btn btn-onColor" aria-label="Open PropVisions live demo">
-              Open the live demo <ArrowRight />
-            </Link>
-          </div>
-        </div>
-      </section>
 
       {/* Samples modal */}
       <Modal open={!!openSample} onClose={() => setOpenSample(null)} title={modalTitle(openSample)}>
