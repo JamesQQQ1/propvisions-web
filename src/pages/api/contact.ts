@@ -5,10 +5,12 @@ import { Resend } from "resend";
 // ---- config via env ----
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const CONTACT_FROM_EMAIL =
-  process.env.CONTACT_FROM_EMAIL || "PropVisions <no-reply@propvisions.onresend.com>";
+  process.env.CONTACT_FROM_EMAIL || "PropVisions <no-reply@mail.propvisions.com>";
 const DEFAULT_TO = process.env.CONTACT_DEFAULT_TO || "hello@propvisions.com";
 const SALES_TO = process.env.CONTACT_SALES_TO || "sales@propvisions.com";
 const SUPPORT_TO = process.env.CONTACT_SUPPORT_TO || "support@propvisions.com";
+// reply-to for auto-ack (Option 1)
+const REPLYTO_FOR_ACK = process.env.CONTACT_REPLYTO || "support@propvisions.com";
 
 // cap to avoid abuse
 const MAX_BODY = 10 * 1024; // 10KB
@@ -24,7 +26,7 @@ function cleanFrom(value?: string) {
   const valid =
     /^[^<>@\s]+@[^<>@\s]+\.[^<>@\s]+$/.test(s) ||
     /.+<[^<>@\s]+@[^<>@\s]+\.[^<>@\s]+>/.test(s);
-  return valid ? s : "no-reply@propvisions.onresend.com";
+  return valid ? s : "no-reply@mail.propvisions.com";
 }
 const FROM_EMAIL = cleanFrom(CONTACT_FROM_EMAIL);
 
@@ -69,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (message.length < 6) return res.status(400).json({ error: "Message too short" });
 
     const to = pickRecipient(topic);
-    const bcc = [DEFAULT_TO]; // always copy hello@ to see every message
+    const bcc = [DEFAULT_TO]; // always copy hello@
 
     const subject = `New contact: ${topic} — ${name} (${company || "No company"})`;
     const text = `From: ${name} <${email}>
@@ -91,26 +93,27 @@ ${message}
 
     const resend = new Resend(RESEND_API_KEY);
 
-    // 1) internal send
+    // 1) internal send (reply directly to the user)
     const internal = await resend.emails.send({
       from: FROM_EMAIL,
       to,
       bcc,
-      replyTo: email,
+      replyTo: email, // you can reply straight back to the sender from your internal copy
       subject,
       text,
     });
 
-    // 2) auto-ack
+    // 2) auto-ack to sender — replyable to support@
     const ack = await resend.emails.send({
-      from: FROM_EMAIL,
-      to: email,
+      from: FROM_EMAIL,                   // no-reply@mail.propvisions.com (verified)
+      to: email,                          // user
+      replyTo: REPLYTO_FOR_ACK,           // 🟢 replies go to support@propvisions.com
       subject: "Thanks — we got your message",
       text: `Hi ${name},
 
 Thanks for getting in touch with PropVisions. We’ve received your message and will get back to you within one business day.
 
-If it’s urgent, feel free to reply to this email.
+If it’s urgent, just reply to this email and it will reach our support team.
 
 — PropVisions`,
     });
