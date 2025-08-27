@@ -245,23 +245,22 @@ export default function LandingPage() {
     </p>
 
     {/* items-stretch ensures grid tracks can stretch; cards themselves must be h-full */}
-    <ol className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+    <ol className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch auto-rows-fr">
       {STEPS.map((s, i) => (
         <li
-          key={s.title}
-          className="card p-6 relative flex flex-col justify-start h-full min-h-[190px]"
-        >
-          <span className="step-index" aria-hidden>{i + 1}</span>
-
-          {/* flex-1 makes the content area expand evenly inside each card */}
-          <div className="flex items-start gap-3 flex-1">
-            <div className="icon-wrap">{s.icon}</div>
-            <div className="flex flex-col">
-              <h3 className="card-title">{s.title}</h3>
-              <p className="card-text">{s.desc}</p>
-            </div>
+        key={s.title}
+        className="card p-6 relative flex flex-col justify-start h-full min-h-[190px]"
+      >
+        <span className="step-index" aria-hidden>{i + 1}</span>
+        <div className="flex items-start gap-3 flex-1">
+          <div className="icon-wrap">{s.icon}</div>
+          <div className="flex flex-col">
+            <h3 className="card-title">{s.title}</h3>
+            <p className="card-text">{s.desc}</p>
           </div>
-        </li>
+        </div>
+      </li>
+      
       ))}
     </ol>
 
