@@ -4,10 +4,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { pollUntilDone, type RunStatus, startAnalyze } from '@/lib/api';
-import RoomCard, { RefurbRow } from '../../components/RoomCard'; // relative, unambiguous
+import RoomCard, { RefurbRow } from '../../components/RoomCard';
 
 /* ---------- branding ---------- */
-const LOGO_SRC = '/propvisions_logo.png'; // lives in /public
+const LOGO_SRC = '/PropVisions_Logo.png'; // lives in /public
 
 /* ---------- helpers ---------- */
 function formatGBP(n?: number | string | null) {
@@ -214,7 +214,6 @@ export default function Page() {
   }, [url]);
 
   const sampleUrls = [
-    // safe to keep a couple of examples
     'https://www.rightmove.co.uk/properties/123456789#/',
     'https://auctions.savills.co.uk/auctions/19-august-2025-211/9-seedhill-road-11942',
   ];
