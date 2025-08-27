@@ -31,16 +31,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Main content */}
         <main>{children}</main>
 
-        {/* Optional spacer so content never feels cramped when fixed bars show */}
-        {/* <div className="h-6 md:h-10" /> */}
-
-        {/* Cookie banner (client component). It auto-lifts above the footer when visible. */}
+        {/* Cookie banner */}
         <CookieBanner />
 
-        {/* Footer with ID for observers (Floating CTA & CookieBanner use this to avoid overlap) */}
+        {/* Footer */}
         <footer id="site-footer" className="border-t">
-          <div className="container flex flex-wrap items-center justify-between gap-4 py-8 text-sm text-slate-600">
-            <p>© {new Date().getFullYear()} PropVisions. All rights reserved.</p>
+          <div className="container flex flex-col md:flex-row items-start md:items-center justify-between gap-4 py-8 text-sm text-slate-600">
+            <div>
+              <p>© {new Date().getFullYear()} PropVisions AI Ltd. All rights reserved.</p>
+              <p className="mt-1">
+                Registered in England & Wales · Company No. 16676263
+              </p>
+              <p className="mt-1">
+                Registered Office: 71–75 Shelton Street, Covent Garden, London WC2H 9JQ
+              </p>
+            </div>
             <div className="flex gap-4">
               <Link href="/privacy" className="hover:text-brand-700">Privacy</Link>
               <Link href="/terms" className="hover:text-brand-700">Terms</Link>
