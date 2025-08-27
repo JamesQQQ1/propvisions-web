@@ -350,7 +350,7 @@ export default function Page() {
       {/* Header */}
       <header className="flex items-start md:items-center justify-between gap-4">
         <div className="flex-1">
-          <h1 className="text-3xl font-bold tracking-tight">PropertyScout Demo</h1>
+          <h1 className="text-3xl font-bold tracking-tight">PropVisions Demo</h1>
           <p className="text-slate-600">
             Paste a listing URL to generate valuations, refurb breakdown, and financials.
           </p>

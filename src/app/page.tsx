@@ -22,7 +22,7 @@ export default function LandingPage() {
             </h1>
 
             <p className="subhead">
-              Paste a Rightmove/Zoopla/auction link. PropertyScout extracts the facts, estimates refurb costs,
+              Paste a Rightmove/Zoopla/auction link. PropertyVisions extracts the facts, estimates refurb costs,
               and computes full financials with clear assumptions — exportable to PDF & Excel.
             </p>
 
@@ -65,7 +65,7 @@ export default function LandingPage() {
                   <iframe
                     className="h-full w-full"
                     src={`https://www.youtube.com/embed/${YT_ID}?rel=0`}
-                    title="PropertyScout demo"
+                    title="PropVisions demo"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowFullScreen
                   />
@@ -96,7 +96,7 @@ export default function LandingPage() {
       {/* HOW IT WORKS */}
       <section className="section">
         <div className="container">
-          <h2 className="heading-2">How PropertyScout works</h2>
+          <h2 className="heading-2">How PropVisions works</h2>
           <p className="small mt-1 text-slate-600">
             A compressed pipeline from link → analysis → client-ready pack.
           </p>
@@ -244,14 +244,14 @@ export default function LandingPage() {
       {/* COMPARISON */}
       <section className="section">
         <div className="container">
-          <h2 className="heading-2">Manual workflow vs PropertyScout</h2>
+          <h2 className="heading-2">Manual workflow vs PropVisions</h2>
           <div className="mt-4 overflow-x-auto">
             <table className="w-full text-sm border rounded-xl overflow-hidden">
               <thead className="bg-slate-50 text-slate-700">
                 <tr>
                   <th className="p-3 text-left">Dimension</th>
                   <th className="p-3 text-left">Manual / spreadsheets</th>
-                  <th className="p-3 text-left">PropertyScout</th>
+                  <th className="p-3 text-left">PropVisions</th>
                 </tr>
               </thead>
               <tbody className="divide-y">

@@ -97,7 +97,7 @@ export default function ContactPage() {
       {/* Header */}
       <header className="max-w-3xl">
         <span className="badge">We usually reply within one business day</span>
-        <h1 className="heading-2 mt-3">Contact the PropertyScout team</h1>
+        <h1 className="heading-2 mt-3">Contact the PropVisions team</h1>
         <p className="subhead mt-2">
           Questions about the demo, integrations, or partnerships? Send us a note and we’ll get back to you quickly.
         </p>
@@ -258,7 +258,7 @@ export default function ContactPage() {
                   onChange={(e) => setForm({ ...form, consent: e.target.checked })}
                   className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                 />
-                I agree to be contacted about PropertyScout and understand I can opt out at any time.
+                I agree to be contacted about PropertyVisions and understand I can opt out at any time.
               </label>
 
               {state.status === 'error' && (
