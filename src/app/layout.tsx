@@ -22,7 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="container mx-auto flex items-center justify-between px-4 py-3">
             <Link href="/" className="flex items-center" aria-label="PropVisions home">
               <Image
-                src="/PropVisions_Logo.png" // put the file in /public
+                src="/Users/jamesquessy/Desktop/property-scout-ui/PropVisions_Logo.png" // put the file in /public
                 alt="PropVisions"
                 width={160}
                 height={40}
