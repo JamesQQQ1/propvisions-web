@@ -12,7 +12,7 @@ export default function LandingPage() {
       <section className="section">
         <div className="container grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
           <div className="lg:col-span-7 space-y-6">
-            <span className="badge">
+            <span className="badge" aria-label="Live demo available">
               <Dot color="#10b981" />
               Live demo — no sign-up
             </span>
@@ -22,25 +22,25 @@ export default function LandingPage() {
             </h1>
 
             <p className="subhead">
-              Paste a Rightmove/Zoopla/auction link. PropVisions extracts the facts, estimates refurb costs,
-              and computes full financials with clear assumptions — exportable to PDF & Excel.
+              Paste a Rightmove/Zoopla/auction link. PropVisions cleans the data, estimates refurbishment,
+              and computes full financials with transparent assumptions — exportable to PDF &amp; Excel.
             </p>
 
             <div className="flex flex-wrap gap-3">
-              {/* 🔑 changed to /demo-access */}
-              <Link href="/demo-access" className="btn btn-primary">
+              {/* 🔑 /demo-access remains the primary flow */}
+              <Link href="/demo-access" className="btn btn-primary" aria-label="Open PropVisions live demo">
                 Try the live demo <ArrowRight />
               </Link>
-              <a href="#walkthrough" className="btn btn-outline">
+              <a href="#walkthrough" className="btn btn-outline" aria-label="Watch product walkthrough video">
                 Watch the walkthrough <Play />
               </a>
             </div>
 
             {/* Micro stats */}
-            <div className="flex flex-wrap items-center gap-5 small">
+            <div className="flex flex-wrap items-center gap-5 small" aria-label="Key product metrics">
               <Chip color="emerald">~30s</Chip><span>Time to first pass</span>
               <Chip color="sky">PDF • Excel</Chip><span>Exports</span>
-              <Chip color="violet">Line-items</Chip><span>Transparency</span>
+              <Chip color="violet">Line-items</Chip><span>Fully traceable</span>
             </div>
 
             {/* Trust row */}
@@ -49,6 +49,7 @@ export default function LandingPage() {
                 <div
                   key={label}
                   className="h-8 rounded-md border border-slate-200 grid place-items-center text-[11px] text-slate-500"
+                  aria-label={label}
                 >
                   {label}
                 </div>
@@ -60,13 +61,14 @@ export default function LandingPage() {
           <div className="lg:col-span-5">
             <div className="card overflow-hidden">
               <div className="card-header">Product walkthrough</div>
-              <div className="aspect-video w-full bg-black">
+              <div className="aspect-video w-full bg-black" id="walkthrough">
                 {HAS_YT ? (
                   <iframe
                     className="h-full w-full"
                     src={`https://www.youtube.com/embed/${YT_ID}?rel=0`}
                     title="PropVisions demo"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    referrerPolicy="strict-origin-when-cross-origin"
                     allowFullScreen
                   />
                 ) : (
@@ -82,9 +84,8 @@ export default function LandingPage() {
                 )}
               </div>
               <div className="card-footer">
-                <span className="small">2-minute overview of the core flow.</span>
-                {/* 🔑 changed to /demo-access */}
-                <Link href="/demo-access" className="link">
+                <span className="small">Two-minute overview of the core flow.</span>
+                <Link href="/demo-access" className="link" aria-label="Open the live demo">
                   Open the live demo →
                 </Link>
               </div>
@@ -98,13 +99,13 @@ export default function LandingPage() {
         <div className="container">
           <h2 className="heading-2">How PropVisions works</h2>
           <p className="small mt-1 text-slate-600">
-            A compressed pipeline from link → analysis → client-ready pack.
+            A compressed pipeline from link → analysis → shareable pack.
           </p>
 
           <ol className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
             {STEPS.map((s, i) => (
               <li key={s.title} className="card p-6 relative">
-                <span className="step-index">{i + 1}</span>
+                <span className="step-index" aria-hidden>{i + 1}</span>
                 <div className="flex items-start gap-3">
                   <div className="icon-wrap">{s.icon}</div>
                   <div>
@@ -116,16 +117,16 @@ export default function LandingPage() {
             ))}
           </ol>
 
-          <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-3 small">
-            <Pill>Scrape & structure</Pill>
+          <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-3 small" aria-label="Pipeline overview">
+            <Pill>Scrape &amp; structure</Pill>
             <ArrowDivider />
             <Pill>Images → refurb lines</Pill>
             <ArrowDivider />
             <Pill>Fees/taxes/voids</Pill>
             <ArrowDivider />
-            <Pill>Cash-flow & ROI</Pill>
+            <Pill>Cash-flow &amp; ROI</Pill>
             <ArrowDivider />
-            <Pill>PDF & Excel exports</Pill>
+            <Pill>PDF &amp; Excel exports</Pill>
           </div>
         </div>
       </section>
@@ -136,26 +137,25 @@ export default function LandingPage() {
           <div className="lg:col-span-7 space-y-4">
             <h2 className="heading-2">What you get from a single URL</h2>
             <ul className="mt-3 space-y-3 small text-slate-700">
-              <ListItem bold="Post-refurb valuation." text="Value after works, with the assumptions surfaced." />
+              <ListItem bold="Post-refurb valuation." text="Transparent uplift assumptions with rationale." />
               <ListItem
                 bold="Refurb cost breakdown."
-                text="Room-by-room and by category (paint, floor, electrics, plumbing, damp, structure)."
+                text="Room-by-room with categories (paint, flooring, electrics, plumbing, damp, structure)."
               />
               <ListItem
                 bold="Financials."
-                text="Stamp duty, fees, interest, voids, management, and net income with ROI and yield."
+                text="Stamp duty, fees, interest, voids, management — net income, yield, and ROI."
               />
               <ListItem bold="Exports." text="A polished PDF deck and an Excel with every line item." />
-              <ListItem bold="Comparables (when available)." text="Basic comps for sales and rental to sanity-check the numbers." />
-              <ListItem bold="Scenario tweaks." text="Adjust rates, voids, maintenance, and rerun instantly." />
+              <ListItem bold="Comparables (when available)." text="Basic sales/rental comps to sanity-check numbers." />
+              <ListItem bold="Scenario tweaks." text="Adjust rates, voids, maintenance — recalc instantly." />
             </ul>
 
             <div className="mt-4 flex gap-3">
-              {/* 🔑 changed to /demo-access */}
-              <Link href="/demo-access" className="btn btn-primary">
+              <Link href="/demo-access" className="btn btn-primary" aria-label="Paste a property URL">
                 Paste a URL <ArrowRight />
               </Link>
-              <a href="#faq" className="btn btn-outline">
+              <a href="#faq" className="btn btn-outline" aria-label="Read frequently asked questions">
                 Read FAQs
               </a>
             </div>
@@ -197,10 +197,7 @@ export default function LandingPage() {
                     ["Bedroom (x2)", "£3,400"],
                     ["Electrics (partial)", "£3,150"],
                   ].map(([room, total]) => (
-                    <div
-                      key={room}
-                      className="flex items-center justify-between px-3 py-2 text-sm"
-                    >
+                    <div key={room} className="flex items-center justify-between px-3 py-2 text-sm">
                       <span>{room}</span>
                       <span className="font-medium">{total}</span>
                     </div>
@@ -209,7 +206,9 @@ export default function LandingPage() {
               </div>
 
               <div className="mt-4 flex items-center justify-end">
-                <button className="link small">Open full model →</button>
+                <button className="link small" type="button" aria-label="Open full financial model">
+                  Open full model →
+                </button>
               </div>
             </div>
           </div>
@@ -291,16 +290,16 @@ export default function LandingPage() {
       {/* SECURITY / COMPLIANCE */}
       <section className="section">
         <div className="container card p-6">
-          <h2 className="heading-2">Data handling & privacy</h2>
+          <h2 className="heading-2">Data handling &amp; privacy</h2>
           <ul className="mt-3 small text-slate-700 space-y-2 list-disc pl-5">
             <li>
-              <strong>GDPR-aligned design:</strong> clear user consent flows, minimal personal data by default.
+              <strong>GDPR-aligned by design:</strong> clear consent flows; minimal personal data by default.
             </li>
             <li>
               <strong>Export control:</strong> you choose what to share — PDFs and spreadsheets are generated on demand.
             </li>
             <li>
-              <strong>Transparency:</strong> every financial figure links back to a line item and assumption.
+              <strong>Traceability:</strong> every financial figure links back to a line item and assumption.
             </li>
           </ul>
         </div>
@@ -328,11 +327,10 @@ export default function LandingPage() {
             <div>
               <h3 className="heading-cta">See your deal in minutes</h3>
               <p className="cta-copy">
-                Paste a URL, get valuation, refurb lines, and ROI — ready to share.
+                Paste a URL — get value, refurb lines, and ROI, ready to share.
               </p>
             </div>
-            {/* 🔑 changed to /demo-access */}
-            <Link href="/demo-access" className="btn btn-onColor">
+            <Link href="/demo-access" className="btn btn-onColor" aria-label="Open PropVisions live demo">
               Open the live demo <ArrowRight />
             </Link>
           </div>
@@ -366,7 +364,7 @@ function Pill({ children }: { children: ReactNode }) {
 
 function ArrowDivider() {
   return (
-    <span className="hidden lg:flex items-center justify-center text-slate-400">
+    <span className="hidden lg:flex items-center justify-center text-slate-400" aria-hidden>
       <ArrowRight />
     </span>
   )
@@ -415,18 +413,18 @@ function Dot({ color = "#16a34a" }: { color?: string }) {
 const STEPS = [
   {
     title: "Paste a URL",
-    desc: "Rightmove, Zoopla, auctions… if it’s public and structured, we can ingest it.",
+    desc: "Rightmove, Zoopla, or auctions — if it’s public and structured, we can ingest it.",
     icon: (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
         <path d="M4 7h16M4 12h10M4 17h7" strokeLinecap="round" />
       </svg>
     ),
   },
   {
     title: "We fetch & compute",
-    desc: "Extraction, refurb model, fee math, rents/values check — computed in seconds.",
+    desc: "Extraction, refurb modelling, fees, and rent/value checks — computed in seconds.",
     icon: (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
         <path d="M12 3v6m0 6v6M3 12h6m6 0h6" strokeLinecap="round" />
       </svg>
     ),
@@ -435,23 +433,23 @@ const STEPS = [
     title: "You export & share",
     desc: "Outputs designed for investors, lenders, and partners.",
     icon: (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
         <path d="M4 4h16v16H4z" />
       </svg>
     ),
   },
-]
+] as const
 
 const FEATURES = [
   {
     title: "Refurb engine",
-    desc: "Room-by-room costing, with configurable bands and contingency logic.",
-    points: ["Auto-detects kitchens/baths", "Handles damp & structural", "Custom bands per investor"],
+    desc: "Room-by-room costing with configurable bands and contingency.",
+    points: ["Auto-detects kitchens/bathrooms", "Handles damp & structural items", "Custom bands per investor"],
     icon: <Spark />,
   },
   {
     title: "Financial stack",
-    desc: "Covers purchase → exit, with yields, ROIs, and sensitivity toggles.",
+    desc: "Purchase → exit: yields, ROI, and sensitivity toggles.",
     points: ["Stamp duty, legal, survey", "Void assumptions", "Variable leverage"],
     icon: <Spark />,
   },
@@ -461,29 +459,29 @@ const FEATURES = [
     points: ["Polished PDF deck", "Excel with line items", "White-label options"],
     icon: <Spark />,
   },
-]
+] as const
 
 const COMPARISON = [
   { dim: "Speed", manual: "Hours of spreadsheets", ps: "Minutes" },
-  { dim: "Transparency", manual: "Ad hoc, hidden formulas", ps: "Every assumption visible" },
-  { dim: "Credibility", manual: "Error-prone, inconsistent", ps: "Consistent, repeatable, backed by data" },
+  { dim: "Transparency", manual: "Ad-hoc, hidden formulas", ps: "Every assumption visible" },
+  { dim: "Credibility", manual: "Error-prone, inconsistent", ps: "Consistent, repeatable, data-backed" },
   { dim: "Shareability", manual: "Messy files", ps: "Clean PDF & Excel" },
-]
+] as const
 
 const AUDIENCES = [
-  { title: "Investors", desc: "Quick appraisals, apples-to-apples comparisons.", icon: <Spark /> },
+  { title: "Investors", desc: "Quick appraisals and like-for-like comparisons.", icon: <Spark /> },
   { title: "Agents & sourcers", desc: "Professional packs to share with buyers.", icon: <Spark /> },
   { title: "Lenders", desc: "Consistent inputs for credit models.", icon: <Spark /> },
-]
+] as const
 
 const FAQS = [
   {
     q: "Can I export the analysis?",
-    a: "Yes — polished PDF for clients, Excel for your deep dive.",
+    a: "Yes. Polished PDF for clients; Excel for deeper analysis.",
   },
   {
     q: "How accurate are refurb estimates?",
-    a: "They’re broad bands, tuned by room type and investor settings. Always validate before offers.",
+    a: "They are banded by room type and adjustable per investor. Always validate before offers.",
   },
   {
     q: "Do you store my URLs?",
@@ -491,6 +489,6 @@ const FAQS = [
   },
   {
     q: "Can I customise assumptions?",
-    a: "Yes — yields, voids, fees, maintenance are all tweakable.",
+    a: "Yes. Yields, voids, fees, and maintenance are fully tweakable.",
   },
-]
+] as const
