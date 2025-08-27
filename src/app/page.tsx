@@ -236,29 +236,45 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* HOW IT WORKS (animated steps) */}
-      <section className="section">
-        <div className="container">
-          <h2 className="heading-2">How the pipeline works</h2>
-          <p className="small mt-1 text-slate-600">
-            A compressed path from link → analysis → shareable pack, with validation and error handling at each step.
-          </p>
+      {/* HOW IT WORKS (equal-height cards) */}
+<section className="section">
+  <div className="container">
+    <h2 className="heading-2">How the pipeline works</h2>
+    <p className="small mt-1 text-slate-600">
+      A compressed path from link → analysis → shareable pack, with validation and error handling at each step.
+    </p>
 
-          <ol className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-            {STEPS.map((s, i) => (
-              <StepCard key={s.title} index={i + 1} icon={s.icon} title={s.title} desc={s.desc} />
-            ))}
-          </ol>
-
-          <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-3 small" aria-label="Pipeline overview">
-            <Pill>Scrape &amp; structure</Pill><ArrowDivider />
-            <Pill>Images → refurb lines</Pill><ArrowDivider />
-            <Pill>Fees/taxes/voids</Pill><ArrowDivider />
-            <Pill>Cash-flow &amp; ROI</Pill><ArrowDivider />
-            <Pill>PDF &amp; Excel exports</Pill>
+    {/* Make the row stretch so cards share the same height */}
+    <ol className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+      {STEPS.map((s, i) => (
+        <li
+          key={s.title}
+          className="card p-6 relative flex flex-col justify-start min-h-[190px]"
+        >
+          <span className="step-index" aria-hidden>
+            {i + 1}
+          </span>
+          <div className="flex items-start gap-3 flex-1">
+            <div className="icon-wrap">{s.icon}</div>
+            <div className="flex flex-col">
+              <h3 className="card-title">{s.title}</h3>
+              <p className="card-text">{s.desc}</p>
+            </div>
           </div>
-        </div>
-      </section>
+        </li>
+      ))}
+    </ol>
+
+    <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-3 small" aria-label="Pipeline overview">
+      <Pill>Scrape &amp; structure</Pill><ArrowDivider />
+      <Pill>Images → refurb lines</Pill><ArrowDivider />
+      <Pill>Fees/taxes/voids</Pill><ArrowDivider />
+      <Pill>Cash-flow &amp; ROI</Pill><ArrowDivider />
+      <Pill>PDF &amp; Excel exports</Pill>
+    </div>
+  </div>
+</section>
+
 
       {/* COMPARISON */}
       <section className="section">
