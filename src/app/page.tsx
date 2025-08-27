@@ -22,7 +22,7 @@ export default function LandingPage() {
             </h1>
 
             <p className="subhead">
-              Paste a Rightmove/Zoopla/auction link. PropertyVisions extracts the facts, estimates refurb costs,
+              Paste a Rightmove/Zoopla/auction link. PropVisions extracts the facts, estimates refurb costs,
               and computes full financials with clear assumptions — exportable to PDF & Excel.
             </p>
 
