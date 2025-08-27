@@ -175,34 +175,34 @@ export default function LandingPage() {
             <Accordion
               items={[
                 {
-                    title: "Portal coverage (Rightmove/Zoopla)",
-                    content: (
-                      <div className="space-y-2 small text-slate-700">
-                        <p>
-                          Not enabled in the public demo due to partner/API restrictions. We’re pursuing compliant integrations.
-                          Public launch plan includes unified search, de-duplication across sources, and canonicalisation by address+agent+media.
-                        </p>
-                        <p className="text-slate-500">Meanwhile, the demo accepts many agent/auction URLs and other compatible pages.</p>
-                      </div>
-                    )
+                  title: "Portal coverage (Rightmove/Zoopla)",
+                  content: (
+                    <div className="space-y-2 small text-slate-700">
+                      <p>
+                        Not enabled in the public demo due to partner/API restrictions. We’re pursuing compliant integrations.
+                        Public launch plan includes unified search, de-duplication across sources, and canonicalisation by address+agent+media.
+                      </p>
+                      <p className="text-slate-500">Meanwhile, the demo accepts many agent/auction URLs and other compatible pages.</p>
+                    </div>
+                  )
                 },
                 {
-                    title: "Accuracy bands & confidence",
-                    content: (
-                      <div className="space-y-2 small text-slate-700">
-                        <p>Estimates reflect listing quality and regional nuance. Confidence indicators are shown for rent and refurb.</p>
-                        <p>You can adjust assumptions (voids, management, maintenance, leverage) and immediately see the effect on ROI.</p>
-                      </div>
-                    )
+                  title: "Accuracy bands & confidence",
+                  content: (
+                    <div className="space-y-2 small text-slate-700">
+                      <p>Estimates reflect listing quality and regional nuance. Confidence indicators are shown for rent and refurb.</p>
+                      <p>You can adjust assumptions (voids, management, maintenance, leverage) and immediately see the effect on ROI.</p>
+                    </div>
+                  )
                 },
                 {
-                    title: "Mortgage module roadmap",
-                    content: (
-                      <div className="space-y-2 small text-slate-700">
-                        <p>Today: standard assumptions included in cash-flow. Coming: IO/repayment, product fees, ERC modelling.</p>
-                        <p>Launch+1: forward-rate scenarios, DSCR/ICR, remortgage timing assistant.</p>
-                      </div>
-                    )
+                  title: "Mortgage module roadmap",
+                  content: (
+                    <div className="space-y-2 small text-slate-700">
+                      <p>Today: standard assumptions included in cash-flow. Coming: IO/repayment, product fees, ERC modelling.</p>
+                      <p>Launch+1: forward-rate scenarios, DSCR/ICR, remortgage timing assistant.</p>
+                    </div>
+                  )
                 },
               ]}
             />
@@ -237,44 +237,49 @@ export default function LandingPage() {
       </section>
 
       {/* HOW IT WORKS (equal-height cards) */}
-<section className="section">
-  <div className="container">
-    <h2 className="heading-2">How the pipeline works</h2>
-    <p className="small mt-1 text-slate-600">
-      A compressed path from link → analysis → shareable pack, with validation and error handling at each step.
-    </p>
+      <section className="section">
+        <div className="container">
+          <h2 className="heading-2">How the pipeline works</h2>
+          <p className="small mt-1 text-slate-600">
+            A compressed path from link → analysis → shareable pack, with validation and error handling at each step.
+          </p>
 
-    {/* items-stretch ensures grid tracks can stretch; cards themselves must be h-full */}
-    <ol className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch auto-rows-fr">
-      {STEPS.map((s, i) => (
-        <li
-        key={s.title}
-        className="card p-6 relative flex flex-col justify-start h-full min-h-[190px]"
-      >
-        <span className="step-index" aria-hidden>{i + 1}</span>
-        <div className="flex items-start gap-3 flex-1">
-          <div className="icon-wrap">{s.icon}</div>
-          <div className="flex flex-col">
-            <h3 className="card-title">{s.title}</h3>
-            <p className="card-text">{s.desc}</p>
+          {/* items-stretch ensures grid tracks can stretch; cards themselves must be h-full */}
+          <ol className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch auto-rows-fr">
+            {STEPS.map((s, i) => (
+              <li
+                key={s.title}
+                className="card p-6 relative flex flex-col justify-start h-full min-h-[190px]"
+              >
+                <span className="step-index" aria-hidden>{i + 1}</span>
+                <div className="flex items-start gap-3 flex-1">
+                  <div className="icon-wrap">{s.icon}</div>
+                  <div className="flex flex-col">
+                    <h3 className="card-title">{s.title}</h3>
+                    <p className="card-text">{s.desc}</p>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ol>
+
+          {/* ✅ Fixed: responsive circle bubbles so text never clips */}
+          <div
+            className="mt-8 flex flex-wrap items-center justify-start gap-3 small"
+            aria-label="Pipeline overview"
+          >
+            <Bubble>Scrape &amp; structure</Bubble>
+            <ArrowDivider />
+            <Bubble>Images → refurb lines</Bubble>
+            <ArrowDivider />
+            <Bubble>Fees / taxes / voids</Bubble>
+            <ArrowDivider />
+            <Bubble>Cash-flow &amp; ROI</Bubble>
+            <ArrowDivider />
+            <Bubble>PDF &amp; Excel exports</Bubble>
           </div>
         </div>
-      </li>
-      
-      ))}
-    </ol>
-
-    <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-3 small" aria-label="Pipeline overview">
-      <Pill>Scrape &amp; structure</Pill><ArrowDivider />
-      <Pill>Images → refurb lines</Pill><ArrowDivider />
-      <Pill>Fees/taxes/voids</Pill><ArrowDivider />
-      <Pill>Cash-flow &amp; ROI</Pill><ArrowDivider />
-      <Pill>PDF &amp; Excel exports</Pill>
-    </div>
-  </div>
-</section>
-
-
+      </section>
 
       {/* COMPARISON */}
       <section className="section">
@@ -335,8 +340,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-            {/* FAQ (accordion) */}
-            <section id="faq" className="section">
+      {/* FAQ (accordion) */}
+      <section id="faq" className="section">
         <div className="container">
           <h2 className="heading-2">FAQs</h2>
           <Accordion
@@ -348,10 +353,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* --- ADD THIS SPACER --- */}
       {/* Spacer so floating CTA never overlaps bottom content */}
       <div className="h-28 md:h-32" />
-      {/* --- END SPACER --- */}
 
       {/* Samples modal */}
       <Modal
@@ -361,10 +364,9 @@ export default function LandingPage() {
       >
         {openSample && <SampleContent kind={openSample} />}
       </Modal>
-    </div> // ← closing wrapper from return()
+    </div>
   );
 }
-
 
 /* -----------------------------------------------------------
    Components
@@ -387,7 +389,7 @@ function TopStrip() {
   );
 }
 
-// In src/app/page.tsx – replace your FloatingCTA with this version
+// In src/app/page.tsx – Floating CTA
 function FloatingCTA({ show }: { show: boolean }) {
   const [offset, setOffset] = useState(16); // px from bottom when footer is visible
 
@@ -398,7 +400,6 @@ function FloatingCTA({ show }: { show: boolean }) {
     const obs = new IntersectionObserver(
       (entries) => {
         const e = entries[0];
-        // if footer is visible, lift the CTA by footer height + 16px; else sit 16px from bottom
         if (e.isIntersecting) {
           const h = e.target.getBoundingClientRect().height;
           setOffset(h + 16);
@@ -433,7 +434,6 @@ function FloatingCTA({ show }: { show: boolean }) {
     </div>
   );
 }
-
 
 function LogoRow() {
   return (
@@ -702,9 +702,9 @@ function SampleContent({ kind }: { kind: "refurb" | "financials" | "exports" }) 
         <h4 className="font-semibold mb-2">Refurb scope preview</h4>
         <ul className="list-disc pl-5 space-y-1">
           <li>Kitchen: strip wallpaper, repaint, LVT floor, partial rewire, appliance allowance.</li>
-          <li>Bathroom: tile refresh, new vanity & tap set, reseal bath/shower, extractor fan.</li>
-          <li>Bedrooms: prep & paint, carpet allowance, sockets & pendant checks.</li>
-          <li>Damp & structure: patch plaster, skirting repair, contingency 10–15%.</li>
+          <li>Bathroom: tile refresh, new vanity &amp; tap set, reseal bath/shower, extractor fan.</li>
+          <li>Bedrooms: prep &amp; paint, carpet allowance, sockets &amp; pendant checks.</li>
+          <li>Damp &amp; structure: patch plaster, skirting repair, contingency 10–15%.</li>
         </ul>
       </div>
     );
@@ -774,9 +774,8 @@ function ListItem({ bold, text }: { bold: ReactNode; text: ReactNode }) {
         <strong>{bold}</strong> {text}
       </span>
     </li>
-  )
+  );
 }
-
 
 /* Small inline elements */
 function InlineLink({ children }: { children: ReactNode }) {
@@ -786,17 +785,31 @@ function InlineButton({ children, onClick }: { children: ReactNode; onClick: () 
   return <button type="button" onClick={onClick} className="link">{children}</button>;
 }
 
-/* Chips, pills, icons */
+/* Chips, bubbles, icons */
 function Chip({ color = "emerald", children }: { color?: "emerald" | "sky" | "violet"; children: ReactNode }) {
   const cls = "chip " + (color === "emerald" ? "chip-emerald" : color === "sky" ? "chip-sky" : "chip-violet");
   return <span className={cls}>{children}</span>;
 }
-function Pill({ children }: { children: ReactNode }) {
-  return <span className="inline-flex items-center rounded-full border px-3 py-1 small">{children}</span>;
+
+/* ✅ New: responsive circular bubble to avoid text clipping */
+function Bubble({ children }: { children: ReactNode }) {
+  return (
+    <span
+      className="
+        inline-grid place-items-center text-center
+        h-20 w-20 sm:h-24 sm:w-24
+        rounded-full border border-slate-200 bg-white
+        px-2 leading-tight break-words
+      "
+    >
+      {children}
+    </span>
+  );
 }
+
 function ArrowDivider() {
   return (
-    <span className="hidden lg:flex items-center justify-center text-slate-400" aria-hidden>
+    <span className="mx-2 text-slate-400 hidden lg:inline-flex" aria-hidden>
       <ArrowRight />
     </span>
   );
