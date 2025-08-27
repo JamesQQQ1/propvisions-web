@@ -728,6 +728,18 @@ function AnimatedNumber({ to, duration = 1.0, prefix = "", suffix = "" }: { to: 
   return <>{prefix}{n}{suffix}</>;
 }
 
+function ListItem({ bold, text }: { bold: ReactNode; text: ReactNode }) {
+  return (
+    <li className="flex items-start gap-2">
+      <Check />
+      <span>
+        <strong>{bold}</strong> {text}
+      </span>
+    </li>
+  )
+}
+
+
 /* Small inline elements */
 function InlineLink({ children }: { children: ReactNode }) {
   return <span className="underline decoration-slate-300 underline-offset-4 hover:text-slate-900 cursor-pointer">{children}</span>;
