@@ -1,6 +1,5 @@
-// src/app/layout.tsx
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
 import "./globals.css";
 import CookieBanner from "@/components/CookieBanner";
 
@@ -13,25 +12,19 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="bg-white text-slate-900">
+      <body>
         {/* Header */}
-        <header
-          className="sticky top-0 z-30 border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60"
-          aria-label="Site header"
-        >
-          <div className="container mx-auto flex items-center justify-between px-4 py-3">
-            <Link href="/" className="flex items-center" aria-label="PropVisions home">
+        <header className="sticky top-0 z-30 border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+          <div className="container flex items-center justify-between py-3">
+            <Link href="/" className="flex items-center gap-2">
               <Image
-                src="/Users/jamesquessy/Desktop/property-scout-ui/public/PropVisions_Logo.png" // put the file in /public
-                alt="PropVisions"
-                width={160}
+                src="/propvisions_logo.png"
+                alt="PropVisions logo"
+                width={140}
                 height={40}
                 priority
-                className="h-8 w-auto md:h-9"
               />
-              <span className="sr-only">PropVisions</span>
             </Link>
-
             <nav className="flex items-center gap-6 text-sm">
               <Link href="/" className="hover:text-brand-700">Home</Link>
               <Link href="/demo-access" className="hover:text-brand-700">Demo</Link>
@@ -49,11 +42,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         {/* Footer */}
         <footer id="site-footer" className="border-t">
-          <div className="container mx-auto flex flex-col items-start justify-between gap-4 px-4 py-8 text-sm text-slate-600 md:flex-row md:items-center">
+          <div className="container flex flex-col md:flex-row items-start md:items-center justify-between gap-4 py-8 text-sm text-slate-600">
             <div>
               <p>© {new Date().getFullYear()} PropVisions AI Ltd. All rights reserved.</p>
               <p className="mt-1">
-                Registered in England &amp; Wales · Company No. 16676263
+                Registered in England & Wales · Company No. 16676263
               </p>
               <p className="mt-1">
                 Registered Office: 71–75 Shelton Street, Covent Garden, London WC2H 9JQ
