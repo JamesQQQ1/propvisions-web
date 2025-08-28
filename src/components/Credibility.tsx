@@ -1,9 +1,9 @@
 import Image from "next/image";
 
 const sources = [
-  { src: "/epc.png",     alt: "EPC Register", note: "EPC Register" },
-  { src: "/ons.png",     alt: "ONS HPI",      note: "ONS HPI" },
-  { src: "/savills.png", alt: "Savills",      note: "Auction Feeds (Upcoming)", dim: true },
+  { src: "public/EPC.jpg",     alt: "EPC Register", note: "EPC Register" },
+  { src: "public/ONS.png",     alt: "ONS HPI",      note: "ONS HPI" },
+  { src: "public/savills.png", alt: "Savills",      note: "Auction Feeds (Upcoming)", dim: true },
 ];
 
 export default function Credibility() {
