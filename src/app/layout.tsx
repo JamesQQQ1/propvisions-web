@@ -51,10 +51,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 Registered Office: 71–75 Shelton Street, Covent Garden, London WC2H 9JQ
               </p>
             </div>
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-4">
               <Link href="/privacy" className="hover:text-brand-700">Privacy</Link>
               <Link href="/terms" className="hover:text-brand-700">Terms</Link>
               <Link href="/cookies" className="hover:text-brand-700">Cookies</Link>
+              <Link
+                href="/whitepaper-client.pdf"
+                target="_blank"
+                rel="noopener"
+                className="hover:text-brand-700"
+              >
+                White Paper (PDF)
+              </Link>
             </div>
           </div>
         </footer>
