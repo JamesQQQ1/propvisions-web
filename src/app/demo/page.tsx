@@ -6,9 +6,8 @@ import Link from 'next/link';
 import { pollUntilDone, type RunStatus, startAnalyze } from '@/lib/api';
 import RoomCard, { RefurbRow } from '../../components/RoomCard';
 
-
 /* ---------- branding ---------- */
-const LOGO_SRC = '/PropVisions_Logo.png'; // lives in /public
+const LOGO_SRC = '/propvisions_logo.png'; // lives in /public (note lowercase)
 
 /* ---------- helpers ---------- */
 function formatGBP(n?: number | string | null) {
@@ -33,6 +32,17 @@ const toInt = (n: unknown) => {
   const v = Math.round(Number(n ?? 0));
   return Number.isFinite(v) && v > 0 ? v : 0;
 };
+
+// ensure we always have an absolute URL for the PDF (prevents SPA routing back to /demo)
+function normalizePdfUrl(maybeUrl?: string | null): string | null {
+  if (!maybeUrl) return null;
+  try {
+    if (/^https?:\/\//i.test(maybeUrl)) return maybeUrl; // already absolute
+    return new URL(maybeUrl, window.location.origin).toString();
+  } catch {
+    return null;
+  }
+}
 
 type Usage = { count: number; limit: number; remaining: number } | null;
 
@@ -263,6 +273,9 @@ export default function Page() {
           signal: controller.signal,
         });
 
+        // normalize the returned pdf URL so it's absolute (avoids SPA redirecting you back to /demo)
+        const resolvedPdf = typeof window !== 'undefined' ? normalizePdfUrl(result.pdf_url) : (result.pdf_url ?? null);
+
         setStatus('completed');
         setProgress(100);
         setData({
@@ -270,8 +283,9 @@ export default function Page() {
           property: result.property ?? null,
           financials: result.financials ?? null,
           refurb_estimates: Array.isArray(result.refurb_estimates) ? result.refurb_estimates : [],
-          pdf_url: result.pdf_url ?? null,
+          pdf_url: resolvedPdf,
         });
+        console.log('PDF URL (resolved):', resolvedPdf);
       } catch (err: any) {
         setError(err?.message === 'Polling aborted' ? 'Cancelled.' : err?.message || 'Run failed');
         setStatus('failed');
@@ -535,14 +549,18 @@ export default function Page() {
 
                   {/* PDF download if available */}
                   {data.pdf_url && (
-                    <a
-                      href={data.pdf_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center rounded-lg bg-blue-600 text-white px-3 py-1.5 hover:bg-blue-700"
-                    >
-                      Download PDF
-                    </a>
+                    <>
+                      <a
+                        href={data.pdf_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center rounded-lg bg-blue-600 text-white px-3 py-1.5 hover:bg-blue-700"
+                      >
+                        Download PDF
+                      </a>
+                      {/* tiny debug chip so you can see what URL we resolved */}
+                      <span className="ml-2 text-xs text-slate-500 break-all">{data.pdf_url}</span>
+                    </>
                   )}
                 </div>
 
@@ -711,7 +729,7 @@ export default function Page() {
                 <a
                   href={data.pdf_url}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   className="text-sm inline-flex items-center rounded-md border px-3 py-1.5 hover:bg-slate-50"
                 >
                   Download PDF
