@@ -5,6 +5,13 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 /* -----------------------------------------------------------
+   New imports (sections)
+----------------------------------------------------------- */
+import Credibility from "@/components/Credibility";
+import MetricsDashboard from "@/components/MetricsDashboard";
+import Testimonials from "@/components/Testimonials";
+
+/* -----------------------------------------------------------
    Config
 ----------------------------------------------------------- */
 
@@ -236,6 +243,9 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* NEW: Credibility sources & integrations */}
+      <Credibility />
+
       {/* HOW IT WORKS (equal-height cards) */}
       <section className="section">
         <div className="container">
@@ -308,6 +318,9 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* NEW: Beta accuracy goals dashboard */}
+      <MetricsDashboard />
+
       {/* WHO IT’S FOR */}
       <section className="section">
         <div className="container">
@@ -328,6 +341,9 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* NEW: Testimonials / early feedback */}
+      <Testimonials />
+
       {/* SECURITY / COMPLIANCE */}
       <section className="section">
         <div className="container card p-6">
@@ -344,7 +360,7 @@ export default function LandingPage() {
       <section id="faq" className="section">
         <div className="container">
           <h2 className="heading-2">FAQs</h2>
-          <Accordion
+        <Accordion
             items={FAQS.map((f) => ({
               title: f.q,
               content: <div className="small text-slate-700">{f.a}</div>

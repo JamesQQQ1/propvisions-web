@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { pollUntilDone, type RunStatus, startAnalyze } from '@/lib/api';
 import RoomCard, { RefurbRow } from '../../components/RoomCard';
 
+
 /* ---------- branding ---------- */
 const LOGO_SRC = '/PropVisions_Logo.png'; // lives in /public
 
