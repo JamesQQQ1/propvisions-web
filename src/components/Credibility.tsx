@@ -1,25 +1,38 @@
-// src/components/Credibility.tsx
 import Image from "next/image";
+
+const sources = [
+  { src: "/epc.png",     alt: "EPC Register", note: "EPC Register" },
+  { src: "/ons.png",     alt: "ONS HPI",      note: "ONS HPI" },
+  { src: "/savills.png", alt: "Savills",      note: "Auction Feeds (Upcoming)", dim: true },
+];
 
 export default function Credibility() {
   return (
-    <section className="my-12 text-center">
-      <h2 className="text-2xl font-bold mb-4">Data Sources & Integrations</h2>
-      <p className="text-slate-600 mb-6">
-        PropVisions uses official and trusted data sources.
-      </p>
-      <div className="flex justify-center gap-8 flex-wrap">
-        <div className="text-center">
-          <Image src="/epc.png" alt="EPC Register" width={80} height={40} />
-          <p className="text-sm text-slate-500 mt-2">EPC Register</p>
-        </div>
-        <div className="text-center">
-          <Image src="/ons.png" alt="ONS" width={80} height={40} />
-          <p className="text-sm text-slate-500 mt-2">ONS HPI</p>
-        </div>
-        <div className="text-center opacity-60">
-          <Image src="/savills.png" alt="Savills" width={80} height={40} />
-          <p className="text-sm text-slate-500 mt-2">Auction Feeds (Upcoming)</p>
+    <section className="section">
+      <div className="container text-center">
+        <h2 className="heading-2">Data Sources &amp; Integrations</h2>
+        <p className="small mt-1 text-slate-600">
+          PropVisions uses official and trusted data sources.
+        </p>
+
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-6">
+          {sources.map((s) => (
+            <div
+              key={s.alt}
+              className={`card p-6 flex flex-col items-center justify-center ${s.dim ? "opacity-60" : ""}`}
+            >
+              <div className="grayscale hover:grayscale-0 transition">
+                <Image
+                  src={s.src}
+                  alt={s.alt}
+                  width={96}
+                  height={48}
+                  className="h-10 w-auto object-contain"
+                />
+              </div>
+              <p className="text-sm text-slate-500 mt-3">{s.note}</p>
+            </div>
+          ))}
         </div>
       </div>
     </section>
