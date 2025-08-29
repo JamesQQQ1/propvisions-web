@@ -12,13 +12,6 @@ import MetricsDashboard from "@/components/MetricsDashboard";
 import Testimonials from "@/components/Testimonials";
 
 /* -----------------------------------------------------------
-   Config
------------------------------------------------------------ */
-
-const YT_ID = process.env.NEXT_PUBLIC_DEMO_YOUTUBE_ID;
-const HAS_YT = !!YT_ID;
-
-/* -----------------------------------------------------------
    Page
 ----------------------------------------------------------- */
 
@@ -88,31 +81,20 @@ export default function LandingPage() {
             <div className="card overflow-hidden">
               <div className="card-header">Product walkthrough</div>
               <div className="aspect-video w-full bg-black" id="walkthrough">
-                {HAS_YT ? (
-                  <iframe
-                    className="h-full w-full"
-                    src={`https://www.youtube.com/embed/${YT_ID}?rel=0`}
-                    title="PropVisions demo"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    allowFullScreen
-                  />
-                ) : (
-                  <video
-                    className="h-full w-full"
-                    controls
-                    playsInline
-                    preload="metadata"
-                    poster="/demo-poster.jpg"
-                  >
-                    {/* Optional MP4 (add public/demo.mp4 when ready) */}
-                    <source src="/demo.mp4" type="video/mp4" />
-                    {/* Your MOV in /public */}
-                    <source src="public/mvp_demo_4k.mov" type="video/quicktime" />
-                    Your browser does not support embedded videos.{" "}
-                    <a href="public/mvp_demo_4k.mov">Download the video</a>.
-                  </video>
-                )}
+                <video
+                  className="h-full w-full"
+                  controls
+                  playsInline
+                  preload="metadata"
+                  poster="/demo-poster.jpg"
+                >
+                  {/* Primary: your MOV in /public */}
+                  <source src="/mvp_demo_4k.mov" type="video/quicktime" />
+                  {/* Optional: MP4 fallback if you add one later */}
+                  <source src="/demo.mp4" type="video/mp4" />
+                  Your browser does not support embedded videos.{" "}
+                  <a href="/mvp_demo_4k.mov" download>Download the video</a>.
+                </video>
               </div>
               <div className="card-footer">
                 <span className="small">Two-minute overview of the core flow.</span>
