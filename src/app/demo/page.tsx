@@ -5,7 +5,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { pollUntilDone, type RunStatus, startAnalyze } from '@/lib/api';
 import RoomCard, { RefurbRow } from '../../components/RoomCard';
-import PDFViewer from '../../components/PDFViewer'; // ⬅️ NEW
+import PDFViewer from '../../components/PDFViewer';
+import MetricsCards from '../../components/MetricsCards';
+import FeedbackBar from '../../components/FeedbackBar';
 
 /* ---------- branding ---------- */
 const LOGO_SRC = '/propvisions_logo.png'; // lives in /public (note lowercase)
@@ -44,6 +46,8 @@ function normalizePdfUrl(maybeUrl?: string | null): string | null {
     return null;
   }
 }
+const asPdfProxy = (u?: string | null) =>
+  u ? `/api/pdf-proxy?url=${encodeURIComponent(u)}` : null;
 
 type Usage = { count: number; limit: number; remaining: number } | null;
 
@@ -73,49 +77,6 @@ function ProgressBar({ percent, show }: { percent: number; show: boolean }) {
           style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
         />
       </div>
-    </div>
-  );
-}
-
-/* ---------- tiny feedback widget (local state; wire up later) ---------- */
-function FeedbackBar({ onSubmit }: { onSubmit: (v: 'up' | 'down') => void }) {
-  const [choice, setChoice] = useState<'up' | 'down' | null>(null);
-  return (
-    <div className="mt-4 flex items-center gap-2 text-sm">
-      <span className="text-slate-600">Was this accurate?</span>
-      <button
-        type="button"
-        onClick={() => {
-          setChoice('up');
-          onSubmit('up');
-        }}
-        className={classNames(
-          'inline-flex items-center gap-1 rounded-md border px-2 py-1',
-          choice === 'up' ? 'bg-green-50 border-green-200 text-green-700' : 'hover:bg-slate-50'
-        )}
-        aria-pressed={choice === 'up'}
-      >
-        <span aria-hidden>👍</span> Yes
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          setChoice('down');
-          onSubmit('down');
-        }}
-        className={classNames(
-          'inline-flex items-center gap-1 rounded-md border px-2 py-1',
-          choice === 'down' ? 'bg-red-50 border-red-200 text-red-700' : 'hover:bg-slate-50'
-        )}
-        aria-pressed={choice === 'down'}
-      >
-        <span aria-hidden>👎</span> No
-      </button>
-      {choice && (
-        <span className="ml-2 text-slate-500">
-          {choice === 'up' ? 'Thanks!' : 'Noted — we’ll use this to improve.'}
-        </span>
-      )}
     </div>
   );
 }
@@ -274,7 +235,6 @@ export default function Page() {
           signal: controller.signal,
         });
 
-        // normalize the returned pdf URL so it's absolute (avoids SPA redirecting you back to /demo)
         const resolvedPdf = typeof window !== 'undefined' ? normalizePdfUrl(result.pdf_url) : (result.pdf_url ?? null);
 
         setStatus('completed');
@@ -484,7 +444,7 @@ export default function Page() {
         {/* Samples */}
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-slate-500">Try a sample:</span>
-          {['https://www.rightmove.co.uk/properties/123456789#/', 'https://auctions.savills.co.uk/auctions/19-august-2025-211/9-seedhill-road-11942'].map((s) => (
+          {sampleUrls.map((s) => (
             <button
               key={s}
               type="button"
@@ -547,26 +507,27 @@ export default function Page() {
                   ) : (
                     <span className="text-slate-500">No listing URL</span>
                   )}
-
-                  {/* PDF download if available */}
                   {data.pdf_url && (
                     <>
                       <a
-                        href={data.pdf_url}
+                        href={asPdfProxy(data.pdf_url)!}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center rounded-lg bg-blue-600 text-white px-3 py-1.5 hover:bg-blue-700"
                       >
                         Download PDF
                       </a>
-                      {/* tiny debug chip so you can see what URL we resolved */}
                       <span className="ml-2 text-xs text-slate-500 break-all">{data.pdf_url}</span>
                     </>
                   )}
                 </div>
 
-                {/* quick feedback */}
-                <FeedbackBar onSubmit={() => { /* TODO: POST to /api/feedback */ }} />
+                {/* Overall financials feedback (optional generic signal) */}
+                <FeedbackBar
+                  runId={runIdRef.current}
+                  propertyId={data.property_id}
+                  module="financials"
+                />
               </div>
 
               <div>
@@ -602,6 +563,14 @@ export default function Page() {
               </div>
             </div>
           </section>
+
+          {/* Live “happiness” metrics */}
+          {data?.property_id && (
+            <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
+              <h3 className="text-xl font-semibold mb-3">User Feedback (last 90 days)</h3>
+              <MetricsCards propertyId={data.property_id} />
+            </section>
+          )}
 
           {/* Refurbishment */}
           <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
@@ -652,10 +621,16 @@ export default function Page() {
             {Array.isArray(refinedRefurbs) && refinedRefurbs.length ? (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                  {refinedRefurbs.map((est, idx) => (
-                    <RoomCard key={est.id ?? idx} room={est} />
-                  ))}
-                </div>
+  {refinedRefurbs.map((est, idx) => (
+    <RoomCard
+      key={est.id ?? idx}
+      room={est}
+      runId={runIdRef.current}
+      propertyId={data.property_id}
+    />
+  ))}
+</div>
+
 
                 {/* Totals table */}
                 <div className="overflow-x-auto">
@@ -728,7 +703,7 @@ export default function Page() {
               <h3 className="text-xl font-semibold">Financial Summary</h3>
               {data.pdf_url && (
                 <a
-                  href={data.pdf_url}
+                  href={asPdfProxy(data.pdf_url)!}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm inline-flex items-center rounded-md border px-3 py-1.5 hover:bg-slate-50"
@@ -752,8 +727,12 @@ export default function Page() {
               <p className="text-slate-600">No financials found for this property yet.</p>
             )}
 
-            {/* quick feedback */}
-            <FeedbackBar onSubmit={() => { /* TODO: POST to /api/feedback */ }} />
+            {/* Optional section-level feedback (financials) */}
+            <FeedbackBar
+              runId={runIdRef.current}
+              propertyId={data.property_id}
+              module="financials"
+            />
           </section>
 
           {/* Report Preview (embedded PDF) */}

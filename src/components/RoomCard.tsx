@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import FeedbackBar from './FeedbackBar';
 
 type Work = {
   category: string;
@@ -47,11 +48,19 @@ function pct(n?: number | null) {
   return `${Math.round(Math.max(0, Math.min(1, v)) * 100)}%`;
 }
 
-export default function RoomCard({ room }: { room: RefurbRow }) {
+export default function RoomCard({
+  room,
+  runId,
+  propertyId,
+}: {
+  room: RefurbRow;
+  runId?: string | null;
+  propertyId?: string | null;
+}) {
   const [open, setOpen] = useState(false);
 
   // Signature so we can confirm in console that this file is live
-  console.log('RoomCard v2 loaded');
+  console.log('RoomCard v2 + feedback loaded');
 
   // Parse works whether array or JSON string
   const works: Work[] = useMemo(() => {
@@ -92,7 +101,10 @@ export default function RoomCard({ room }: { room: RefurbRow }) {
   // Hide non-room/zero rows entirely
   if (!total || total <= 0) return null;
 
-  const conf = typeof room.confidence === 'number' ? Math.max(0, Math.min(1, room.confidence)) : null;
+  const conf =
+    typeof room.confidence === 'number'
+      ? Math.max(0, Math.min(1, room.confidence))
+      : null;
 
   return (
     <div className="group rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow">
@@ -119,7 +131,7 @@ export default function RoomCard({ room }: { room: RefurbRow }) {
           </span>
         </div>
 
-        {/* Top-right chip: total (with v2 label so we can see it live) */}
+        {/* Top-right chip: total */}
         <div className="absolute top-2 right-2">
           <span className="inline-block text-[11px] bg-black/70 text-white px-2 py-1 rounded-full shadow-sm">
             Total (v2) {formatGBP(total)}
@@ -243,6 +255,15 @@ export default function RoomCard({ room }: { room: RefurbRow }) {
                   </span>
                 )}
             </div>
+
+            {/* Per-room feedback (module=refurb, target_id = room.id) */}
+            <FeedbackBar
+              runId={runId ?? null}
+              propertyId={propertyId ?? null}
+              module="refurb"
+              targetId={room.id ?? null}
+              compact
+            />
           </div>
         </div>
       </div>
