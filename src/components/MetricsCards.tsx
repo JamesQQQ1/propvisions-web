@@ -1,55 +1,64 @@
 'use client';
+import React from 'react';
 
-import { useEffect } from 'react';
-import useSWR from 'swr';
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
-
-type ModuleStat = { n: number; approval: number | null } | undefined;
-type ApiResp = {
-  windowDays: number;
-  moduleApproval?: {
-    rent?: ModuleStat;
-    refurb?: ModuleStat;
-    epc?: ModuleStat;
-    financials?: ModuleStat;
-  };
+export type Derived = {
+  noiAnnual: number;
+  totalInvestment: number;
+  mortgageMonthly: number;
+  cashflowMonthly: number;
+  netYieldPct: number;
+  roiPctYear1: number;
 };
 
-export default function MetricsCards({ propertyId }: { propertyId?: string | null }) {
-  const url = propertyId
-    ? `/api/metrics?property_id=${propertyId}&days=90`
-    : `/api/metrics?days=90`;
+type Props = {
+  // If you pass `derived`, we display those values.
+  derived?: Derived | null;
 
-  const { data, mutate } = useSWR<ApiResp>(url, fetcher, { revalidateOnFocus: false });
+  // Fallbacks if you want to render without the sliders wired in yet:
+  fallback?: Partial<Derived>;
 
-  // Refresh when any feedback is submitted
-  useEffect(() => {
-    const handler = () => mutate();
-    window.addEventListener('metrics:refresh', handler);
-    return () => window.removeEventListener('metrics:refresh', handler);
-  }, [mutate]);
+  className?: string;
+  title?: string;
+};
 
-  const card = (title: string, val?: number | null, n?: number) => {
-    const label = val == null ? 'Not enough data' : `${Math.round(val * 100)}% approval`;
-    const sub =
-      typeof n === 'number' ? `n=${n} · last ${data?.windowDays ?? 90}d` : '';
-    return (
-      <div className="rounded-xl border p-4 bg-white shadow-sm">
-        <div className="text-sm text-slate-500">{title}</div>
-        <div className="mt-2 text-2xl font-semibold text-slate-800">{label}</div>
-        <div className="mt-1 text-xs text-slate-500">{sub}</div>
-      </div>
-    );
+const asGBP = (n?: number) =>
+  Number.isFinite(n as number) ? `£${Math.round(n as number).toLocaleString()}` : '—';
+
+const asPct = (n?: number, dp = 2) =>
+  Number.isFinite(n as number) ? `${(n as number).toFixed(dp)}%` : '—';
+
+function Card({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border bg-white p-4 shadow-sm">
+      <div className="text-slate-500 text-sm">{label}</div>
+      <div className="mt-1 text-lg font-semibold">{value}</div>
+    </div>
+  );
+}
+
+export default function MetricsCards({ derived, fallback, className = '', title = 'Financial summary' }: Props) {
+  const d = {
+    noiAnnual: derived?.noiAnnual ?? fallback?.noiAnnual,
+    totalInvestment: derived?.totalInvestment ?? fallback?.totalInvestment,
+    mortgageMonthly: derived?.mortgageMonthly ?? fallback?.mortgageMonthly,
+    cashflowMonthly: derived?.cashflowMonthly ?? fallback?.cashflowMonthly,
+    netYieldPct: derived?.netYieldPct ?? fallback?.netYieldPct,
+    roiPctYear1: derived?.roiPctYear1 ?? fallback?.roiPctYear1,
   };
 
-  const m = data?.moduleApproval || {};
-
   return (
-    <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {card('Rent Bands', m?.rent?.approval ?? null, m?.rent?.n)}
-      {card('Refurb Totals', m?.refurb?.approval ?? null, m?.refurb?.n)}
-      {card('EPC Match', m?.epc?.approval ?? null, m?.epc?.n)}
+    <section className={className}>
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="text-lg font-semibold">{title}</h3>
+      </div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+        <Card label="NOI (annual)" value={asGBP(d.noiAnnual)} />
+        <Card label="Net yield" value={asPct(d.netYieldPct)} />
+        <Card label="Mortgage (mo)" value={asGBP(d.mortgageMonthly)} />
+        <Card label="Cashflow (mo)" value={asGBP(d.cashflowMonthly)} />
+        <Card label="Total investment" value={asGBP(d.totalInvestment)} />
+        <Card label="Year-1 ROI (cash-on-cash)" value={asPct(d.roiPctYear1, 1)} />
+      </div>
     </section>
   );
 }

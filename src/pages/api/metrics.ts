@@ -6,161 +6,178 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
-type ThumbRow = {
-  module: 'rent' | 'refurb' | 'epc' | 'financials';
-  vote: 'up' | 'down' | null;
-  target_id: string | null;
-  property_id: string | null;
-  kind: 'thumb' | 'edit' | 'confirm';
-};
-
-type FinancialsRow = {
-  property_id: string;
-  monthly_rent_gbp?: number | null;
-  total_refurbishment_gbp?: number | null;
-};
-
-type OutcomeRow = {
-  property_id: string;
-  observed_at: string; // ISO date
-  achieved_rent_gbp: number | null;
-  refurb_invoice_total_gbp: number | null;
-  epc_register_match: boolean | null;
-};
+type ModuleStat = { n: number; approval: number | null };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'no-store');
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  const property_id =
-    (Array.isArray(req.query.property_id) ? req.query.property_id[0] : req.query.property_id) || null;
+  const days = clampInt(parseInt((req.query.days as string) ?? '90', 10), 1, 365);
+  const propertyId = (req.query.property_id as string) || null;
+  const sinceIso = new Date(Date.now() - days * 24 * 3600 * 1000).toISOString();
 
-  const windowDays =
-    Number(Array.isArray(req.query.days) ? req.query.days[0] : req.query.days) || 90;
+  try {
+    // 1) Thumbs-based module approval from feedback_events
+    const { data: fbRows, error: fbErr } = await supabase
+      .from('feedback_events')
+      .select('module, vote, target_id, property_id, kind, created_at')
+      .eq('kind', 'thumb')
+      .gte('created_at', sinceIso)
+      .order('created_at', { ascending: false });
+    if (fbErr) throw fbErr;
 
-  const sinceIso = new Date(Date.now() - windowDays * 24 * 3600 * 1000).toISOString();
+    // Filter by property if requested
+    const fb = (propertyId ? fbRows?.filter(r => r.property_id === propertyId) : fbRows) || [];
 
-  /* ---------- 1) Thumbs -> module approval ---------- */
-  let q = supabase
-    .from('feedback_events')
-    .select('module, vote, target_id, property_id, kind')
-    .eq('kind', 'thumb')
-    .gte('created_at', sinceIso);
+    const base: Record<'rent'|'refurb'|'epc'|'financials', { up: number; down: number }> = {
+      rent: { up: 0, down: 0 },
+      refurb: { up: 0, down: 0 },
+      epc: { up: 0, down: 0 },
+      financials: { up: 0, down: 0 },
+    };
+    const bucketRoom = new Map<string, { up: number; down: number }>();
 
-  if (property_id) q = q.eq('property_id', property_id);
-
-  const { data: thumbData, error: thumbErr } = await q;
-  if (thumbErr) return res.status(500).json({ error: thumbErr.message });
-
-  const rows = (thumbData || []) as ThumbRow[];
-
-  const modAgg = new Map<string, { up: number; down: number }>();
-  const roomAgg = new Map<string, { up: number; down: number }>();
-
-  for (const r of rows) {
-    const m = r.module as string;
-    const v = r.vote;
-    if (m && v) {
-      if (!modAgg.has(m)) modAgg.set(m, { up: 0, down: 0 });
-      const ref = modAgg.get(m)!;
-      if (v === 'up') ref.up++;
-      if (v === 'down') ref.down++;
+    for (const r of fb as any[]) {
+      const m = r.module as keyof typeof base;
+      const v = r.vote as 'up' | 'down' | null;
+      if (!m || !v) continue;
+      base[m][v] += 1;
+      if (m === 'refurb' && r.target_id) {
+        const k = r.target_id as string;
+        if (!bucketRoom.has(k)) bucketRoom.set(k, { up: 0, down: 0 });
+        if (v === 'up') bucketRoom.get(k)!.up += 1;
+        if (v === 'down') bucketRoom.get(k)!.down += 1;
+      }
     }
-    if (r.module === 'refurb' && r.target_id) {
-      const k = r.target_id;
-      if (!roomAgg.has(k)) roomAgg.set(k, { up: 0, down: 0 });
-      const ref = roomAgg.get(k)!;
-      if (r.vote === 'up') ref.up++;
-      if (r.vote === 'down') ref.down++;
+
+    const rate = (u: number, d: number): ModuleStat => {
+      const n = u + d;
+      return { n, approval: n ? u / n : null };
+    };
+
+    const moduleApproval = {
+      rent: rate(base.rent.up, base.rent.down),
+      refurb: rate(base.refurb.up, base.refurb.down),
+      epc: rate(base.epc.up, base.epc.down),
+      financials: rate(base.financials.up, base.financials.down),
+    };
+
+    const refurbPerRoom = Object.fromEntries(
+      [...bucketRoom.entries()].map(([k, v]) => {
+        const n = v.up + v.down;
+        return [k, { n, approval: n ? v.up / n : null }];
+      })
+    );
+
+    // 2) Outcomes-backed metrics (optional)
+    // Rent MAPE: requires achieved_rent_gbp and a predicted rent to compare.
+    // For now, we assume you log predicted mid-rent into property_outcomes.predicted_rent_gbp (if you have it).
+    // If you don't have it yet, we'll return null and the dashboard will use approval% fallback.
+    let rent_mape: number | null = null;
+
+    {
+      const selCols = 'achieved_rent_gbp, predicted_rent_gbp, observed_at, property_id';
+      let q = supabase
+        .from('property_outcomes')
+        .select(selCols)
+        .not('achieved_rent_gbp', 'is', null)
+        .not('predicted_rent_gbp', 'is', null)
+        .gte('observed_at', sinceIso);
+
+      if (propertyId) q = q.eq('property_id', propertyId);
+
+      const { data: outRows, error: outErr } = await q;
+      if (outErr) {
+        // don't throw; outcomes are optional
+        console.warn('[metrics] outcomes rent query error', outErr.message);
+      } else if (outRows && outRows.length) {
+        const pairs = (outRows as any[]).filter(r =>
+          Number.isFinite(r.achieved_rent_gbp) && Number.isFinite(r.predicted_rent_gbp)
+        );
+        if (pairs.length) {
+          const mape = average(
+            pairs.map((r) => {
+              const A = Math.max(1e-9, +r.achieved_rent_gbp);
+              const P = Math.max(1e-9, +r.predicted_rent_gbp);
+              return Math.abs(P - A) / A;
+            })
+          );
+          rent_mape = mape; // 0..1
+        }
+      }
     }
+
+    // EPC accuracy: share of rows with epc_register_match = true
+    let epc_accuracy: number | null = null;
+    {
+      let q = supabase
+        .from('property_outcomes')
+        .select('epc_register_match, observed_at, property_id')
+        .not('epc_register_match', 'is', null)
+        .gte('observed_at', sinceIso);
+
+      if (propertyId) q = q.eq('property_id', propertyId);
+
+      const { data: epcRows, error: epcErr } = await q;
+      if (epcErr) {
+        console.warn('[metrics] outcomes epc query error', epcErr.message);
+      } else if (epcRows && epcRows.length) {
+        const n = epcRows.length;
+        const correct = epcRows.filter((r: any) => !!r.epc_register_match).length;
+        epc_accuracy = n ? correct / n : null;
+      }
+    }
+
+    // Refurb MAPE (if you later log invoices with predicted totals)
+    // Here we look for refurb_invoice_total_gbp and predicted_refurb_total_gbp.
+    let refurb_mape: number | null = null;
+    {
+      let q = supabase
+        .from('property_outcomes')
+        .select('refurb_invoice_total_gbp, predicted_refurb_total_gbp, observed_at, property_id')
+        .not('refurb_invoice_total_gbp', 'is', null)
+        .not('predicted_refurb_total_gbp', 'is', null)
+        .gte('observed_at', sinceIso);
+
+      if (propertyId) q = q.eq('property_id', propertyId);
+
+      const { data: rr, error: rErr } = await q;
+      if (rErr) {
+        console.warn('[metrics] refurb mape query error', rErr.message);
+      } else if (rr && rr.length) {
+        const pairs = (rr as any[]).filter(r =>
+          Number.isFinite(r.refurb_invoice_total_gbp) && Number.isFinite(r.predicted_refurb_total_gbp)
+        );
+        if (pairs.length) {
+          const mape = average(
+            pairs.map((r) => {
+              const A = Math.max(1e-9, +r.refurb_invoice_total_gbp);
+              const P = Math.max(1e-9, +r.predicted_refurb_total_gbp);
+              return Math.abs(P - A) / A;
+            })
+          );
+          refurb_mape = mape;
+        }
+      }
+    }
+
+    return res.status(200).json({
+      windowDays: days,
+      moduleApproval,
+      refurbPerRoom,
+      rent_mape,
+      refurb_mape,
+      epc_accuracy,
+    });
+  } catch (e: any) {
+    console.error('metrics error:', e);
+    return res.status(500).json({ error: 'Server error' });
   }
+}
 
-  const rate = (u: number, d: number) => {
-    const n = u + d;
-    return { n, approval: n ? u / n : null };
-    // approval is 0..1
-  };
-
-  const moduleApproval = Object.fromEntries(
-    [...modAgg.entries()].map(([k, v]) => [k, rate(v.up, v.down)])
-  );
-
-  const refurbPerRoom = Object.fromEntries(
-    [...roomAgg.entries()].map(([k, v]) => [k, rate(v.up, v.down)])
-  );
-
-  /* ---------- 2) Outcomes -> accuracy ---------- */
-  let oq = supabase
-    .from('property_outcomes')
-    .select('property_id, observed_at, achieved_rent_gbp, refurb_invoice_total_gbp, epc_register_match')
-    .gte('observed_at', sinceIso);
-
-  if (property_id) oq = oq.eq('property_id', property_id);
-
-  const { data: outData, error: outErr } = await oq;
-  if (outErr) return res.status(500).json({ error: outErr.message });
-
-  const outs = (outData || []) as OutcomeRow[];
-  const ids = Array.from(new Set(outs.map((o) => o.property_id)));
-
-  let finMap = new Map<string, FinancialsRow>();
-  if (ids.length) {
-    const { data: fins, error: finErr } = await supabase
-      .from('property_financials')
-      .select('property_id, monthly_rent_gbp, total_refurbishment_gbp')
-      .in('property_id', ids);
-    if (finErr) return res.status(500).json({ error: finErr.message });
-    for (const f of (fins || []) as FinancialsRow[]) finMap.set(f.property_id, f);
-  }
-
-  function mape(pred: number[], actual: number[]) {
-    const pairs = pred
-      .map((p, i) => [p, actual[i]] as const)
-      .filter(([p, a]) => Number.isFinite(p) && Number.isFinite(a) && Math.abs(a) > 1e-9);
-    if (!pairs.length) return null;
-    const err =
-      pairs.reduce((acc, [p, a]) => acc + Math.abs((a - p) / a), 0) / pairs.length;
-    return err; // 0..1 (e.g., 0.18 = 18%)
-  }
-
-  // Rent MAPE
-  const rentPred: number[] = [];
-  const rentAct: number[] = [];
-
-  // Refurb MAPE
-  const refPred: number[] = [];
-  const refAct: number[] = [];
-
-  // EPC accuracy
-  let epcYes = 0;
-  let epcNo = 0;
-
-  for (const o of outs) {
-    const f = finMap.get(o.property_id);
-    if (o.achieved_rent_gbp != null && f?.monthly_rent_gbp != null) {
-      rentPred.push(Number(f.monthly_rent_gbp));
-      rentAct.push(Number(o.achieved_rent_gbp));
-    }
-    if (o.refurb_invoice_total_gbp != null && f?.total_refurbishment_gbp != null) {
-      refPred.push(Number(f.total_refurbishment_gbp));
-      refAct.push(Number(o.refurb_invoice_total_gbp));
-    }
-    if (typeof o.epc_register_match === 'boolean') {
-      o.epc_register_match ? epcYes++ : epcNo++;
-    }
-  }
-
-  const rent_mape = mape(rentPred, rentAct);         // 0..1 or null
-  const refurb_mape = mape(refPred, refAct);         // 0..1 or null
-  const epc_accuracy =
-    epcYes + epcNo > 0 ? epcYes / (epcYes + epcNo) : null; // 0..1 or null
-
-  return res.status(200).json({
-    windowDays,
-    moduleApproval,   // { rent:{n,approval}, refurb:{...}, epc:{...}, financials:{...} }
-    refurbPerRoom,    // { <room_id>:{n,approval} }
-    rent_mape,
-    refurb_mape,
-    epc_accuracy,
-  });
+function clampInt(v: number, lo: number, hi: number) {
+  if (!Number.isFinite(v)) return lo;
+  return Math.min(hi, Math.max(lo, v));
+}
+function average(xs: number[]) {
+  return xs.reduce((a, b) => a + b, 0) / Math.max(1, xs.length);
 }

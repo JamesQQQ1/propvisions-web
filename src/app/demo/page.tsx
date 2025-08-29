@@ -9,6 +9,7 @@ import RoomCard, { RefurbRow } from '../../components/RoomCard';
 import PDFViewer from '../../components/PDFViewer';
 import MetricsCards from '../../components/MetricsCards';
 import FeedbackBar from '../../components/FeedbackBar';
+import FinancialSliders, { type Derived as SliderDerived, type Assumptions as SliderAssumptions } from '@/components/FinancialSliders';
 
 /* ---------- branding ---------- */
 const LOGO_SRC = '/propvisions_logo.png'; // lives in /public (note lowercase)
@@ -83,6 +84,49 @@ function ProgressBar({ percent, show }: { percent: number; show: boolean }) {
   );
 }
 
+/* ---------- small math helpers for refurb + prices ---------- */
+function parseWorksArray(works: unknown): any[] {
+  if (Array.isArray(works)) return works;
+  if (typeof works === 'string') {
+    try {
+      const p = JSON.parse(works);
+      return Array.isArray(p) ? p : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function refurbRowTotal(r: RefurbRow): number {
+  const catSum =
+    toInt(r.wallpaper_or_paint_gbp) +
+    toInt(r.flooring_gbp) +
+    toInt(r.plumbing_gbp) +
+    toInt(r.electrics_gbp) +
+    toInt(r.mould_or_damp_gbp) +
+    toInt(r.structure_gbp);
+
+  const worksArr = parseWorksArray(r.works);
+  const worksSum = worksArr.reduce((acc, w) => acc + toInt(w?.subtotal_gbp), 0);
+
+  return Math.max(toInt(r.estimated_total_gbp), catSum, worksSum);
+}
+
+function sumRefurbTotals(rows: RefurbRow[] | undefined | null): number {
+  if (!Array.isArray(rows)) return 0;
+  return rows.reduce((acc, r) => acc + refurbRowTotal(r), 0);
+}
+
+function pickPrice(property: any): number {
+  // preference order: purchase -> guide -> asking -> display
+  const p = Number(property?.purchase_price_gbp ?? 0)
+    || Number(property?.guide_price_gbp ?? 0)
+    || Number(property?.asking_price_gbp ?? 0)
+    || Number(property?.display_price_gbp ?? 0);
+  return Number.isFinite(p) ? p : 0;
+}
+
 /* ---------- page ---------- */
 export default function Page() {
   const [url, setUrl] = useState('');
@@ -97,6 +141,10 @@ export default function Page() {
     refurb_estimates: RefurbRow[];
     pdf_url?: string | null;
   } | null>(null);
+
+  // NEW: sliders state (derived + assumptions)
+  const [slDerived, setSlDerived] = useState<SliderDerived | null>(null);
+  const [slAssumptions, setSlAssumptions] = useState<SliderAssumptions | null>(null);
 
   // UI state: filters + sort
   const [filterType, setFilterType] = useState<string>('All');
@@ -202,6 +250,8 @@ export default function Page() {
     try {
       setError(undefined);
       setData(null);
+      setSlDerived(null);
+      setSlAssumptions(null);
 
       if (usage && usage.remaining === 0) {
         setStatus('failed');
@@ -294,24 +344,7 @@ export default function Page() {
     let list = (data?.refurb_estimates || []) as RefurbRow[];
 
     // drop zero/hidden rows
-    list = list.filter((r) => {
-      const catSum =
-        toInt(r.wallpaper_or_paint_gbp) +
-        toInt(r.flooring_gbp) +
-        toInt(r.plumbing_gbp) +
-        toInt(r.electrics_gbp) +
-        toInt(r.mould_or_damp_gbp) +
-        toInt(r.structure_gbp);
-      const worksArr =
-        Array.isArray(r.works)
-          ? (r.works as any[])
-          : typeof r.works === 'string'
-            ? (() => { try { const p = JSON.parse(r.works as string); return Array.isArray(p) ? p : []; } catch { return []; } })()
-            : [];
-      const worksSum = worksArr.reduce((acc, w) => acc + toInt(w?.subtotal_gbp), 0);
-      const total = Math.max(toInt(r.estimated_total_gbp), catSum, worksSum);
-      return total > 0;
-    });
+    list = list.filter((r) => refurbRowTotal(r) > 0);
 
     if (filterType !== 'All') {
       list = list.filter((r) => {
@@ -327,35 +360,39 @@ export default function Page() {
     );
 
     // Sort
-    const totalOf = (r: RefurbRow) => {
-      const catSum =
-        toInt(r.wallpaper_or_paint_gbp) +
-        toInt(r.flooring_gbp) +
-        toInt(r.plumbing_gbp) +
-        toInt(r.electrics_gbp) +
-        toInt(r.mould_or_damp_gbp) +
-        toInt(r.structure_gbp);
-      const worksArr =
-        Array.isArray(r.works)
-          ? (r.works as any[])
-          : typeof r.works === 'string'
-            ? (() => { try { const p = JSON.parse(r.works as string); return Array.isArray(p) ? p : []; } catch { return []; } })()
-            : [];
-      const worksSum = worksArr.reduce((acc, w) => acc + toInt(w?.subtotal_gbp), 0);
-      return Math.max(toInt(r.estimated_total_gbp), catSum, worksSum);
-    };
-
     const byRoom = (r: RefurbRow) =>
       (r.detected_room_type || r.room_type || 'Other').toString().toLowerCase();
 
     list = [...list].sort((a, b) => {
-      if (sortKey === 'total_desc') return totalOf(b) - totalOf(a);
-      if (sortKey === 'total_asc') return totalOf(a) - totalOf(b);
+      if (sortKey === 'total_desc') return refurbRowTotal(b) - refurbRowTotal(a);
+      if (sortKey === 'total_asc') return refurbRowTotal(a) - refurbRowTotal(b);
       return byRoom(a).localeCompare(byRoom(b));
     });
 
     return list;
   }, [data?.refurb_estimates, filterType, sortKey, minConfidence]);
+
+  // Base numbers for sliders (only when results exist)
+  const basePrice = useMemo(() => pickPrice(data?.property), [data?.property]);
+  const baseRent = useMemo(() => {
+    const v = Number((data?.financials as any)?.monthly_rent_gbp ?? 0);
+    return Number.isFinite(v) ? v : 0;
+  }, [data?.financials]);
+  const baseRefurb = useMemo(() => sumRefurbTotals(data?.refurb_estimates), [data?.refurb_estimates]);
+
+  // Map backend financials to MetricsCards.fallback when sliders not moved yet
+  const fallbackForMetrics = useMemo(() => {
+    const F = (data?.financials || {}) as Record<string, any>;
+    const maybe = (k: string) => (Number.isFinite(+F[k]) ? +F[k] : undefined);
+    return {
+      noiAnnual: maybe('annual_net_income_gbp'),
+      totalInvestment: maybe('total_investment_gbp'),
+      mortgageMonthly: maybe('mortgage_monthly_gbp'),
+      cashflowMonthly: maybe('monthly_cashflow_gbp') ?? (maybe('annual_net_income_gbp') ? (maybe('annual_net_income_gbp') as number) / 12 : undefined),
+      netYieldPct: maybe('net_yield_percent'),
+      roiPctYear1: maybe('roi_percent'),
+    };
+  }, [data?.financials]);
 
   return (
     <main className="p-6 max-w-6xl mx-auto space-y-8">
@@ -426,7 +463,7 @@ export default function Page() {
             inputMode="url"
             aria-invalid={!validUrl && url.length > 0}
           />
-        <button
+          <button
             type="submit"
             disabled={running || !validUrl || (usage ? usage.remaining === 0 : false)}
             className="px-4 py-3 bg-blue-600 text-white rounded-lg disabled:opacity-50"
@@ -572,7 +609,11 @@ export default function Page() {
           {data?.property_id && (
             <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
               <h3 className="text-xl font-semibold mb-3">User Feedback (last 90 days)</h3>
-              <MetricsCards propertyId={data.property_id} />
+              {/* This component expects either `derived/fallback` or (if you have a different MetricsDashboard, wire it instead) */}
+              <MetricsCards
+                derived={slDerived ?? undefined}
+                fallback={fallbackForMetrics}
+              />
             </section>
           )}
 
@@ -662,12 +703,7 @@ export default function Page() {
                         const struct = toInt(est.structure_gbp);
                         const catSum = paint + floor + plumb + elec + damp + struct;
 
-                        const worksArr =
-                          Array.isArray(est.works)
-                            ? (est.works as any[])
-                            : typeof est.works === 'string'
-                              ? (() => { try { const p = JSON.parse(est.works as string); return Array.isArray(p) ? p : []; } catch { return []; } })()
-                              : [];
+                        const worksArr = parseWorksArray(est.works);
                         const worksSum = worksArr.reduce((acc, w) => acc + toInt(w?.subtotal_gbp), 0);
 
                         const total = Math.max(toInt(est.estimated_total_gbp), catSum, worksSum);
@@ -736,7 +772,7 @@ export default function Page() {
             />
           </section>
 
-          {/* Financials */}
+          {/* Financials + Scenario Modelling */}
           <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xl font-semibold">Financial Summary</h3>
@@ -751,6 +787,43 @@ export default function Page() {
                 </a>
               )}
             </div>
+
+            {/* NEW: Live assumptions sliders */}
+            <div className="mb-4">
+              <FinancialSliders
+                priceGBP={basePrice}
+                refurbTotalGBP={baseRefurb}
+                rentMonthlyGBP={baseRent}
+                defaults={{}} // you can prefill e.g. { mgmtPct: 12, voidsPct: 6 }
+                onChange={(a, d) => {
+                  setSlAssumptions(a);
+                  setSlDerived(d);
+                  // emit a metrics refresh if you want other widgets to listen
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('metrics:refresh'));
+                  }
+                }}
+              />
+              {/* Thumbs targeting assumptions vs outputs specifically */}
+              <div className="mt-2 flex items-center gap-3">
+                <FeedbackBar
+                  runId={runIdRef.current}
+                  propertyId={data.property_id}
+                  module="financials"
+                  targetKey="assumptions"
+                  compact
+                />
+                <FeedbackBar
+                  runId={runIdRef.current}
+                  propertyId={data.property_id}
+                  module="financials"
+                  targetKey="outputs"
+                  compact
+                />
+              </div>
+            </div>
+
+            {/* Backend-calculated financials table (for transparency) */}
             {data.financials ? (
               <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
                 {Object.entries(data.financials)
@@ -766,7 +839,7 @@ export default function Page() {
               <p className="text-slate-600">No financials found for this property yet.</p>
             )}
 
-            {/* Financials section-level feedback (kept for module=financials) */}
+            {/* Section-level feedback (kept for module=financials) */}
             <FeedbackBar
               runId={runIdRef.current}
               propertyId={data.property_id}
