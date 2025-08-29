@@ -37,11 +37,13 @@ type MetricCard = {
 };
 
 /* ---------------------- Config ---------------------- */
-/** Targets you showed in your static component */
+/** Targets */
 const TARGETS = {
-  rentBandsPct: 80,      // % inside band
-  refurbAccuracyPct: 80, // % accuracy proxy (100 - mape*100) OR approval%
-  epcMatchPct: 95,       // % match
+  rentBandsPct: 80,         // % inside band
+  refurbAccuracyPct: 80,    // % accuracy proxy (100 - mape*100) OR approval%
+  epcMatchPct: 95,          // % match
+  financialsApprovalPct: 80,// % thumbs-up on assumptions/outputs
+  overallApprovalPct: 85,   // weighted blend of modules
 };
 
 /** How to fetch the API */
@@ -173,6 +175,23 @@ export default function MetricsDashboard({
     }
     const epcN = m.epc?.n ?? undefined;
 
+    // 4) Financials approval (thumbs on assumptions/outputs)
+    const finApproval = m.financials?.approval ?? null;
+    const finN = m.financials?.n ?? undefined;
+    const finAchieved = finApproval == null ? null : Math.round(finApproval * 100);
+
+    // 5) Overall weighted approval (across modules that have data)
+    const weighted = [
+      { appr: rentApproval, n: m.rent?.n ?? 0 },
+      { appr: m.refurb?.approval ?? null, n: m.refurb?.n ?? 0 },
+      { appr: epcAchieved == null ? null : epcAchieved / 100, n: epcN ?? 0 }, // normalize if using accuracy
+      { appr: finApproval, n: finN ?? 0 },
+    ].filter(x => x.appr != null && x.n > 0) as Array<{appr: number; n: number}>;
+    const overallAchieved =
+      weighted.length
+        ? Math.round(100 * (weighted.reduce((acc, x) => acc + x.appr * x.n, 0) / Math.max(1, weighted.reduce((a,b)=>a+b.n,0))))
+        : null;
+
     const arr: MetricCard[] = [
       {
         name: "Rent Bands",
@@ -204,10 +223,37 @@ export default function MetricsDashboard({
         trend: undefined,
         n: epcN,
       },
+      {
+        name: "Financials Approval",
+        target: TARGETS.financialsApprovalPct,
+        achieved: finAchieved,
+        hint: "Thumbs-up rate for assumptions & outputs on the financials module.",
+        trend: undefined,
+        n: finN,
+      },
+      {
+        name: "Overall Approval",
+        target: TARGETS.overallApprovalPct,
+        achieved: overallAchieved,
+        hint: "Weighted blend across modules with data in this window.",
+        trend: undefined,
+        n: weighted.reduce((a, b) => a + b.n, 0) || undefined,
+      },
     ];
 
     return arr;
   }, [data]);
+
+  // Refurb insights: bottom rooms by approval (n >= 3)
+  const refurbInsights = useMemo(() => {
+    const per = data?.refurbPerRoom || {};
+    const rows = Object.entries(per)
+      .map(([room, v]) => ({ room, n: v?.n ?? 0, approval: v?.approval }))
+      .filter(r => r.approval != null && r.n >= 3)
+      .sort((a, b) => (a.approval! - b.approval!))
+      .slice(0, 3);
+    return rows;
+  }, [data?.refurbPerRoom]);
 
   return (
     <section className="section">
@@ -322,13 +368,27 @@ export default function MetricsDashboard({
           })}
         </div>
 
-        {/* Section explainer */}
+        {/* Refurb insights */}
         <div className="mt-6 card p-4">
-          <p className="small text-slate-600">
-            <strong>How this works:</strong> rent/epc cards show approval% now and will switch
-            to true accuracy automatically when outcomes are logged (MAPE for rent/refurb,
-            register match for EPC). The sparkline is a placeholder; we’ll feed it with time-series
-            later.
+          <h4 className="font-semibold mb-2">Refurb insights</h4>
+          {refurbInsights.length ? (
+            <ul className="text-sm text-slate-700 list-disc pl-5 space-y-1">
+              {refurbInsights.map((r) => (
+                <li key={r.room}>
+                  <span className="capitalize">{r.room.replace(/_/g, " ")}</span>:{" "}
+                  <strong>{Math.round((r.approval ?? 0) * 100)}%</strong>{" "}
+                  approval (n={r.n})
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="small text-slate-600">
+              Not enough per-room feedback yet (need n ≥ 3).
+            </p>
+          )}
+          <p className="small text-slate-500 mt-2">
+            <strong>How this works:</strong> highlights the rooms with the lowest approval so you
+            can focus training / prompt tuning where it matters.
           </p>
         </div>
       </div>
