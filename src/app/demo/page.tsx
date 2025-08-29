@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { pollUntilDone, type RunStatus, startAnalyze } from '@/lib/api';
 import RoomCard, { RefurbRow } from '../../components/RoomCard';
+import PDFViewer from '../../components/PDFViewer'; // ⬅️ NEW
 
 /* ---------- branding ---------- */
 const LOGO_SRC = '/propvisions_logo.png'; // lives in /public (note lowercase)
@@ -483,7 +484,7 @@ export default function Page() {
         {/* Samples */}
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-slate-500">Try a sample:</span>
-          {sampleUrls.map((s) => (
+          {['https://www.rightmove.co.uk/properties/123456789#/', 'https://auctions.savills.co.uk/auctions/19-august-2025-211/9-seedhill-road-11942'].map((s) => (
             <button
               key={s}
               type="button"
@@ -754,6 +755,14 @@ export default function Page() {
             {/* quick feedback */}
             <FeedbackBar onSubmit={() => { /* TODO: POST to /api/feedback */ }} />
           </section>
+
+          {/* Report Preview (embedded PDF) */}
+          {data.pdf_url && (
+            <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
+              <h3 className="text-xl font-semibold mb-3">Report Preview</h3>
+              <PDFViewer pdfUrl={data.pdf_url} />
+            </section>
+          )}
         </div>
       )}
     </main>
