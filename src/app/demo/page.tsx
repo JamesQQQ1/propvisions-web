@@ -1,3 +1,4 @@
+// src/app/demo/page.tsx
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -51,6 +52,7 @@ const asPdfProxy = (u?: string | null) =>
 
 type Usage = { count: number; limit: number; remaining: number } | null;
 
+/* ---------- status badge ---------- */
 function StatusBadge({ status }: { status?: RunStatus | 'idle' }) {
   const color =
     status === 'completed'
@@ -191,6 +193,7 @@ export default function Page() {
     'https://auctions.savills.co.uk/auctions/19-august-2025-211/9-seedhill-road-11942',
   ];
 
+  /* ---------- run kickoff ---------- */
   async function handleStart(e: React.FormEvent) {
     e.preventDefault();
     if (submittingRef.current) return;
@@ -235,7 +238,8 @@ export default function Page() {
           signal: controller.signal,
         });
 
-        const resolvedPdf = typeof window !== 'undefined' ? normalizePdfUrl(result.pdf_url) : (result.pdf_url ?? null);
+        const resolvedPdf =
+          typeof window !== 'undefined' ? normalizePdfUrl(result.pdf_url) : (result.pdf_url ?? null);
 
         setStatus('completed');
         setProgress(100);
@@ -422,7 +426,7 @@ export default function Page() {
             inputMode="url"
             aria-invalid={!validUrl && url.length > 0}
           />
-          <button
+        <button
             type="submit"
             disabled={running || !validUrl || (usage ? usage.remaining === 0 : false)}
             className="px-4 py-3 bg-blue-600 text-white rounded-lg disabled:opacity-50"
@@ -522,7 +526,7 @@ export default function Page() {
                   )}
                 </div>
 
-                {/* Overall financials feedback (optional generic signal) */}
+                {/* Financials thumbs (kept here for visibility) */}
                 <FeedbackBar
                   runId={runIdRef.current}
                   propertyId={data.property_id}
@@ -621,16 +625,15 @@ export default function Page() {
             {Array.isArray(refinedRefurbs) && refinedRefurbs.length ? (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-  {refinedRefurbs.map((est, idx) => (
-    <RoomCard
-      key={est.id ?? idx}
-      room={est}
-      runId={runIdRef.current}
-      propertyId={data.property_id}
-    />
-  ))}
-</div>
-
+                  {refinedRefurbs.map((est, idx) => (
+                    <RoomCard
+                      key={est.id ?? idx}
+                      room={est}
+                      runId={runIdRef.current}
+                      propertyId={data.property_id}
+                    />
+                  ))}
+                </div>
 
                 {/* Totals table */}
                 <div className="overflow-x-auto">
@@ -697,6 +700,42 @@ export default function Page() {
             )}
           </section>
 
+          {/* Rent estimate – thumbs */}
+          <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xl font-semibold">Rent Estimate</h3>
+              <span className="text-sm text-slate-600">
+                Modelled: <strong>{formatGBP((data.financials as any)?.monthly_rent_gbp)}</strong> / month
+              </span>
+            </div>
+            <p className="text-sm text-slate-600 mb-2">
+              Tell us if this looks right based on your market knowledge.
+            </p>
+            <FeedbackBar
+              runId={runIdRef.current}
+              propertyId={data.property_id}
+              module="rent"
+            />
+          </section>
+
+          {/* EPC – thumbs */}
+          <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xl font-semibold">EPC Data</h3>
+              <span className="text-sm text-slate-600">
+                Rating: <strong>{data.property?.epc_rating ?? '—'}</strong>
+              </span>
+            </div>
+            <p className="text-sm text-slate-600 mb-2">
+              Does the EPC rating + details we show match the official register for this address?
+            </p>
+            <FeedbackBar
+              runId={runIdRef.current}
+              propertyId={data.property_id}
+              module="epc"
+            />
+          </section>
+
           {/* Financials */}
           <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-between mb-3">
@@ -727,7 +766,7 @@ export default function Page() {
               <p className="text-slate-600">No financials found for this property yet.</p>
             )}
 
-            {/* Optional section-level feedback (financials) */}
+            {/* Financials section-level feedback (kept for module=financials) */}
             <FeedbackBar
               runId={runIdRef.current}
               propertyId={data.property_id}
