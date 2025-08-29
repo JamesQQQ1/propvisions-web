@@ -8,7 +8,7 @@ import Link from "next/link";
 // Fallback to a placeholder so the page still builds locally.
 const CALENDLY_URL =
   process.env.NEXT_PUBLIC_CALENDLY_URL ||
-  "https://calendly.com/your-workspace/propvisions-demo-20min";
+  "https://calendly.com/hello-propvisions/30min";
 
 export default function BookDemoPage() {
   // Add lightweight UTM / context signals you may want in n8n
