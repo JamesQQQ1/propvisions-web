@@ -2,22 +2,20 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, Suspense } from "react";
 
-export default function BookingSuccessPage() {
+function BookingSuccessInner() {
   const qs = useSearchParams();
 
-  // Pull common Calendly redirect params
   const inviteeName =
     qs.get("name") || qs.get("invitee_name") || "";
   const inviteeEmail =
     qs.get("email") || qs.get("invitee_email") || "";
   const eventName =
     qs.get("event") || qs.get("event_type_name") || "your demo call";
-  const startTime = qs.get("start_time") || ""; // Calendly sends ISO string
+  const startTime = qs.get("start_time") || "";
   const timezone = qs.get("timezone") || "";
 
-  // Format startTime → nice local display
   const friendlyTime = useMemo(() => {
     if (!startTime) return "";
     try {
@@ -36,7 +34,6 @@ export default function BookingSuccessPage() {
     }
   }, [startTime, timezone]);
 
-  // Guard: no params? Likely a direct visit → show helpful message
   if (!inviteeName && !inviteeEmail && !startTime) {
     return (
       <section className="section">
@@ -56,7 +53,6 @@ export default function BookingSuccessPage() {
   return (
     <section className="section">
       <div className="container max-w-3xl">
-        {/* Status pill */}
         <div className="mx-auto w-fit mb-4">
           <span className="badge badge-emerald">🎉 Booked</span>
         </div>
@@ -70,7 +66,6 @@ export default function BookingSuccessPage() {
             {inviteeEmail ? ` to ${inviteeEmail}` : ""}.
           </p>
 
-          {/* When block */}
           {(friendlyTime || timezone) && (
             <div className="mt-4 rounded-xl border p-4 bg-slate-50">
               <div className="text-sm text-slate-700">
@@ -83,7 +78,6 @@ export default function BookingSuccessPage() {
             </div>
           )}
 
-          {/* Next steps */}
           <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3">
             <a
               href="https://discord.gg/your-invite-code"
@@ -101,7 +95,6 @@ export default function BookingSuccessPage() {
             </Link>
           </div>
 
-          {/* Manage booking */}
           <div className="mt-6 small text-slate-600">
             <p className="mb-2">
               Need to reschedule or cancel? Use the links in your Calendly email —
@@ -112,7 +105,6 @@ export default function BookingSuccessPage() {
             </p>
           </div>
 
-          {/* Back links */}
           <div className="mt-6 flex flex-wrap gap-3">
             <Link href="/" className="link">← Back to home</Link>
             <Link href="/book-demo" className="link">Book another time</Link>
@@ -120,5 +112,13 @@ export default function BookingSuccessPage() {
         </div>
       </div>
     </section>
+  );
+}
+
+export default function BookingSuccessPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-center">Loading booking details…</div>}>
+      <BookingSuccessInner />
+    </Suspense>
   );
 }
