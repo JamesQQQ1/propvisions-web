@@ -108,9 +108,9 @@ export default function LandingPage() {
                     {/* Optional MP4 (add public/demo.mp4 when ready) */}
                     <source src="/demo.mp4" type="video/mp4" />
                     {/* Your MOV in /public */}
-                    <source src="/mvp_demo_4k.mov" type="video/quicktime" />
+                    <source src="public/mvp_demo_4k.mov" type="video/quicktime" />
                     Your browser does not support embedded videos.{" "}
-                    <a href="/mvp_demo_4k.mov">Download the video</a>.
+                    <a href="public/mvp_demo_4k.mov">Download the video</a>.
                   </video>
                 )}
               </div>
