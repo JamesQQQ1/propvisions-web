@@ -1,7 +1,7 @@
 // src/app/book-demo/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 // If you store the Calendly link in an env var, great.
@@ -133,15 +133,22 @@ function CalendlyFrame({ url }: { url: string }) {
 }
 
 function toCalendlyEmbedUrl(base: string) {
-  // Calendly’s inline embed supports `?hide_event_type_details=1&hide_gdpr_banner=1&primary_color=...`
+  // Calendly’s inline embed supports `embed_domain` and `embed_type` (recommended)
+  // plus nice-to-have flags for a cleaner look.
   try {
     const u = new URL(base);
     const p = u.searchParams;
+
+    // Required/recommended by Calendly for iframe embeds:
+    if (!p.has("embed_domain")) p.set("embed_domain", window.location.hostname);
+    if (!p.has("embed_type")) p.set("embed_type", "Inline");
+
+    // Nice-to-haves / theming
     if (!p.has("hide_event_type_details")) p.set("hide_event_type_details", "1");
     if (!p.has("hide_landing_page_details")) p.set("hide_landing_page_details", "1");
     if (!p.has("hide_gdpr_banner")) p.set("hide_gdpr_banner", "1");
-    // Feel free to theme to your brand hex (no #):
     if (!p.has("primary_color")) p.set("primary_color", "0f172a"); // slate-900
+
     u.search = p.toString();
     return u.toString();
   } catch {
