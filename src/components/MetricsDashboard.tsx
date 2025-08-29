@@ -1,52 +1,65 @@
 // src/components/MetricsDashboard.tsx
 'use client';
 
+import { useEffect, useMemo } from "react";
+import useSWR from "swr";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line
 } from "recharts";
 
-/* ---------------------- Data ---------------------- */
+/* ---------------------- Types ---------------------- */
 
-type Metric = {
-  name: string;
-  target: number;      // 0–100
-  achieved: number;    // 0–100
-  hint: string;        // one-liner explaining the metric
-  trend?: number[];    // small sparkline (0–100)
+type ModuleStat = { n: number; approval: number | null } | undefined;
+
+type MetricsApi = {
+  windowDays: number;
+  moduleApproval?: {
+    rent?: ModuleStat;
+    refurb?: ModuleStat;
+    epc?: ModuleStat;
+    financials?: ModuleStat;
+  };
+  refurbPerRoom?: Record<string, { n: number; approval: number | null }>;
+  // When you later wire outcomes, these will be numbers (e.g., 0.18 for 18% MAPE)
+  rent_mape: number | null;
+  refurb_mape: number | null;
+  epc_accuracy: number | null;
 };
 
-const METRICS: Metric[] = [
-  {
-    name: "Rent Bands",
-    target: 80,
-    achieved: 78,
-    hint: "How closely our rent estimate bands match local market outcomes.",
-    trend: [70, 72, 73, 75, 77, 78],
-  },
-  {
-    name: "Refurb Totals",
-    target: 20,
-    achieved: 22,
-    hint: "Average variance (%) of predicted vs final refurb cost. Lower is better.",
-    trend: [28, 26, 25, 24, 23, 22],
-  },
-  {
-    name: "EPC Match",
-    target: 95,
-    achieved: 94,
-    hint: "Share of listings where our scraped EPC data matches the register.",
-    trend: [90, 91, 92, 92, 93, 94],
-  },
-];
+type MetricCard = {
+  name: string;
+  target: number;            // 0–100 target
+  achieved: number | null;   // 0–100 live value (null -> not enough data)
+  hint: string;              // one-liner explaining the metric
+  trend?: number[];          // optional sparkline (not live yet)
+  n?: number;                // sample size
+};
 
-/* ---------------------- UI bits ---------------------- */
+/* ---------------------- Config ---------------------- */
+/** Targets you showed in your static component */
+const TARGETS = {
+  rentBandsPct: 80,      // % inside band
+  refurbAccuracyPct: 80, // % accuracy proxy (100 - mape*100) OR approval%
+  epcMatchPct: 95,       // % match
+};
 
-function DeltaBadge({ achieved, target }: { achieved: number; target: number }) {
+/** How to fetch the API */
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+/* ---------------------- Small UI bits ---------------------- */
+
+function DeltaBadge({ achieved, target }: { achieved: number | null; target: number }) {
+  if (achieved == null) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-700">
+        not enough data
+      </span>
+    );
+  }
   const diff = Math.round((achieved - target) * 10) / 10;
   const neutral = diff === 0;
   const up = diff > 0;
-
   const cls = neutral
     ? "bg-slate-100 text-slate-700"
     : up
@@ -96,8 +109,8 @@ function Tip({ active, payload, label }: any) {
       }}
     >
       <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
-      <div>achieved: <strong>{a}%</strong></div>
-      <div>target:   <strong>{t}%</strong></div>
+      <div>achieved: <strong>{Math.round(a)}%</strong></div>
+      <div>target:   <strong>{Math.round(t)}%</strong></div>
       <div style={{ marginTop: 2, color: diff === 0 ? "#334155" : diff > 0 ? "#065f46" : "#9a3412" }}>
         delta: <strong>{diff > 0 ? "+" : ""}{diff}%</strong>
       </div>
@@ -105,20 +118,115 @@ function Tip({ active, payload, label }: any) {
   );
 }
 
-/* ---------------------- Component ---------------------- */
+/* ---------------------- Live Component ---------------------- */
+/**
+ * Props:
+ * - propertyId: if provided, shows metrics for that property only; otherwise global window
+ * - days: rolling window (defaults 90)
+ */
+export default function MetricsDashboard({
+  propertyId,
+  days = 90,
+}: {
+  propertyId?: string | null;
+  days?: number;
+}) {
+  const url = propertyId
+    ? `/api/metrics?property_id=${propertyId}&days=${days}`
+    : `/api/metrics?days=${days}`;
 
-export default function MetricsDashboard() {
+  const { data, mutate } = useSWR<MetricsApi>(url, fetcher, { revalidateOnFocus: false });
+
+  // Auto-refresh when any feedback is submitted (FeedbackBar dispatches this)
+  useEffect(() => {
+    const handler = () => mutate();
+    window.addEventListener('metrics:refresh', handler);
+    return () => window.removeEventListener('metrics:refresh', handler);
+  }, [mutate]);
+
+  // Compute achieved% for each card from API response.
+  const cards: MetricCard[] = useMemo(() => {
+    const m = data?.moduleApproval || {};
+
+    // 1) Rent bands: achieved = approval% if present (0..1 -> 0..100)
+    const rentApproval = m.rent?.approval ?? null;
+    const rentN = m.rent?.n ?? undefined;
+    const rentAchieved = rentApproval == null ? null : Math.round(rentApproval * 100);
+
+    // 2) Refurb totals: if refurb_mape exists, show (100 - mape*100). Otherwise fallback to approval%.
+    let refurbAchieved: number | null = null;
+    if (data?.refurb_mape != null) {
+      refurbAchieved = Math.max(0, Math.min(100, Math.round(100 - data.refurb_mape * 100)));
+    } else {
+      const refurbApproval = m.refurb?.approval ?? null;
+      refurbAchieved = refurbApproval == null ? null : Math.round(refurbApproval * 100);
+    }
+    const refurbN = m.refurb?.n ?? undefined;
+
+    // 3) EPC match: if epc_accuracy (0..1) exists, show that; else fallback to approval%.
+    let epcAchieved: number | null = null;
+    if (data?.epc_accuracy != null) {
+      epcAchieved = Math.round(data.epc_accuracy * 100);
+    } else {
+      const epcApproval = m.epc?.approval ?? null;
+      epcAchieved = epcApproval == null ? null : Math.round(epcApproval * 100);
+    }
+    const epcN = m.epc?.n ?? undefined;
+
+    const arr: MetricCard[] = [
+      {
+        name: "Rent Bands",
+        target: TARGETS.rentBandsPct,
+        achieved: rentAchieved,
+        hint: "Share of cases where achieved rent falls inside our predicted band.",
+        trend: undefined,
+        n: rentN,
+      },
+      {
+        name: "Refurb Totals",
+        target: TARGETS.refurbAccuracyPct,
+        achieved: refurbAchieved,
+        hint:
+          data?.refurb_mape != null
+            ? "Accuracy from invoices: 100 - MAPE%. (Higher is better.)"
+            : "Live approval rate (thumbs). Will switch to true accuracy once invoices are logged.",
+        trend: undefined,
+        n: refurbN,
+      },
+      {
+        name: "EPC Match",
+        target: TARGETS.epcMatchPct,
+        achieved: epcAchieved,
+        hint:
+          data?.epc_accuracy != null
+            ? "Confirmed EPC match rate from register."
+            : "Live approval rate (thumbs). Will switch to register-backed accuracy.",
+        trend: undefined,
+        n: epcN,
+      },
+    ];
+
+    return arr;
+  }, [data]);
+
   return (
     <section className="section">
       <div className="container">
         <h2 className="heading-2">Beta Accuracy Goals</h2>
         <p className="small mt-1 text-slate-600">
-          Where our beta stands vs. internal targets. Each metric updates as pilot runs complete.
+          Live metrics for the last <strong>{data?.windowDays ?? days} days</strong>.
+          These update immediately when users submit feedback, and switch to true accuracy when outcomes are available.
         </p>
 
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {METRICS.map((m) => {
-            const chartData = [{ label: m.name, achieved: m.achieved, target: m.target }];
+          {cards.map((m) => {
+            const chartData = [
+              {
+                label: m.name,
+                achieved: m.achieved ?? 0,
+                target: m.target,
+              },
+            ];
             return (
               <Card key={m.name} className="card p-0">
                 <CardContent className="p-6">
@@ -129,7 +237,12 @@ export default function MetricsDashboard() {
                     </div>
                     <Spark values={m.trend} />
                   </div>
-                  <p className="small text-slate-500 mt-1">{m.hint}</p>
+                  <p className="small text-slate-500 mt-1">
+                    {m.hint}
+                    {typeof m.n === 'number' && (
+                      <span className="ml-2 text-slate-400">n={m.n}</span>
+                    )}
+                  </p>
 
                   {/* Two horizontal bars: Achieved vs Target */}
                   <div className="h-44 mt-4">
@@ -153,7 +266,10 @@ export default function MetricsDashboard() {
                         <XAxis type="number" domain={[0, 100]} hide />
                         <YAxis type="category" dataKey="label" hide />
 
-                        <Tooltip cursor={{ fill: "rgba(15,23,42,0.06)" }} content={<Tip />} />
+                        <Tooltip
+                          cursor={{ fill: "rgba(15,23,42,0.06)" }}
+                          content={<Tip />}
+                        />
 
                         {/* Target (thin bar) */}
                         <Bar
@@ -176,17 +292,27 @@ export default function MetricsDashboard() {
                   </div>
 
                   <div className="mt-3 text-sm text-slate-600">
-                    Target: <strong>{m.target}%</strong> — Current Beta: <strong>{m.achieved}%</strong>
+                    Target: <strong>{m.target}%</strong> — Current:{" "}
+                    <strong>{m.achieved == null ? "—" : `${m.achieved}%`}</strong>
+                    {typeof m.n === 'number' && (
+                      <span className="ml-2 text-slate-400">n={m.n}</span>
+                    )}
                   </div>
 
                   {/* Micro-legend */}
                   <div className="mt-2 flex items-center gap-4 text-xs text-slate-500">
                     <span className="inline-flex items-center gap-1">
-                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "linear-gradient(90deg,#34d399,#059669)" }} />
+                      <span
+                        className="inline-block h-2 w-2 rounded-full"
+                        style={{ background: "linear-gradient(90deg,#34d399,#059669)" }}
+                      />
                       Target
                     </span>
                     <span className="inline-flex items-center gap-1">
-                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "linear-gradient(90deg,#38bdf8,#0284c7)" }} />
+                      <span
+                        className="inline-block h-2 w-2 rounded-full"
+                        style={{ background: "linear-gradient(90deg,#38bdf8,#0284c7)" }}
+                      />
                       Achieved
                     </span>
                   </div>
@@ -199,9 +325,10 @@ export default function MetricsDashboard() {
         {/* Section explainer */}
         <div className="mt-6 card p-4">
           <p className="small text-slate-600">
-            <strong>How to read this:</strong> each card compares current beta performance (“Achieved”) against our internal
-            target band (“Target”). The sparkline shows recent movement from pilot runs.
-            <span className="ml-1">All figures are normalised to 0–100.</span>
+            <strong>How this works:</strong> rent/epc cards show approval% now and will switch
+            to true accuracy automatically when outcomes are logged (MAPE for rent/refurb,
+            register match for EPC). The sparkline is a placeholder; we’ll feed it with time-series
+            later.
           </p>
         </div>
       </div>
