@@ -1,0 +1,136 @@
+\documentclass[11pt,a4paper]{article}
+
+% ---------------- Packages ----------------
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{parskip}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{longtable}
+
+% ---------------- Branding ----------------
+\definecolor{Accent}{HTML}{0A7AA6}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=Accent,
+  urlcolor=Accent,
+  citecolor=Accent
+}
+
+\newcommand{\product}{PropVisions}
+
+\begin{document}
+
+\begin{center}
+  {\Huge \bf Service Level Agreement (SLA)} \\[6pt]
+  {\large for Beta Users of \product} \\[12pt]
+  {\small Version 1.0 -- Last Updated: \today}
+\end{center}
+
+\section*{1. Introduction}
+This Service Level Agreement (SLA) outlines the commitments, responsibilities, and expectations between \textbf{\product} (the ``Provider'') and beta testers, pilot users, or paying subscribers (the ``Customer'') regarding the availability, performance, and support of the \product\ platform.
+
+The SLA is designed to provide transparency and confidence while acknowledging that the platform is in a \textbf{Beta stage}, during which improvements, changes, and occasional instability may occur.
+
+\section*{2. Scope of Services}
+The SLA covers:
+\begin{itemize}[left=0pt]
+  \item Web application access (demo, dashboard, exports).
+  \item API services (analysis pipeline, metrics, feedback logging).
+  \item Document exports (PDF, Excel).
+  \item Community support (Discord server, email).
+\end{itemize}
+
+Excluded from this SLA are:
+\begin{itemize}[left=0pt]
+  \item Third-party dependencies (e.g. property portals, external APIs, payment providers).
+  \item User devices, internet connections, or environments outside Provider’s control.
+  \item Force majeure events (natural disasters, global outages, war, government restrictions).
+\end{itemize}
+
+\section*{3. Service Availability}
+\begin{longtable}{@{}p{0.25\linewidth}p{0.70\linewidth}@{}}
+\toprule
+\textbf{Service} & \textbf{Target Availability (Beta)} \\
+\midrule
+Web application uptime & 95\% monthly average \\
+API uptime & 95\% monthly average \\
+PDF/Excel export generation & 90\% monthly average \\
+Discord support & Available 7 days/week, monitored daily \\
+Email support & 1--2 business days response time \\
+\bottomrule
+\end{longtable}
+
+\section*{4. Support and Response Times}
+Issues are triaged into severity levels:
+
+\begin{longtable}{@{}p{0.20\linewidth}p{0.30\linewidth}p{0.40\linewidth}@{}}
+\toprule
+\textbf{Severity} & \textbf{Definition} & \textbf{Target Response} \\
+\midrule
+Critical (P1) & Service completely unavailable or critical business impact. & Acknowledgement within 4 hrs, workaround within 24 hrs. \\
+High (P2) & Major functionality impaired, but workarounds exist. & Acknowledgement within 8 hrs, resolution within 3 days. \\
+Medium (P3) & Minor issues, non-critical bugs, limited impact. & Acknowledgement within 2 business days, resolution within roadmap cycle. \\
+Low (P4) & Cosmetic issues, feature requests, documentation queries. & Added to backlog, prioritised in product roadmap. \\
+\bottomrule
+\end{longtable}
+
+\section*{5. Maintenance and Updates}
+\begin{itemize}[left=0pt]
+  \item Planned maintenance will be communicated at least \textbf{48 hours} in advance via Discord and email.
+  \item Emergency maintenance (e.g. security patches) may occur without notice but will be announced retrospectively.
+  \item Feature updates may be released weekly as part of Beta iteration.
+\end{itemize}
+
+\section*{6. Data Handling and Security}
+\begin{itemize}[left=0pt]
+  \item \product\ aligns with GDPR principles: minimal personal data collection, explicit consent, and clear deletion policies.
+  \item Customer data is processed only for the purposes of providing analysis and exports.
+  \item Data storage: secure, encrypted at rest and in transit.
+  \item Users may request deletion of their data at any time via email or support channel.
+\end{itemize}
+
+\section*{7. Customer Responsibilities}
+\begin{itemize}[left=0pt]
+  \item Provide accurate information when submitting properties for analysis.
+  \item Ensure that submitted URLs are legally accessible and do not infringe third-party rights.
+  \item Respect community guidelines in Discord (no abuse, spam, or disclosure of sensitive personal data).
+  \item Accept that outputs are estimates and not investment advice.
+\end{itemize}
+
+\section*{8. Limitations of Liability}
+\begin{itemize}[left=0pt]
+  \item \product\ provides outputs ``as is'' during Beta; accuracy is not guaranteed.
+  \item The Provider is not liable for financial loss, investment outcomes, or indirect damages arising from use of the platform.
+  \item Maximum liability is limited to the total fees paid by the Customer during the last three months.
+\end{itemize}
+
+\section*{9. SLA Credits (Beta Phase)}
+\begin{itemize}[left=0pt]
+  \item As this is a Beta programme, \textbf{no monetary credits} are issued for downtime or SLA breaches.
+  \item Instead, users may receive extended access, free usage credits, or early access to premium features.
+\end{itemize}
+
+\section*{10. Review and Updates}
+\begin{itemize}[left=0pt]
+  \item This SLA is reviewed every 90 days during Beta.
+  \item Updates are communicated in writing via Discord and email.
+  \item Continued use of the service constitutes acceptance of updated terms.
+\end{itemize}
+
+\section*{11. Acceptance}
+By using the \product\ platform, the Customer acknowledges that they have read, understood, and agree to the terms of this SLA.
+
+\vspace{1cm}
+\noindent \textbf{For and on behalf of \product} \\[12pt]
+
+Signature: \rule{6cm}{0.4pt} \\
+Name: \rule{6cm}{0.4pt} \\
+Role: \rule{6cm}{0.4pt} \\
+Date: \rule{6cm}{0.4pt} \\
+
+\end{document}
