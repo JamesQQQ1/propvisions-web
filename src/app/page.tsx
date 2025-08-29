@@ -98,8 +98,19 @@ export default function LandingPage() {
                     allowFullScreen
                   />
                 ) : (
-                  <video className="h-full w-full" controls playsInline preload="metadata" poster="/demo-poster.jpg">
+                  <video
+                    className="h-full w-full"
+                    controls
+                    playsInline
+                    preload="metadata"
+                    poster="/demo-poster.jpg"
+                  >
+                    {/* Optional MP4 (add public/demo.mp4 when ready) */}
                     <source src="/demo.mp4" type="video/mp4" />
+                    {/* Your MOV in /public */}
+                    <source src="/mvp_demo_4k.mov" type="video/quicktime" />
+                    Your browser does not support embedded videos.{" "}
+                    <a href="/mvp_demo_4k.mov">Download the video</a>.
                   </video>
                 )}
               </div>
@@ -360,7 +371,7 @@ export default function LandingPage() {
       <section id="faq" className="section">
         <div className="container">
           <h2 className="heading-2">FAQs</h2>
-        <Accordion
+          <Accordion
             items={FAQS.map((f) => ({
               title: f.q,
               content: <div className="small text-slate-700">{f.a}</div>
