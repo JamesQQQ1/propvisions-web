@@ -3,12 +3,14 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
-type ClaimRow = {
-  allowed: boolean;
-  remaining: number;
-  count: number;
-  limit: number;
-  day: string; // DATE
+type UsageRow = {
+  id: string | number;
+  ip_hash: string;
+  day: string;                // YYYY-MM-DD (DATE)
+  count: number | null;
+  ua: string | null;
+  last_at: string | null;     // timestamptz
+  limit_override?: number | null;
 };
 
 // ===== ENV =====
@@ -16,10 +18,10 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL!;
 const DAILY_RUN_LIMIT = parseInt(process.env.DAILY_RUN_LIMIT || '3', 10);
+const USAGE_TZ = process.env.USAGE_TZ || 'Europe/London';
 
 // If you want to allow fallback job IDs when n8n doesn't return them, set to "true"
-const ALLOW_MISSING_RUN_IDS =
-  (process.env.ALLOW_MISSING_RUN_IDS || 'false').toLowerCase() === 'true';
+const ALLOW_MISSING_RUN_IDS = (process.env.ALLOW_MISSING_RUN_IDS || 'false').toLowerCase() === 'true';
 
 // ===== SUPABASE (service role; bypasses RLS) =====
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
@@ -33,18 +35,26 @@ function getClientIp(req: NextApiRequest) {
 function sha256(s: string) {
   return crypto.createHash('sha256').update(s).digest('hex');
 }
-function nextUtcMidnightISO() {
-  const now = new Date();
-  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0));
-  return next.toISOString();
+function todayISO() {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: USAGE_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+  const y = parts.find(p => p.type === 'year')!.value;
+  const m = parts.find(p => p.type === 'month')!.value;
+  const d = parts.find(p => p.type === 'day')!.value;
+  return `${y}-${m}-${d}`;
 }
-async function readJsonLoose(resp: Response): Promise<{ obj: any; raw: string }> {
+function nextMidnightISO() {
+  // Compute "tomorrow midnight" in USAGE_TZ and return as UTC ISO string
+  const now = new Date();
+  const localNow = new Date(now.toLocaleString('en-US', { timeZone: USAGE_TZ }));
+  const midnight = new Date(localNow);
+  midnight.setDate(localNow.getDate() + 1);
+  midnight.setHours(0, 0, 0, 0);
+  const offsetMs = localNow.getTime() - now.getTime();
+  return new Date(midnight.getTime() - offsetMs).toISOString();
+}
+async function readJsonLoose(resp: Response): Promise<{obj: any; raw: string}> {
   const raw = await resp.text();
-  try {
-    return { obj: JSON.parse(raw), raw };
-  } catch {
-    return { obj: {}, raw };
-  }
+  try { return { obj: JSON.parse(raw), raw }; } catch { return { obj: {}, raw }; }
 }
 
 // ===== HANDLER =====
@@ -62,36 +72,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const ua = (req.headers['user-agent'] as string) || '';
     const ip = getClientIp(req) || '';
     const ip_hash = sha256(`${ip}::${ua}`);
+    const day = todayISO();
 
-    // === Claim a credit atomically in DB (UTC day) ===
-    const { data: claimRows, error: claimErr } = await supabase.rpc('claim_demo_credit', {
-      p_ip_hash: ip_hash,
-      p_ua: ua,
-      p_token_prefix: null,                // pass a token prefix if you actually use it
-      p_default_limit: DAILY_RUN_LIMIT,
-    });
+    // === Ensure usage row exists (race-safe) ===
+    const upsert = await supabase
+      .from<UsageRow>('demo_usage')
+      .upsert(
+        { ip_hash, day, count: 0, ua },                 // don't set last_at on insert
+        { onConflict: 'ip_hash,day', ignoreDuplicates: false }
+      )
+      .select('*')
+      .single();
 
-    if (claimErr) {
-      console.error('USAGE_RPC_ERR', claimErr);
-      return res.status(500).json({ error: 'usage_claim_failed', details: claimErr.message });
+    if (upsert.error) {
+      console.error('USAGE_UPSERT_ERR', upsert.error);
+      return res.status(500).json({ error: 'usage_insert_failed', details: upsert.error.message });
     }
 
-    const claim: ClaimRow = Array.isArray(claimRows) ? claimRows[0] : claimRows;
-    if (!claim || typeof claim.allowed !== 'boolean') {
-      console.error('USAGE_RPC_BAD_SHAPE', claimRows);
-      return res.status(500).json({ error: 'usage_claim_bad_response' });
+    const row = upsert.data!;
+    const currentCount = row.count ?? 0;
+    const limit = (typeof row.limit_override === 'number' && row.limit_override !== null) ? row.limit_override : DAILY_RUN_LIMIT;
+
+    if (currentCount >= limit) {
+      return res.status(429).json({ error: 'limit_reached', limit, count: currentCount, reset_at: nextMidnightISO() });
     }
 
-    if (!claim.allowed) {
-      return res.status(429).json({
-        error: 'limit_reached',
-        limit: claim.limit,
-        count: claim.count,
-        reset_at: nextUtcMidnightISO(),
-      });
+    // === Increment first (prevents double-submits burning extra runs) ===
+    const inc = await supabase
+      .from<UsageRow>('demo_usage')
+      .update({ count: currentCount + 1, last_at: new Date().toISOString(), ua })
+      .eq('ip_hash', ip_hash)
+      .eq('day', day)
+      .select('*')
+      .single();
+
+    if (inc.error) {
+      console.error('USAGE_UPDATE_ERR', inc.error);
+      return res.status(500).json({ error: 'usage_update_failed', details: inc.error.message });
     }
 
-    // === Enqueue n8n (should immediately return run/execution IDs) ===
+    const usageNow = inc.data!;
+
+    // === Enqueue n8n (Respond Start should immediately return run_id + execution_id) ===
     const enqueue = await fetch(N8N_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -100,19 +122,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ip,
         ip_hash,
         ua,
-        day: claim.day,           // UTC date the credit was claimed against
+        day,
         source: 'propertyscout-ui',
       }),
     });
 
     if (!enqueue.ok) {
       const txt = await enqueue.text().catch(() => '');
-
-      // Roll back one credit on failure
-      await supabase.rpc('refund_demo_credit', { p_ip_hash: ip_hash }).catch((e) => {
-        console.error('USAGE_REFUND_FAIL (enqueue not ok)', e?.message || e);
-      });
-
+      // best-effort rollback of one count
+      await supabase.from('demo_usage')
+        .update({ count: Math.max(0, (usageNow.count ?? 1) - 1) })
+        .eq('ip_hash', ip_hash)
+        .eq('day', day);
       return res.status(502).json({ error: 'enqueue_failed', details: txt.slice(0, 600) });
     }
 
@@ -138,20 +159,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       job?.id ??
       job?.data?.jobId ??
       job?.data?.id ??
-      (ALLOW_MISSING_RUN_IDS ? `${ip_hash}-${claim.day}` : null); // deterministic fallback
+      // final fallback: our own usage row id (only used if ALLOW_MISSING_RUN_IDS is true)
+      (ALLOW_MISSING_RUN_IDS ? String(usageNow.id) : null);
 
-    // Require both IDs unless fallback is explicitly allowed
+    // Require both IDs for your polling flow (unless fallback is explicitly allowed)
     if ((!run_id || !execution_id) && !ALLOW_MISSING_RUN_IDS) {
-      // Roll back one credit if the response is malformed
-      await supabase.rpc('refund_demo_credit', { p_ip_hash: ip_hash }).catch((e) => {
-        console.error('USAGE_REFUND_FAIL (missing IDs)', e?.message || e);
-      });
-
       return res.status(502).json({
         error: 'n8n_missing_run_ids',
         message: 'Webhook response did not include run_id and/or execution_id as JSON keys.',
         received_keys: Object.keys(job || {}),
-        raw: rawJob.slice(0, 800),
+        raw: rawJob.slice(0, 800), // aid debugging without huge logs
       });
     }
 
@@ -159,16 +176,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Cache-Control', 'no-store');
     return res.status(200).json({
       status: 'queued',
+      // canonical snake_case used by your existing polling
       run_id: run_id ?? jobId,
       execution_id: execution_id ?? jobId,
+      // mirrors for any newer client code
       runId: run_id ?? jobId,
       executionId: execution_id ?? jobId,
       jobId: jobId ?? undefined,
       usage: {
-        count: claim.count,                 // count after claiming this run
-        limit: claim.limit,
-        remaining: claim.remaining,
-        reset_at: nextUtcMidnightISO(),     // always UTC midnight
+        count: usageNow.count ?? 0,
+        limit,
+        remaining: Math.max(0, limit - (usageNow.count ?? 0)),
+        reset_at: nextMidnightISO(),
       },
       route: 'analyze.ts',
     });
