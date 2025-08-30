@@ -1,83 +1,81 @@
-/**
- * Demo Access helpers
- * - Reads DEMO_ACCESS_KEYS from env
- * - Accepts CSV and/or whitespace separated
- * - Trims, de-dupes, ignores empty entries
- * - Case-insensitive compare
- */
-
-import type { NextApiResponse } from "next";
+// src/pages/api/demo-auth.ts
+import type { NextApiRequest, NextApiResponse } from "next";
 import { serialize } from "cookie";
 
-export type ParsedKeys = {
-  all: string[];
-  lowerSet: Set<string>;
-};
+type Resp =
+  | { ok: true }
+  | { error: "method_not_allowed" | "missing_code" | "invalid_code" | "server_missing_demo_codes" };
 
-export function parseAllowedKeysFromEnv(): ParsedKeys {
-  const raw =
+function parseAllowedKeysFromEnv(): { all: string[]; lowerSet: Set<string> } {
+  // Primary envs
+  const rawPrimary =
     process.env.DEMO_ACCESS_KEYS ||
     process.env.NEXT_PUBLIC_DEMO_ACCESS_KEYS ||
     "";
-  // Split on commas and whitespace (one or many)
-  const parts = raw.split(/[,\s]+/g).map((s) => s.trim()).filter(Boolean);
-  const dedup = Array.from(new Set(parts));
-  const lowerSet = new Set(dedup.map((s) => s.toLowerCase()));
+
+  // Back-compat: also allow DEMO_CODE / DEMO_CODES
+  const single = (process.env.DEMO_CODE || "").trim();
+  const multi = (process.env.DEMO_CODES || "").trim();
+
+  const list = [
+    ...rawPrimary.split(/[,\s]+/g).map(s => s.trim()),
+    ...multi.split(/[,\s]+/g).map(s => s.trim()),
+    single,
+  ].filter(Boolean);
+
+  const dedup = Array.from(new Set(list));
+  const lowerSet = new Set(dedup.map(s => s.toLowerCase()));
   return { all: dedup, lowerSet };
 }
 
-/**
- * Extracts a user-provided code from:
- * - JSON body: { code } or { accessCode } or { key }
- * - Query string: ?code=... or ?accessCode=... or ?key=...
- * - Header: x-demo-code: ...
- */
-export function extractUserCode(req: any): string | null {
-  const headers = req?.headers || {};
-  const h = (name: string) =>
-    headers[name] ?? headers[name.toLowerCase()] ?? "";
-  const headerCode = String(h("x-demo-code") || "").trim();
-
-  // Body (may already be parsed by Next)
-  const body = typeof req.body === "string" ? safeJson(req.body) : req.body || {};
-  const bodyCode = String(
-    body?.code ?? body?.accessCode ?? body?.key ?? ""
-  ).trim();
-
-  // Query
-  const q = req?.query || {};
-  const queryCode = String(q.code ?? q.accessCode ?? q.key ?? "").trim();
-
-  const firstNonEmpty = [headerCode, bodyCode, queryCode].find(Boolean) || null;
-  return firstNonEmpty;
+function safeJsonParse(s: string) {
+  try { return JSON.parse(s); } catch { return {}; }
 }
 
-function safeJson(s: string) {
-  try {
-    return JSON.parse(s);
-  } catch {
-    return {};
+/** Accepts code from JSON body, query, or x-demo-code header. */
+function extractUserCode(req: NextApiRequest): string | null {
+  const headerCode = (req.headers["x-demo-code"] as string | undefined)?.trim() || "";
+
+  const bodyRaw = typeof req.body === "string" ? safeJsonParse(req.body) : (req.body || {});
+  const bodyCode = String(bodyRaw?.code ?? bodyRaw?.accessCode ?? bodyRaw?.key ?? "").trim();
+
+  const q = req.query || {};
+  const queryCode = String((q.code ?? q.accessCode ?? q.key) ?? "").trim();
+
+  return [headerCode, bodyCode, queryCode].find(Boolean) || null;
+}
+
+export default function handler(req: NextApiRequest, res: NextApiResponse<Resp>) {
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
+    return res.status(405).json({ error: "method_not_allowed" });
   }
-}
 
-export function isAllowed(code: string, lowerSet: Set<string>): boolean {
-  return lowerSet.has(code.toLowerCase());
-}
+  const { all, lowerSet } = parseAllowedKeysFromEnv();
+  if (!all.length) {
+    return res.status(500).json({ error: "server_missing_demo_codes" });
+  }
 
-/* ---------- NEW HELPERS ---------- */
-export function clearAccessCookie() {
-  // Delete cookie by setting expiry in the past
-  return serialize("ps_demo", "", {
+  const code = extractUserCode(req);
+  if (!code) {
+    return res.status(400).json({ error: "missing_code" });
+  }
+
+  const ok = lowerSet.has(code.toLowerCase());
+  if (!ok) {
+    return res.status(401).json({ error: "invalid_code" });
+  }
+
+  const isProd = process.env.NODE_ENV === "production";
+  const cookie = serialize("ps_demo", "ok", {
     path: "/",
-    maxAge: -1,
+    maxAge: 60 * 60 * 24 * 7, // 7 days
     httpOnly: true,
     sameSite: "lax",
-    secure: true,
+    secure: isProd, // allow on localhost
   });
-}
 
-export function json(res: NextApiResponse, status: number, data: any) {
-  res.status(status).setHeader("Content-Type", "application/json");
-  res.end(JSON.stringify(data));
-  return res;
+  res.setHeader("Set-Cookie", cookie);
+  res.setHeader("Cache-Control", "no-store");
+  return res.status(200).json({ ok: true });
 }
