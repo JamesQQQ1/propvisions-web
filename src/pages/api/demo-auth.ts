@@ -1,60 +1,83 @@
-// src/pages/api/demo-auth.ts
-import type { NextApiRequest, NextApiResponse } from "next";
-import { parseAllowedKeysFromEnv, extractUserCode, isAllowed } from "@/lib/demoAuth";
+/**
+ * Demo Access helpers
+ * - Reads DEMO_ACCESS_KEYS from env
+ * - Accepts CSV and/or whitespace separated
+ * - Trims, de-dupes, ignores empty entries
+ * - Case-insensitive compare
+ */
 
-const COOKIE_NAME = "ps_demo";
-const COOKIE_VALUE = "ok";
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+import type { NextApiResponse } from "next";
+import { serialize } from "cookie";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export type ParsedKeys = {
+  all: string[];
+  lowerSet: Set<string>;
+};
+
+export function parseAllowedKeysFromEnv(): ParsedKeys {
+  const raw =
+    process.env.DEMO_ACCESS_KEYS ||
+    process.env.NEXT_PUBLIC_DEMO_ACCESS_KEYS ||
+    "";
+  // Split on commas and whitespace (one or many)
+  const parts = raw.split(/[,\s]+/g).map((s) => s.trim()).filter(Boolean);
+  const dedup = Array.from(new Set(parts));
+  const lowerSet = new Set(dedup.map((s) => s.toLowerCase()));
+  return { all: dedup, lowerSet };
+}
+
+/**
+ * Extracts a user-provided code from:
+ * - JSON body: { code } or { accessCode } or { key }
+ * - Query string: ?code=... or ?accessCode=... or ?key=...
+ * - Header: x-demo-code: ...
+ */
+export function extractUserCode(req: any): string | null {
+  const headers = req?.headers || {};
+  const h = (name: string) =>
+    headers[name] ?? headers[name.toLowerCase()] ?? "";
+  const headerCode = String(h("x-demo-code") || "").trim();
+
+  // Body (may already be parsed by Next)
+  const body = typeof req.body === "string" ? safeJson(req.body) : req.body || {};
+  const bodyCode = String(
+    body?.code ?? body?.accessCode ?? body?.key ?? ""
+  ).trim();
+
+  // Query
+  const q = req?.query || {};
+  const queryCode = String(q.code ?? q.accessCode ?? q.key ?? "").trim();
+
+  const firstNonEmpty = [headerCode, bodyCode, queryCode].find(Boolean) || null;
+  return firstNonEmpty;
+}
+
+function safeJson(s: string) {
   try {
-    if (req.method !== "POST" && req.method !== "GET") {
-      res.setHeader("Allow", "GET, POST");
-      return res.status(405).json({ ok: false, error: "method_not_allowed" });
-    }
-
-    const { all, lowerSet } = parseAllowedKeysFromEnv();
-    if (!all.length) {
-      return res.status(500).json({
-        ok: false,
-        error: "server_not_configured",
-        hint: "Set DEMO_ACCESS_KEYS in your environment (comma or space separated)"
-      });
-    }
-
-    const provided = extractUserCode(req);
-
-    // Diagnostics (safe): only lengths + first/last char — no secrets
-    const diag = {
-      allowed_keys_count: all.length,
-      provided_len: provided ? provided.length : 0,
-      provided_preview: provided ? { start: provided[0], end: provided[provided.length - 1] } : null,
-      method: req.method,
-    };
-
-    if (!provided) {
-      return res.status(400).json({ ok: false, error: "missing_code", ...diag });
-    }
-
-    if (!isAllowed(provided, lowerSet)) {
-      return res.status(401).json({ ok: false, error: "invalid_code", ...diag });
-    }
-
-    // Success → set cookie
-    const secure = process.env.NODE_ENV === "production";
-    // Set-Cookie header (string form for broad compatibility)
-    const cookie = [
-      `${COOKIE_NAME}=${COOKIE_VALUE}`,
-      "Path=/",
-      `Max-Age=${COOKIE_MAX_AGE}`,
-      "SameSite=Lax",
-      secure ? "Secure" : "",
-      "HttpOnly"
-    ].filter(Boolean).join("; ");
-
-    res.setHeader("Set-Cookie", cookie);
-    return res.status(200).json({ ok: true, message: "granted", ...diag });
-  } catch (e: any) {
-    return res.status(500).json({ ok: false, error: "server_error", detail: String(e?.message || e) });
+    return JSON.parse(s);
+  } catch {
+    return {};
   }
+}
+
+export function isAllowed(code: string, lowerSet: Set<string>): boolean {
+  return lowerSet.has(code.toLowerCase());
+}
+
+/* ---------- NEW HELPERS ---------- */
+export function clearAccessCookie() {
+  // Delete cookie by setting expiry in the past
+  return serialize("ps_demo", "", {
+    path: "/",
+    maxAge: -1,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: true,
+  });
+}
+
+export function json(res: NextApiResponse, status: number, data: any) {
+  res.status(status).setHeader("Content-Type", "application/json");
+  res.end(JSON.stringify(data));
+  return res;
 }
