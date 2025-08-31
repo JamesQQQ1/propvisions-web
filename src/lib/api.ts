@@ -116,15 +116,15 @@ export async function pollUntilDone(
   run_id: string,
   opts: {
     intervalMs?: number
-    timeoutMs?: number | 0 | null // 0/null => no timeout
+    timeoutMs?: number | 0 | null // default below; pass 0/null to disable
     onTick?: (s: RunStatus) => void
     signal?: AbortSignal
   } = {}
 ): Promise<StatusResponse> {
   const baseInterval = Math.max(750, opts.intervalMs ?? 3000)
 
-  // Default: NO TIMEOUT (pass a value if you want a cap)
-  const timeoutMs = opts.timeoutMs ?? 0
+  // Default timeout = 1 hour (override by passing opts.timeoutMs; use 0/null to disable)
+  const timeoutMs = opts.timeoutMs ?? 60 * 60 * 1000
   const startTs = Date.now()
 
   // Backoff state for transient errors
@@ -166,7 +166,8 @@ export async function pollUntilDone(
       }
 
       // Transient errors: 5xx / 429 / 408 / network
-      const transient = !e?.status || e.status >= 500 || e.status === 429 || e.status === 408 || e.code === 'NETWORK'
+      const transient =
+        !e?.status || e.status >= 500 || e.status === 429 || e.status === 408 || e.code === 'NETWORK'
       if (transient) {
         backoffMs = backoffMs ? Math.min(backoffMs * 2, backoffMax) : baseInterval
         const jitter = Math.floor(Math.random() * 400)
