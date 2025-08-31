@@ -89,11 +89,11 @@ export default function LandingPage() {
                   poster="/demo-poster.jpg"
                 >
                   {/* Primary (your local MOV in /public) */}
-                  <source src="/PropVisions Dem.mp4" />
+                  <source src="/PropVisions Demo.mp4" />
                   {/* Optional MP4 fallback if you add /public/demo.mp4 */}
                   <source src="/demo.mp4" type="video/mp4" />
                   Your browser does not support embedded videos.{" "}
-                  <a href="/mvp_demo_4k.mov">Download the video</a>.
+                  <a href="/PropVisions Demo.mp4">Download the video</a>.
                 </video>
               </div>
               <div className="card-footer">
