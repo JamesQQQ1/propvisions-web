@@ -88,7 +88,7 @@ export async function pollUntilDone(
   } = {}
 ): Promise<StatusResponse> {
   const intervalMs = Math.max(750, opts.intervalMs ?? 2500)
-  const timeoutMs = opts.timeoutMs ?? 10 * 60 * 1000
+  const timeoutMs = opts.timeoutMs ?? 30 * 60 * 1000
   const started = Date.now()
 
   while (true) {
