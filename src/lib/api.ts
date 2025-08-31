@@ -22,27 +22,48 @@ type StatusResponse = {
 }
 
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
-  const res = await fetch(input, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
-  })
+  let res: Response
+  try {
+    res = await fetch(input, {
+      // prevent caching unless caller overrides
+      cache: init?.cache ?? 'no-store',
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(init?.headers || {}),
+      },
+    })
+  } catch (err: any) {
+    // Network / CORS / offline / aborted
+    if (err?.name === 'AbortError') {
+      const e: any = new Error('Request aborted')
+      e.code = 'ABORTED'
+      throw e
+    }
+    const e: any = new Error(`Failed to fetch: ${err?.message || 'network error'}`)
+    e.code = 'NETWORK'
+    throw e
+  }
+
   const text = await res.text()
   let json: any
   try {
     json = text ? JSON.parse(text) : {}
   } catch {
     if (!res.ok) {
-      const err = new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`) as any
-      ;(err as any).status = res.status
+      const err: any = new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`)
+      err.status = res.status
       throw err
     }
+    // OK but not JSON
     return text as any
   }
+
   if (!res.ok) {
-    const err = new Error(json?.error || `HTTP ${res.status}`) as any
+    const err: any = new Error(json?.error || `HTTP ${res.status}`)
     err.status = res.status
     err.body = json
-    if (json?.usage) (err as any).usage = json.usage
+    if (json?.usage) err.usage = json.usage
     throw err
   }
   return json as T
@@ -59,7 +80,7 @@ export async function startAnalyze(url: string): Promise<{ run_id: string; execu
 
   if (!run_id || !execution_id) {
     const err: any = new Error('Workflow did not return a valid run_id/execution_id')
-    ;(err as any).usage = (payload as any)?.usage
+    err.usage = (payload as any)?.usage
     throw err
   }
 
@@ -67,10 +88,23 @@ export async function startAnalyze(url: string): Promise<{ run_id: string; execu
 }
 
 export async function getStatus(run_id: string): Promise<StatusResponse> {
-  return await fetchJson<StatusResponse>(`/api/status?run_id=${encodeURIComponent(run_id)}`)
+  return await fetchJson<StatusResponse>(
+    `/api/status?run_id=${encodeURIComponent(run_id)}`,
+    {
+      method: 'GET',
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        Pragma: 'no-cache',
+      },
+    }
+  )
 }
 
-export async function stopRun(run_id: string, execution_id: string): Promise<{ ok: boolean; message?: string }> {
+export async function stopRun(
+  run_id: string,
+  execution_id: string
+): Promise<{ ok: boolean; message?: string }> {
   const resp = await fetchJson<{ ok: boolean; message?: string }>(`/api/stop`, {
     method: 'POST',
     body: JSON.stringify({ run_id, execution_id }),
@@ -82,37 +116,66 @@ export async function pollUntilDone(
   run_id: string,
   opts: {
     intervalMs?: number
-    timeoutMs?: number
+    timeoutMs?: number | 0 | null // 0/null => no timeout
     onTick?: (s: RunStatus) => void
     signal?: AbortSignal
   } = {}
 ): Promise<StatusResponse> {
-  const intervalMs = Math.max(750, opts.intervalMs ?? 2500)
-  const timeoutMs = opts.timeoutMs ?? 30 * 60 * 1000
-  const started = Date.now()
+  const baseInterval = Math.max(750, opts.intervalMs ?? 3000)
+
+  // Default: NO TIMEOUT (pass a value if you want a cap)
+  const timeoutMs = opts.timeoutMs ?? 0
+  const startTs = Date.now()
+
+  // Backoff state for transient errors
+  let backoffMs = 0
+  const backoffMax = 10_000 // cap at 10s
 
   while (true) {
-    if (opts.signal?.aborted) throw new Error('Polling aborted')
-    if (timeoutMs && Date.now() - started > timeoutMs) throw new Error('Polling timed out')
-
-    let statusPayload: StatusResponse | undefined
-    try {
-      statusPayload = await getStatus(run_id)
-    } catch (e: any) {
-      if (e?.status === 404) {
-        opts.onTick?.('queued')
-        await new Promise((r) => setTimeout(r, intervalMs))
-        continue
-      }
+    if (opts.signal?.aborted) {
+      const e: any = new Error('Polling aborted')
+      e.code = 'ABORTED'
       throw e
     }
+    if (timeoutMs && Date.now() - startTs > timeoutMs) {
+      throw new Error('Polling timed out')
+    }
 
-    const s = statusPayload.status
-    opts.onTick?.(s)
+    try {
+      const statusPayload = await getStatus(run_id) // no-store
+      // Reset backoff after success
+      backoffMs = 0
 
-    if (s === 'completed') return statusPayload
-    if (s === 'failed') throw new Error(statusPayload.error || 'Run failed')
+      const s = statusPayload.status
+      opts.onTick?.(s)
 
-    await new Promise((r) => setTimeout(r, intervalMs))
+      if (s === 'completed') return statusPayload
+      if (s === 'failed') throw new Error(statusPayload.error || 'Run failed')
+
+      // keep polling
+      await new Promise((r) => setTimeout(r, baseInterval))
+    } catch (e: any) {
+      // Ignore user/navigation aborts
+      if (e?.code === 'ABORTED' || e?.name === 'AbortError') throw e
+
+      // Treat 404 as "queued" (race before status row exists)
+      if (e?.status === 404) {
+        opts.onTick?.('queued')
+        await new Promise((r) => setTimeout(r, baseInterval))
+        continue
+      }
+
+      // Transient errors: 5xx / 429 / 408 / network
+      const transient = !e?.status || e.status >= 500 || e.status === 429 || e.status === 408 || e.code === 'NETWORK'
+      if (transient) {
+        backoffMs = backoffMs ? Math.min(backoffMs * 2, backoffMax) : baseInterval
+        const jitter = Math.floor(Math.random() * 400)
+        await new Promise((r) => setTimeout(r, backoffMs + jitter))
+        continue
+      }
+
+      // Non-transient → bubble up
+      throw e
+    }
   }
 }
