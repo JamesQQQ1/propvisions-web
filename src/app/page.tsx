@@ -257,7 +257,7 @@ export default function LandingPage() {
       <section className="py-12 bg-slate-100">
         <div className="container flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="text-white">
-            <h3 className="text-lg font-semibold">Ready to see it on your deals?</h3>
+            <h3 className="text-bg font-semibold">Ready to see it on your deals?</h3>
             <p className="small text-slate-300 mt-1">We’ll run a live example and share the export pack.</p>
           </div>
           <Link href="/book-demo" className="btn btn-onColor bg-white text-slate-900 px-4 py-2 text-sm">
