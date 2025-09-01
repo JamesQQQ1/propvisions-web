@@ -22,7 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <NavSelect />
               <Link href="/" className="flex items-center justify-center">
                 <Image
-                  src="/propvisions_logo_no_text.png"
+                  src="/propvisions_logo_croped.png"
                   alt="PropVisions logo"
                   width={84}
                   height={22}
@@ -41,7 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="hidden md:flex items-center justify-between">
               <Link href="/" className="flex items-center gap-2">
                 <Image
-                  src="/propvisions_logo_no_text.png"
+                  src="/propvisions_logo_croped.png"
                   alt="PropVisions logo"
                   width={96}
                   height={24}
