@@ -254,7 +254,7 @@ export default function LandingPage() {
       </section>
 
       {/* FINAL CTA */}
-      <section className="py-12 bg-grey-900">
+      <section className="py-12 bg-slate-100">
         <div className="container flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="text-white">
             <h3 className="text-lg font-semibold">Ready to see it on your deals?</h3>
