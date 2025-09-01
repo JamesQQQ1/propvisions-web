@@ -9,7 +9,9 @@ export default function RoadmapPage() {
       <div className="container grid grid-cols-1 lg:grid-cols-12 gap-10">
         <div className="lg:col-span-7 space-y-6">
           <h1 className="heading-2">Roadmap</h1>
-          <p className="small text-slate-600">Sequenced delivery with accuracy hardening and operational reliability.</p>
+          <p className="small text-slate-600">
+            Clear delivery plan focused on accuracy, reliability, and everyday usability.
+          </p>
 
           <RoadmapTimeline />
 
@@ -21,19 +23,19 @@ export default function RoadmapPage() {
                 content: (
                   <div className="space-y-2 small text-slate-700">
                     <p>
-                      Not enabled in the public demo due to partner/API restrictions. Launch plan includes unified search across sources,
-                      de-duplication and canonical records by address+agent+media.
+                      Not enabled in the public demo yet because of partner/API rules. At launch we’ll offer a unified search across sources and
+                      merge duplicate listings so you see one clean record per property.
                     </p>
-                    <p className="text-slate-500">Demo supports many agent/auction URLs and other compatible pages.</p>
+                    <p className="text-slate-500">The demo supports many agent and auction URLs and other compatible pages.</p>
                   </div>
                 )
               },
               {
-                title: "Accuracy bands & confidence",
+                title: "Accuracy ranges & confidence",
                 content: (
                   <div className="space-y-2 small text-slate-700">
-                    <p>Confidence reflects listing quality and regional nuance. Wider bands prompt manual checks.</p>
-                    <p>User edits become priors to narrow bands over time.</p>
+                    <p>Confidence depends on listing quality and local nuance. Wider ranges prompt a quick manual check.</p>
+                    <p>Your edits become local baselines, so ranges tighten over time.</p>
                   </div>
                 )
               },
@@ -41,8 +43,8 @@ export default function RoadmapPage() {
                 title: "Mortgage module",
                 content: (
                   <div className="space-y-2 small text-slate-700">
-                    <p>Today: standard assumptions included in cash-flow.</p>
-                    <p>Coming: IO/repayment products, fees, ERC modelling, and forward-rate scenarios with DSCR/ICR.</p>
+                    <p>Today: standard assumptions are included in cash flow.</p>
+                    <p>Coming: interest-only or repayment products, product fees, early-repayment charges, and “what-if” rate paths aligned to lender tests.</p>
                   </div>
                 )
               },
@@ -54,16 +56,16 @@ export default function RoadmapPage() {
           <div className="card p-6 space-y-3">
             <h3 className="card-title">Why PropVisions is different</h3>
             <ul className="small text-slate-700 space-y-2 list-disc pl-5">
-              <li><strong>Automation across the flow</strong>: ingestion → analysis → reporting → alerts</li>
-              <li><strong>Transparency by default</strong>: each figure maps to a line-item & assumption</li>
-              <li><strong>Human-in-the-loop</strong>: your edits improve local priors</li>
+              <li><strong>End-to-end automation</strong>: paste a link → analysis → report → alerts</li>
+              <li><strong>Built-in transparency</strong>: every figure links to an input or line item</li>
+              <li><strong>Human in the loop</strong>: your edits improve local results</li>
               <li><strong>Shareable outputs</strong>: lender-ready PDF & Excel</li>
             </ul>
           </div>
 
           <div className="rounded-2xl bg-slate-50 border p-6 mt-6">
             <div className="font-semibold">Join the beta cohort</div>
-            <div className="small text-slate-600 mt-1">Lock in pricing and influence the roadmap for your patch.</div>
+            <div className="small text-slate-600 mt-1">Lock in pricing and help shape the roadmap for your patch.</div>
             <a className="btn btn-primary mt-4 inline-block" href="/book-demo">Book a demo</a>
           </div>
         </aside>
@@ -78,11 +80,11 @@ function RoadmapTimeline() {
     {
       tag: "Now (Beta)",
       points: [
-        "URL→analysis for agent/auction pages",
-        "Refurb from photos (room bands, confidence)",
-        "Rent bands & ROI with transparent inputs",
+        "URL → analysis for agent/auction pages",
+        "Works from photos (room totals with confidence)",
+        "Rent ranges & ROI with clear inputs",
         "PDF/Excel exports",
-        "Alerts & logging"
+        "Alerts and basic activity logs"
       ],
       status: "active",
     },
@@ -90,8 +92,8 @@ function RoadmapTimeline() {
       tag: "Launch (Public)",
       points: [
         "Unified search across sources",
-        "Compliant Rightmove/Zoopla integrations",
-        "De-duplication & canonical records"
+        "Rightmove/Zoopla integrations (where available)",
+        "Merge duplicates; one clean record per property"
       ],
       status: "next",
     },
@@ -99,7 +101,7 @@ function RoadmapTimeline() {
       tag: "Q2",
       points: [
         "Off-market module & compliant outreach",
-        "Status-change watcher (new/price drop/returning)",
+        "Status-change watcher (new, price drop, back on market)",
         "Saved searches & daily digests"
       ],
       status: "planned",
@@ -107,8 +109,8 @@ function RoadmapTimeline() {
     {
       tag: "Q3",
       points: [
-        "Mortgage: IO/repayment, fees, ERCs",
-        "Forward-rate scenarios & DSCR/ICR",
+        "Mortgage options: interest-only/repayment, product fees, ERCs",
+        "Rate-path scenarios aligned to lender tests",
         "Remortgage timing assistant"
       ],
       status: "planned",
@@ -144,7 +146,11 @@ function Accordion({ items }: { items: Array<{ title: string; content: ReactNode
         const open = i === openIdx;
         return (
           <div key={it.title} className="rounded-xl border">
-            <button className="w-full flex items-center justify-between px-4 py-3 text-left" onClick={() => setOpenIdx(open ? null : i)} aria-expanded={open}>
+            <button
+              className="w-full flex items-center justify-between px-4 py-3 text-left"
+              onClick={() => setOpenIdx(open ? null : i)}
+              aria-expanded={open}
+            >
               <span className="font-medium">{it.title}</span>
               <span className={`transition-transform ${open ? "rotate-180" : ""}`} aria-hidden>▾</span>
             </button>

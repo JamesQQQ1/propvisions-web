@@ -78,7 +78,7 @@ export default function ContactPage() {
         </div>
         <div className="flex items-center gap-2">
           <Link href="/demo-access?next=/demo" className="btn btn-primary">
-            Try the Demo
+            See the demo
           </Link>
           <Link href="/" className="btn">
             Home
@@ -91,7 +91,7 @@ export default function ContactPage() {
         <span className="badge">We usually reply within one business day</span>
         <h1 className="heading-2 mt-3">Contact the PropVisions team</h1>
         <p className="subhead mt-2">
-          Questions about the demo, integrations, or partnerships? Send us a note and we’ll get back to you quickly.
+          Questions about the demo, pricing, setup, or partnerships? Send us a note and we’ll get back to you quickly.
         </p>
       </header>
 
@@ -103,7 +103,7 @@ export default function ContactPage() {
               <div className="icon-wrap"><ChatIcon /></div>
               <div>
                 <h3 className="card-title">Sales & product</h3>
-                <p className="card-text">Walkthroughs, feature questions, and pricing.</p>
+                <p className="card-text">Walkthroughs, features, and pricing.</p>
               </div>
             </div>
           </article>
@@ -144,7 +144,7 @@ export default function ContactPage() {
                 <h3 className="text-xl font-semibold">Thanks — your message is in!</h3>
               </div>
               <p className="small mt-2 text-slate-700">
-                We’ll review and get back to you shortly. If it’s urgent, just re-submit with “Urgent” in the subject.
+                We’ll review and get back to you shortly. If it’s urgent, re-submit with “Urgent” in the subject.
               </p>
             </div>
           ) : (
@@ -225,7 +225,7 @@ export default function ContactPage() {
                   value={form.message}
                   onChange={(e) => setForm({ ...form, message: e.target.value })}
                   className="mt-1 w-full min-h-[140px] rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Tell us about your use case, and include any example URLs…"
+                  placeholder="Tell us about your needs and include any example URLs…"
                   maxLength={2000}
                   required
                 />

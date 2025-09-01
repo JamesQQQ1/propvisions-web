@@ -11,7 +11,7 @@ const CALENDLY_URL =
   "https://calendly.com/hello-propvisions/30min";
 
 export default function BookDemoPage() {
-  // Add lightweight UTM / context signals you may want in n8n
+  // Add lightweight context signals you may want to see in your inbox/CRM
   // (Calendly forwards query params through to invites + webhooks)
   const [embedUrl, setEmbedUrl] = useState(CALENDLY_URL);
 
@@ -22,10 +22,6 @@ export default function BookDemoPage() {
       const params = new URLSearchParams(window.location.search);
       if (!params.has("source")) params.set("source", "website");
       if (!params.has("campaign")) params.set("campaign", "pre-demo-beta");
-      // If you ever want to forward a propertyId or email as a query, you can add it here:
-      // if (!params.has("email") && window.localStorage.getItem("email")) {
-      //   params.set("email", window.localStorage.getItem("email")!);
-      // }
       url.search = params.toString();
       setEmbedUrl(url.toString());
     } catch {
@@ -50,14 +46,14 @@ export default function BookDemoPage() {
             </h1>
 
             <p className="subhead">
-              20-minute walkthrough covering ingestion from a property link, refurb from photos,
-              rent/value checks, and the full financials stack—plus exports. Tailored to your use-case.
+              A clear 20-minute walkthrough: paste a property link, we read the photos to estimate works,
+              check rent and end value, and build the full numbers—then export. Tailored to your needs.
             </p>
 
             <ul className="small text-slate-700 space-y-2 list-disc pl-5">
-              <li>Paste a real listing and watch a full run (90s end-to-end).</li>
-              <li>Adjust assumptions (voids, management, leverage) and see ROI live.</li>
-              <li>Review outputs: investor-ready PDF and Excel with every line item.</li>
+              <li>Bring a real listing and watch a full run (~90 seconds end-to-end).</li>
+              <li>Tweak assumptions (voids, management, mortgage) and see results update live.</li>
+              <li>Review the outputs: investor-ready PDF and a traceable Excel breakdown.</li>
             </ul>
 
             <div className="flex flex-wrap gap-3">
@@ -73,8 +69,8 @@ export default function BookDemoPage() {
               <strong>What happens after booking?</strong>
               <ol className="list-decimal pl-5 mt-2 space-y-1">
                 <li>Instant confirmation.</li>
-                <li>Your slot appears in the calender.</li>
-                <li>Our system adds you to beta users list and sends you prep notes</li>
+                <li>Your slot appears in the calendar.</li>
+                <li>We add you to the beta list and send short prep notes.</li>
               </ol>
             </div>
           </div>
@@ -133,17 +129,17 @@ function CalendlyFrame({ url }: { url: string }) {
 }
 
 function toCalendlyEmbedUrl(base: string) {
-  // Calendly’s inline embed supports `embed_domain` and `embed_type` (recommended)
-  // plus nice-to-have flags for a cleaner look.
+  // Calendly’s inline embed supports `embed_domain` and `embed_type`
+  // plus optional flags for a cleaner look.
   try {
     const u = new URL(base);
     const p = u.searchParams;
 
-    // Required/recommended by Calendly for iframe embeds:
+    // Recommended by Calendly for iframe embeds:
     if (!p.has("embed_domain")) p.set("embed_domain", window.location.hostname);
     if (!p.has("embed_type")) p.set("embed_type", "Inline");
 
-    // Nice-to-haves / theming
+    // Cleaner UI
     if (!p.has("hide_event_type_details")) p.set("hide_event_type_details", "1");
     if (!p.has("hide_landing_page_details")) p.set("hide_landing_page_details", "1");
     if (!p.has("hide_gdpr_banner")) p.set("hide_gdpr_banner", "1");
@@ -151,7 +147,7 @@ function toCalendlyEmbedUrl(base: string) {
 
     u.search = p.toString();
     return u.toString();
-  } catch {
+    } catch {
     return base;
   }
 }

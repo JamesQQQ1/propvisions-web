@@ -1,4 +1,3 @@
-// src/app/metrics/page.tsx
 import MetricsDashboard from "@/components/MetricsDashboard";
 import Credibility from "@/components/Credibility";
 import Testimonials from "@/components/Testimonials";
@@ -10,11 +9,12 @@ export default function MetricsPage() {
         <header>
           <h1 className="heading-2">Metrics & Progress</h1>
           <p className="small mt-1 text-slate-600">
-            Decision-focused metrics updated as pilot cohorts complete. Region-level breakouts and trend lines help you judge reliability.
+            We track the accuracy of key outputs as pilot users complete deals. 
+            Regional breakdowns and trend lines show where the system is already strong 
+            and where we are improving.
           </p>
         </header>
 
-        {/* If you have a live dashboard, this embeds it; otherwise you can keep the cards static. */}
         <MetricsDashboard />
 
         <section className="card p-6">
@@ -30,24 +30,24 @@ export default function MetricsPage() {
               </thead>
               <tbody className="divide-y">
                 <tr>
-                  <td className="p-3 font-medium">Rent band</td>
-                  <td className="p-3">MAPE vs achieved rent; band hit-rate</td>
-                  <td className="p-3">Cash-flow sensitivity and lender DSCR/ICR thresholds</td>
+                  <td className="p-3 font-medium">Rent estimate</td>
+                  <td className="p-3">Accuracy vs achieved rents</td>
+                  <td className="p-3">Impacts cash-flow and lender tests</td>
                 </tr>
                 <tr>
-                  <td className="p-3 font-medium">Refurb total</td>
-                  <td className="p-3">MAPE vs quotes/invoices</td>
-                  <td className="p-3">Capex realism and contingency planning</td>
+                  <td className="p-3 font-medium">Refurbishment cost</td>
+                  <td className="p-3">Accuracy vs contractor quotes</td>
+                  <td className="p-3">Ensures realistic budgets and contingency</td>
                 </tr>
                 <tr>
                   <td className="p-3 font-medium">EPC match</td>
-                  <td className="p-3">Correct match rate</td>
-                  <td className="p-3">Compliance impacts and value-add measures</td>
+                  <td className="p-3">Correct record match rate</td>
+                  <td className="p-3">Matters for compliance and value-add works</td>
                 </tr>
                 <tr>
-                  <td className="p-3 font-medium">Yield/ROI</td>
-                  <td className="p-3">Propagated error</td>
-                  <td className="p-3">Overall investability and risk/return trade-off</td>
+                  <td className="p-3 font-medium">Yield / ROI</td>
+                  <td className="p-3">Error margin on outputs</td>
+                  <td className="p-3">Shows overall investability and return</td>
                 </tr>
               </tbody>
             </table>
@@ -63,8 +63,10 @@ export default function MetricsPage() {
 
         <div className="rounded-2xl bg-slate-50 border p-6 flex items-center justify-between">
           <div>
-            <div className="font-semibold">Want the region you care about measured first?</div>
-            <div className="small text-slate-600">Join the pilot; we’ll prioritise your patch and share baselines.</div>
+            <div className="font-semibold">Want your region measured first?</div>
+            <div className="small text-slate-600">
+              Join the pilot; we’ll prioritise your patch and share baselines.
+            </div>
           </div>
           <a href="/book-demo" className="btn btn-primary">Book a demo</a>
         </div>
