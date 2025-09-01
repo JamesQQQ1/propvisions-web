@@ -30,7 +30,7 @@ export default function LandingPage() {
               <a href="#walkthrough" className="btn btn-outline">Watch walkthrough</a>
             </div>
 
-            {/* Quick trust list — lighter look (no pill/button styling) */}
+            {/* Quick trust list */}
             <ul className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm text-slate-700">
               <li className="flex items-center gap-2">
                 <CheckIcon /> <span>~90s end-to-end run</span>
@@ -69,7 +69,52 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* VALUE SECTION — detailed but scannable */}
+      {/* POSITIONING — where we sit & how you win */}
+      <section className="py-20 bg-slate-50">
+        <div className="container grid grid-cols-1 lg:grid-cols-12 gap-16">
+          <div className="lg:col-span-7 space-y-5">
+            <h2 className="heading-2">Positioning: your underwriting co-pilot</h2>
+            <p className="text-slate-700 leading-relaxed max-w-[65ch]">
+              PropertyScout automates the underwriting pack from a single URL—refurb from photos, rent bands, ROI & mortgage
+              scenarios, EPC and comps—with confidence bands and full traceability. Teams use PropertyScout <em>alongside</em>{" "}
+              market research dashboards and sourcing tools (e.g. PMI / PropertyEngine): they help you <b>find</b> or <b>research</b> stock,
+              we help you <b>underwrite and decide</b> fast.
+            </p>
+            <ul className="grid sm:grid-cols-2 gap-3 text-sm">
+              <li className="rounded-xl border p-3"><b>Find & research:</b> Use your preferred dashboards/tools</li>
+              <li className="rounded-xl border p-3"><b>Underwrite & decide:</b> Run PropertyScout for a full pack</li>
+              <li className="rounded-xl border p-3"><b>Share & export:</b> Lender/client-ready PDF & Excel</li>
+              <li className="rounded-xl border p-3"><b>Improve over time:</b> Edits feed priors & accuracy</li>
+            </ul>
+            <div>
+              <Link href="/accuracy" className="underline decoration-slate-300 underline-offset-4 hover:decoration-current">
+                Read the accuracy plan →
+              </Link>
+            </div>
+          </div>
+
+          {/* Value creation card */}
+          <div className="lg:col-span-5">
+            <div className="rounded-2xl border p-6 h-full flex flex-col justify-between">
+              <div>
+                <h3 className="card-title">Where you save time & make money</h3>
+                <ul className="mt-3 small text-slate-700 space-y-2 list-disc pl-5">
+                  <li><b>Cut underwriting time</b> from hours to minutes per deal</li>
+                  <li><b>Bid with confidence</b> using transparent bands & assumptions</li>
+                  <li><b>Standardise packs</b> across your team (fewer spreadsheet versions)</li>
+                  <li><b>Spot margin</b> quickly (refurb levers, rent sensitivity, fees)</li>
+                  <li><b>Close faster</b> with lender-friendly exports and comps attached</li>
+                </ul>
+              </div>
+              <div className="pt-6">
+                <Link href="/book-demo" className="btn btn-outline">See it on your patch</Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* WHAT YOU GET */}
       <section className="py-20">
         <div className="container grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
           <div className="lg:col-span-6 space-y-6">
@@ -153,9 +198,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* DIFFERENTIATION — fend off PMI / PropertyEngine comparisons */}
-      <DifferentiationSection />
-
       {/* ACCURACY / ROADMAP TEASERS */}
       <section className="py-20 bg-slate-50">
         <div className="container grid grid-cols-1 lg:grid-cols-12 gap-16">
@@ -199,9 +241,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* FAQ — competitor positioning + SEO JSON-LD */}
-      <CompetitorFAQSection />
-
       {/* TESTIMONIAL STRIP */}
       <section className="py-24">
         <div className="container grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -214,7 +253,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* FINAL CTA — made smaller */}
+      {/* FINAL CTA */}
       <section className="py-12 bg-slate-900">
         <div className="container flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="text-white">
@@ -227,169 +266,6 @@ export default function LandingPage() {
         </div>
       </section>
     </div>
-  );
-}
-
-/* -----------------------------------------------------------
-   Differentiation (inline)
------------------------------------------------------------ */
-
-function DifferentiationSection() {
-  const features = [
-    { key: "url", label: "Paste a URL → full underwriting pack" },
-    { key: "vision", label: "Vision refurb from photos (regional trade rates)" },
-    { key: "rent", label: "Hybrid rent (priors + comps + AI) with bands" },
-    { key: "roi", label: "ROI, cash flow & mortgage scenarios" },
-    { key: "feedback", label: "Human-in-the-loop feedback that improves outputs" },
-    { key: "monitor", label: "Post-purchase monitoring & remortgage alerts" },
-    { key: "sourcing", label: "Deal sourcing & alerts" },
-    { key: "dashboards", label: "Market dashboards & heatmaps" },
-  ] as const;
-
-  const products = [
-    {
-      name: "PropertyScout",
-      tagline: "Automated underwriting & investor-ready reporting that learns from your edits.",
-      matrix: { url: "yes", vision: "yes", rent: "yes", roi: "yes", feedback: "yes", monitor: "yes", sourcing: "soon", dashboards: "soon" } as const,
-    },
-    {
-      name: "Property Market Intel",
-      tagline: "Market research & comps.",
-      matrix: { url: "no", vision: "no", rent: "no", roi: "no", feedback: "no", monitor: "no", sourcing: "no", dashboards: "yes" } as const,
-    },
-    {
-      name: "PropertyEngine",
-      tagline: "Deal sourcing & filters.",
-      matrix: { url: "no", vision: "no", rent: "no", roi: "yes", feedback: "no", monitor: "no", sourcing: "yes", dashboards: "no" } as const,
-    },
-  ] as const;
-
-  return (
-    <section className="container py-20">
-      <div className="mx-auto max-w-4xl text-center">
-        <p className="text-sm uppercase tracking-wider text-slate-500">Positioning</p>
-        <h2 className="mt-1 text-3xl font-semibold text-slate-900">
-          Not a calculator. Not a scraper. <span className="text-brand-700">An underwriting co-pilot.</span>
-        </h2>
-        <p className="mt-3 text-slate-600">
-          PropertyScout automates the underwriting pack from a single URL—refurb from photos,
-          rent bands, ROI & mortgage scenarios—then learns from your edits and monitors after purchase.
-        </p>
-      </div>
-
-      {/* Product cards */}
-      <div className="mt-10 grid gap-6 md:grid-cols-3">
-        {products.map((p) => (
-          <div key={p.name} className="rounded-2xl border bg-white p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-900">{p.name}</h3>
-            <p className="mt-1 text-sm text-slate-600">{p.tagline}</p>
-            <ul className="mt-4 space-y-1.5 text-sm text-slate-700">
-              {[
-                "Underwrite from any listing link in minutes",
-                "Vision refurb with regional price book",
-                "Transparent methods + adjustable assumptions",
-              ].map((h) => (
-                <li key={h} className="flex items-start gap-2">
-                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-slate-300" />
-                  {h}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-
-      {/* Feature matrix */}
-      <div className="mt-10 overflow-x-auto">
-        <table className="w-full min-w-[720px] border-separate border-spacing-y-6">
-          <thead>
-            <tr className="text-left text-sm text-slate-600">
-              <th className="px-4">Feature</th>
-              {products.map((p) => (
-                <th key={p.name} className="px-4">{p.name}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {features.map((f) => (
-              <tr key={f.key} className="align-top">
-                <td className="px-4 text-sm font-medium text-slate-800">{f.label}</td>
-                {products.map((p) => (
-                  <td key={p.name} className="px-4">
-                    <Badge state={p.matrix[f.key as keyof typeof p.matrix]} />
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* CTA / reassurance */}
-      <div className="mt-10 flex flex-col items-center justify-between gap-4 rounded-2xl border bg-slate-50 p-6 md:flex-row">
-        <p className="text-slate-700">
-          Have PMI or PropertyEngine already? Great—PropertyScout sits underneath as the <em>underwriting layer</em>.
-        </p>
-        <div className="flex gap-3">
-          <Link href="/book-demo" className="btn btn-primary">Book a demo</Link>
-          <Link href="/accuracy" className="btn">See accuracy plan</Link>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* -----------------------------------------------------------
-   FAQ (inline) + JSON-LD
------------------------------------------------------------ */
-
-function CompetitorFAQSection() {
-  const faqs = [
-    {
-      q: "Is PropertyScout the same as Property Market Intel?",
-      a: "No. PMI is a market research tool with rich comps and dashboards. PropertyScout is an underwriting engine that builds an investor-ready pack from a single listing link and learns from your edits.",
-    },
-    {
-      q: "Is PropertyScout the same as PropertyEngine?",
-      a: "No. PropertyEngine focuses on sourcing and alerts. PropertyScout focuses on deep analysis—vision refurb from photos, hybrid rent bands, ROI & mortgage scenarios, EPC, and post-purchase monitoring.",
-    },
-    {
-      q: "Can PropertyScout replace my calculators and spreadsheets?",
-      a: "Yes for most workflows. You can export PDF/Excel and tweak assumptions (voids, management, fees). The system explains its methods and shows confidence bands.",
-    },
-    {
-      q: "Do you guarantee valuations or lending outcomes?",
-      a: "No. We provide transparent estimates, comps and assumptions to support decisions. Final valuations and lending terms depend on surveyors and lenders.",
-    },
-  ] as const;
-
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: faqs.map((f) => ({
-      "@type": "Question",
-      name: f.q,
-      acceptedAnswer: { "@type": "Answer", text: f.a },
-    })),
-  };
-
-  return (
-    <section className="container py-20">
-      <h2 className="text-2xl font-semibold text-slate-900">FAQ: How we differ from other tools</h2>
-      <div className="mt-6 space-y-6">
-        {faqs.map((f) => (
-          <div key={f.q} className="rounded-xl border bg-white p-5">
-            <h3 className="text-base font-semibold text-slate-900">{f.q}</h3>
-            <p className="mt-2 text-slate-700">{f.a}</p>
-          </div>
-        ))}
-      </div>
-      <script
-        type="application/ld+json"
-        // eslint-disable-next-line react/no-danger
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-    </section>
   );
 }
 
@@ -417,18 +293,6 @@ function CheckIcon() {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
       <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
-  );
-}
-function Badge({ state }: { state: "yes" | "no" | "soon" }) {
-  const map = {
-    yes: { text: "Yes", cn: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-    no: { text: "No", cn: "bg-rose-50 text-rose-700 border-rose-200" },
-    soon: { text: "Soon", cn: "bg-amber-50 text-amber-700 border-amber-200" },
-  }[state];
-  return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${map.cn}`}>
-      {map.text}
-    </span>
   );
 }
 
