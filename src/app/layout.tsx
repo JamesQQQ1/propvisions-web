@@ -20,8 +20,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Image
                 src="/propvisions_logo.png"
                 alt="PropVisions logo"
-                width={100}   // smaller logo width
-                height={100}  // smaller logo height
+                width={70}   // smaller logo width
+                height={70}  // smaller logo height
                 priority
               />
             </Link>
