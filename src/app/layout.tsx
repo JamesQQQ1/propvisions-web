@@ -22,7 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <NavSelect />
               <Link href="/" className="flex items-center justify-center">
                 <Image
-                  src="/propvisions_logo.png"
+                  src="/propvisions_logo_no_text.png"
                   alt="PropVisions logo"
                   width={84}
                   height={22}
