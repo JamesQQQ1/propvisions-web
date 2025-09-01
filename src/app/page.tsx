@@ -54,19 +54,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* SOCIAL PROOF — light, with breathing room */}
-      <section className="py-16 bg-slate-50">
-        <div className="container">
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-4 items-center opacity-80">
-            {["Investors", "Agents", "Sourcers", "Auctions", "Lenders", "Analysts"].map((label) => (
-              <div key={label} className="h-10 rounded-lg border border-slate-200 grid place-items-center text-[12px] text-slate-500">
-                {label}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* VALUE SECTION — detailed but scannable (kept to 6 bullets) */}
       <section className="py-28">
         <div className="container grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
@@ -162,7 +149,7 @@ export default function LandingPage() {
               <li className="rounded-xl border p-3"><b>Yield/ROI:</b> Propagated error; bands narrow as inputs confirm</li>
             </ul>
             <div>
-              <Link href="/accuracy" className="link">Read the full methodology →</Link>
+              <Link href="/how-it-works" className="link">Read the full methodology →</Link>
             </div>
           </div>
           <div className="lg:col-span-5">
@@ -198,7 +185,7 @@ export default function LandingPage() {
 
       {/* FINAL CTA — clear, simple, plenty of space */}
       <section className="py-20 bg-slate-900">
-        <div className="container flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="container flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
           <div className="text-white">
             <h3 className="text-xl font-semibold">Ready to see it on your deals?</h3>
             <p className="small text-slate-300 mt-1">We’ll run a live example and share the export pack.</p>
