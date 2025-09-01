@@ -1,7 +1,7 @@
-// src/app/page.tsx
 "use client";
 
 import Link from "next/link";
+import { type ReactNode } from "react";
 
 /* -----------------------------------------------------------
    Page
@@ -21,9 +21,10 @@ export default function LandingPage() {
               From raw listing to <span className="text-gradient">investor-ready ROI</span>
             </h1>
             <p className="subhead max-w-[60ch]">
-              Paste a property link. We read the photos to estimate works, forecast rent and end value,
-              and build the full numbers. Export clean PDF & Excel for lenders and clients.
-              Every figure shows its source.
+              Not another research portal. PropVisions is your <b>underwriting co-pilot</b>:
+              paste a property link and get <b>works from photos</b>, rent band and end value,
+              plus full fees and <b>ROI</b> — with sources and assumptions shown. Export clean
+              PDF & Excel for lenders and clients in minutes.
             </p>
             <div className="flex flex-wrap gap-4">
               <Link href="/book-demo" className="btn btn-primary">Book a demo</Link>
@@ -39,16 +40,16 @@ export default function LandingPage() {
                 <CheckIcon /> <span>PDF & Excel included</span>
               </li>
               <li className="flex items-center gap-2">
-                <CheckIcon /> <span>Full breakdown & traceability</span>
+                <CheckIcon /> <span>Sources, ranges & audit trail</span>
               </li>
             </ul>
 
             {/* Reliability/value strip */}
             <ul className="mt-4 grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs text-slate-600">
-              <li className="flex items-center gap-2"><CheckIcon /> <span>Quality checked outputs</span></li>
-              <li className="flex items-center gap-2"><CheckIcon /> <span>99.9% uptime warranty</span></li>
-              <li className="flex items-center gap-2"><CheckIcon /> <span>Audit trail (observability)</span></li>
-              <li className="flex items-center gap-2"><CheckIcon /> <span>Scales with your deal flow</span></li>
+              <li className="flex items-center gap-2"><CheckIcon /> <span>Quality-checked outputs</span></li>
+              <li className="flex items-center gap-2"><CheckIcon /> <span>99.9% uptime target</span></li>
+              <li className="flex items-center gap-2"><CheckIcon /> <span>Change history for every figure</span></li>
+              <li className="flex items-center gap-2"><CheckIcon /> <span>Works with your existing tools</span></li>
             </ul>
           </div>
 
@@ -81,16 +82,18 @@ export default function LandingPage() {
       <section className="py-20 bg-slate-50">
         <div className="container grid grid-cols-1 lg:grid-cols-12 gap-16">
           <div className="lg:col-span-7 space-y-5">
-            <h2 className="heading-2">Your underwriting co-pilot</h2>
+            <h2 className="heading-2">Your underwriting co-pilot (not just another dashboard)</h2>
             <p className="text-slate-700 leading-relaxed max-w-[65ch]">
-              PropertyScout builds the underwriting pack from a single URL—works from photos, rent ranges, ROI & mortgage
-              scenarios, energy rating and comparables—with clear ranges and full traceability. Use your market tools to <b>find</b> stock;
-              use PropertyScout to <b>underwrite and decide</b> quickly and consistently.
+              Keep using your favourite tools to <b>find</b> stock. Use PropVisions to <b>underwrite & decide</b> —
+              consistently, quickly, and with full transparency. We turn a single URL into the <b>decision pack</b>:
+              works from photos, rent ranges, ROI and mortgage scenarios, energy rating and comparables — with ranges, sources,
+              and change history. It’s the <b>layer that standardises decisions</b> across your team, rather than another place
+              to browse listings.
             </p>
             <ul className="grid sm:grid-cols-2 gap-3 text-sm">
-              <li className="rounded-xl border p-3"><b>Find & research:</b> Keep your preferred dashboards</li>
-              <li className="rounded-xl border p-3"><b>Underwrite & decide:</b> Run PropertyScout for a complete pack</li>
-              <li className="rounded-xl border p-3"><b>Share & export:</b> Lender/client-ready PDF & Excel</li>
+              <li className="rounded-xl border p-3"><b>Find & research:</b> Keep Property Engine, PMI and your market dashboards</li>
+              <li className="rounded-xl border p-3"><b>Underwrite & decide:</b> Run PropVisions for the complete, traceable pack</li>
+              <li className="rounded-xl border p-3"><b>Share & export:</b> Lender/client-ready PDF & Excel in minutes</li>
               <li className="rounded-xl border p-3"><b>Improve over time:</b> Your edits train local accuracy</li>
             </ul>
             <div>
@@ -104,12 +107,12 @@ export default function LandingPage() {
           <div className="lg:col-span-5">
             <div className="rounded-2xl border p-6 h-full flex flex-col justify-between">
               <div>
-                <h3 className="card-title">Where you save time & make money</h3>
+                <h3 className="card-title">Why this isn’t “just an add-on”</h3>
                 <ul className="mt-3 small text-slate-700 space-y-2 list-disc pl-5">
                   <li><b>Cut underwriting time</b> from hours to minutes per deal</li>
-                  <li><b>Bid with confidence</b> using clear ranges & assumptions</li>
+                  <li><b>Make faster, defendable bids</b> with clear ranges & assumptions</li>
                   <li><b>Standardise packs</b> across your team (one source of truth)</li>
-                  <li><b>Spot margin</b> fast (works, rent, fees sensitivity)</li>
+                  <li><b>Spot margin instantly</b> (works, rent, fees sensitivity)</li>
                   <li><b>Close faster</b> with lender-friendly exports and comps</li>
                 </ul>
               </div>
@@ -137,7 +140,7 @@ export default function LandingPage() {
                 Combine local history with listing details to produce rent ranges and post-works value, with confidence shown.
               </Li>
               <Li title="Full financials">
-                Stamp duty, legals/survey/insurance, void periods, management, mortgage → net income, yield, cash flow, ROI.
+                Stamp duty, legals/survey/insurance, voids, management, mortgage → net income, yield, cash flow, ROI.
               </Li>
               <Li title="Exports">
                 Lender/client-ready PDF snapshot and a fully traceable Excel with every line and assumption.
@@ -289,7 +292,7 @@ export default function LandingPage() {
    Small inline helpers
 ----------------------------------------------------------- */
 
-function Li({ title, children }: { title: string; children: React.ReactNode }) {
+function Li({ title, children }: { title: string; children: ReactNode }) {
   return (
     <li>
       <span className="font-medium text-slate-900">{title}.</span>{" "}
