@@ -54,6 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <Link href="/metrics" className="hover:text-brand-700">Metrics</Link>
                 <Link href="/accuracy" className="hover:text-brand-700">Accuracy</Link>
                 <Link href="/roadmap" className="hover:text-brand-700">Roadmap</Link>
+                <Link href="/demo-access" className="hover:text-brand-700">Pricing</Link>
                 <Link href="/book-demo" className="btn btn-primary px-3 py-1.5">Book a demo</Link>
               </nav>
             </div>
