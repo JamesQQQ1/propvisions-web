@@ -9,6 +9,9 @@ export const metadata = {
   title: "PropVisions — From URL to investor-ready ROI",
   description:
     "Paste a listing URL and get valuation, refurb costs, and full financials. Export polished PDF & Excel.",
+  icons: {
+    icon: "/favicon.ico", // make sure /public/favicon.ico exists
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
