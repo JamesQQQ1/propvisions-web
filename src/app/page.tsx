@@ -26,11 +26,17 @@ export default function LandingPage() {
               <a href="#walkthrough" className="btn btn-outline">Watch walkthrough</a>
             </div>
 
-            {/* Quick trust chips (kept tight) */}
-            <ul className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-slate-700">
-              <li className="rounded-xl border p-3">~90s end-to-end run</li>
-              <li className="rounded-xl border p-3">PDF & Excel included</li>
-              <li className="rounded-xl border p-3">Line-item transparency</li>
+            {/* Quick trust list — lighter look (no pill/button styling) */}
+            <ul className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm text-slate-700">
+              <li className="flex items-center gap-2">
+                <CheckIcon /> <span>~90s end-to-end run</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckIcon /> <span>PDF & Excel included</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckIcon /> <span>Line-item transparency</span>
+              </li>
             </ul>
           </div>
 
@@ -54,7 +60,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* VALUE SECTION — detailed but scannable (kept to 6 bullets) */}
+      {/* VALUE SECTION — detailed but scannable */}
       <section className="py-28">
         <div className="container grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
           <div className="lg:col-span-6 space-y-6">
@@ -84,7 +90,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Snapshot card for quick credibility */}
+          {/* Snapshot card */}
           <div className="lg:col-span-6">
             <div className="card p-6 space-y-6">
               <div>
@@ -133,7 +139,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ACCURACY / BETA HONESTY — concise with links */}
+      {/* ACCURACY / ROADMAP TEASERS */}
       <section className="py-20 bg-slate-50">
         <div className="container grid grid-cols-1 lg:grid-cols-12 gap-16">
           <div className="lg:col-span-7 space-y-4">
@@ -149,7 +155,7 @@ export default function LandingPage() {
               <li className="rounded-xl border p-3"><b>Yield/ROI:</b> Propagated error; bands narrow as inputs confirm</li>
             </ul>
             <div>
-              <Link href="/how-it-works" className="link">Read the full methodology →</Link>
+              <Link href="/accuracy" className="link">Read the full methodology →</Link>
             </div>
           </div>
           <div className="lg:col-span-5">
@@ -171,7 +177,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* TESTIMONIAL STRIP — short & spaced */}
+      {/* TESTIMONIAL STRIP */}
       <section className="py-24">
         <div className="container grid grid-cols-1 md:grid-cols-3 gap-8">
           {TESTIMONIALS.map((t) => (
@@ -183,14 +189,16 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* FINAL CTA — clear, simple, plenty of space */}
-      <section className="py-20 bg-slate-900">
-        <div className="container flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
+      {/* FINAL CTA — made smaller */}
+      <section className="py-12 bg-slate-900">
+        <div className="container flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="text-white">
-            <h3 className="text-xl font-semibold">Ready to see it on your deals?</h3>
+            <h3 className="text-lg font-semibold">Ready to see it on your deals?</h3>
             <p className="small text-slate-300 mt-1">We’ll run a live example and share the export pack.</p>
           </div>
-          <Link href="/book-demo" className="btn btn-onColor bg-white text-slate-900">Book a demo</Link>
+          <Link href="/book-demo" className="btn btn-onColor bg-white text-slate-900 px-4 py-2 text-sm">
+            Book a demo
+          </Link>
         </div>
       </section>
     </div>
@@ -210,6 +218,13 @@ function Dot() {
   return (
     <svg width="8" height="8" viewBox="0 0 8 8" aria-hidden>
       <circle cx="4" cy="4" r="4" fill="#059669" />
+    </svg>
+  );
+}
+function CheckIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
+      <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
