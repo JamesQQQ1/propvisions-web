@@ -1,4 +1,6 @@
 // src/app/roadmap/page.tsx
+"use client";
+
 import { ReactNode, useState } from "react";
 
 export default function RoadmapPage() {
