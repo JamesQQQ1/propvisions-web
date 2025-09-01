@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import "./globals.css";
 import CookieBanner from "@/components/CookieBanner";
+import NavSelect from "@/components/NavSelect";
 
 export const metadata = {
   title: "PropVisions — From URL to investor-ready ROI",
@@ -15,29 +16,47 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <header className="sticky top-0 z-30 border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-          <div className="container flex items-center justify-between py-1">
-            <Link href="/" className="flex items-center gap-2">
-              <Image
-                src="/propvisions_logo.png"
-                alt="PropVisions logo"
-                width={70}   // smaller logo width
-                height={70}  // smaller logo height
-                priority
-              />
-            </Link>
-            <nav className="flex items-center gap-3 text-[13px] md:text-sm">
-              <Link href="/" className="hover:text-brand-700">Home</Link>
-              <Link href="/how-it-works" className="hover:text-brand-700">How it works</Link>
-              <Link href="/metrics" className="hover:text-brand-700">Metrics</Link>
-              <Link href="/accuracy" className="hover:text-brand-700">Accuracy</Link>
-              <Link href="/roadmap" className="hover:text-brand-700">Roadmap</Link>
+          <div className="container py-1">
+            {/* Mobile header: dropdown (left) + logo (center) + CTA (right) */}
+            <div className="flex md:hidden items-center justify-between gap-2">
+              <NavSelect />
+              <Link href="/" className="flex items-center justify-center">
+                <Image
+                  src="/propvisions_logo.png"
+                  alt="PropVisions logo"
+                  width={84}
+                  height={22}
+                  priority
+                />
+              </Link>
               <Link
                 href="/book-demo"
-                className="btn btn-primary px-3 py-1.5 text-[13px] md:text-sm"
+                className="btn btn-primary px-3 py-1.5 text-sm"
               >
                 Book a demo
               </Link>
-            </nav>
+            </div>
+
+            {/* Desktop header */}
+            <div className="hidden md:flex items-center justify-between">
+              <Link href="/" className="flex items-center gap-2">
+                <Image
+                  src="/propvisions_logo.png"
+                  alt="PropVisions logo"
+                  width={96}
+                  height={24}
+                  priority
+                />
+              </Link>
+              <nav className="flex items-center gap-4 text-sm">
+                <Link href="/" className="hover:text-brand-700">Home</Link>
+                <Link href="/how-it-works" className="hover:text-brand-700">How it works</Link>
+                <Link href="/metrics" className="hover:text-brand-700">Metrics</Link>
+                <Link href="/accuracy" className="hover:text-brand-700">Accuracy</Link>
+                <Link href="/roadmap" className="hover:text-brand-700">Roadmap</Link>
+                <Link href="/book-demo" className="btn btn-primary px-3 py-1.5">Book a demo</Link>
+              </nav>
+            </div>
           </div>
         </header>
 
