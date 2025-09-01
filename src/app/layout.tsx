@@ -18,10 +18,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="container flex items-center justify-between py-1">
             <Link href="/" className="flex items-center gap-2">
               <Image
-                src="/propvisions_logo.png"
+                src="/propvisions_logo_no_text.png"
                 alt="PropVisions logo"
-                width={96}   // smaller logo width
-                height={24}  // smaller logo height
+                width={200}   // smaller logo width
+                height={200}  // smaller logo height
                 priority
               />
             </Link>
