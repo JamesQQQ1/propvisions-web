@@ -77,7 +77,7 @@ export default function LandingPage() {
             <p className="text-slate-700 leading-relaxed max-w-[65ch]">
               PropertyScout automates the underwriting pack from a single URL—refurb from photos, rent bands, ROI & mortgage
               scenarios, EPC and comps—with confidence bands and full traceability. Teams use PropertyScout <em>alongside</em>{" "}
-              market research dashboards and sourcing tools (e.g. PMI / PropertyEngine): they help you <b>find</b> or <b>research</b> stock,
+              market research dashboards and sourcing tools: they help you <b>find</b> or <b>research</b> stock,
               we help you <b>underwrite and decide</b> fast.
             </p>
             <ul className="grid sm:grid-cols-2 gap-3 text-sm">
@@ -242,26 +242,33 @@ export default function LandingPage() {
       </section>
 
       {/* TESTIMONIAL STRIP */}
-      <section className="py-24">
-        <div className="container grid grid-cols-1 md:grid-cols-3 gap-8">
-        <h2 className="heading-2">Accuracy & confidence</h2>
-          {TESTIMONIALS.map((t) => (
-            <figure key={t.name} className="rounded-2xl border p-6 bg-white">
-              <blockquote className="text-slate-800 leading-relaxed">“{t.quote}”</blockquote>
-              <figcaption className="mt-4 small text-slate-600">{t.name} · {t.role}</figcaption>
-            </figure>
-          ))}
+      <section className="py-24 bg-white">
+        <div className="container">
+          <h2 className="heading-2 text-center mb-12">What our users say</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {TESTIMONIALS.map((t) => (
+              <figure key={t.name} className="rounded-2xl border p-6 bg-white shadow-sm">
+                <blockquote className="text-slate-800 leading-relaxed">“{t.quote}”</blockquote>
+                <figcaption className="mt-4 small text-slate-600">{t.name} · {t.role}</figcaption>
+              </figure>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* FINAL CTA */}
-      <section className="py-12 bg-slate-100">
-        <div className="container flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="text-black">
-            <h3 className="text-lg font-semibold">Ready to see it on your deals?</h3>
-            <p className="small text-slate-300 mt-1">We’ll run a live example and share the export pack.</p>
+      {/* FINAL CTA — strong, high-contrast stripe */}
+      <section className="py-20 bg-black">
+        <div className="container flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="text-white max-w-lg">
+            <h3 className="text-2xl font-semibold">Ready to see it on your deals?</h3>
+            <p className="small text-slate-300 mt-2">
+              We’ll run a live example and share the export pack — instant, investor-ready insight.
+            </p>
           </div>
-          <Link href="/book-demo" className="btn btn-onColor bg-blue text-slate-900 px-4 py-2 text-sm">
+          <Link
+            href="/book-demo"
+            className="btn bg-white text-black hover:bg-slate-200 px-6 py-3 text-base font-medium rounded-lg shadow-md transition"
+          >
             Book a demo
           </Link>
         </div>
