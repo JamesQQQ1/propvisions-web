@@ -244,6 +244,7 @@ export default function LandingPage() {
       {/* TESTIMONIAL STRIP */}
       <section className="py-24">
         <div className="container grid grid-cols-1 md:grid-cols-3 gap-8">
+        <h2 className="heading-2">Accuracy & confidence</h2>
           {TESTIMONIALS.map((t) => (
             <figure key={t.name} className="rounded-2xl border p-6 bg-white">
               <blockquote className="text-slate-800 leading-relaxed">“{t.quote}”</blockquote>
@@ -260,7 +261,7 @@ export default function LandingPage() {
             <h3 className="text-lg font-semibold">Ready to see it on your deals?</h3>
             <p className="small text-slate-300 mt-1">We’ll run a live example and share the export pack.</p>
           </div>
-          <Link href="/book-demo" className="btn btn-onColor bg-white text-slate-900 px-4 py-2 text-sm">
+          <Link href="/book-demo" className="btn btn-onColor bg-blue text-slate-900 px-4 py-2 text-sm">
             Book a demo
           </Link>
         </div>
