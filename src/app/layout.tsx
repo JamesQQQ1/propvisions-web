@@ -1,3 +1,4 @@
+// src/app/layout.tsx
 import Image from "next/image";
 import Link from "next/link";
 import "./globals.css";
@@ -23,9 +24,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <Image
                   src="/propvisions_logo_croped.png"
                   alt="PropVisions logo"
-                  width={120}   // increased from 84
-                  height={32}   // increased from 22
-                  className="h-8 w-auto" // ensures scaling without stretching header
+                  width={120}
+                  height={40}
                   priority
                 />
               </Link>
@@ -43,9 +43,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <Image
                   src="/propvisions_logo_croped.png"
                   alt="PropVisions logo"
-                  width={140}   // increased from 96
-                  height={36}   // increased from 24
-                  className="h-9 w-auto" // keeps header height stable
+                  width={96}
+                  height={24}
                   priority
                 />
               </Link>
