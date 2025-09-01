@@ -53,7 +53,12 @@ export default function LandingPage() {
               </div>
               <div className="card-footer flex items-center justify-between">
                 <span className="small text-slate-600">Two-minute overview of the core flow.</span>
-                <Link href="/how-it-works" className="link">See how it works →</Link>
+                <Link
+                  href="/how-it-works"
+                  className="ml-4 underline decoration-slate-300 underline-offset-4 hover:decoration-current"
+                >
+                  See how it works →
+                </Link>
               </div>
             </div>
           </div>
@@ -61,7 +66,7 @@ export default function LandingPage() {
       </section>
 
       {/* VALUE SECTION — detailed but scannable */}
-      <section className="py-28">
+      <section className="py-20">
         <div className="container grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
           <div className="lg:col-span-6 space-y-6">
             <h2 className="heading-2 max-w-[22ch]">What you get on every run</h2>
@@ -86,7 +91,12 @@ export default function LandingPage() {
               </Li>
             </ul>
             <div className="pt-2">
-              <Link href="/how-it-works" className="link">Deep dive: pipeline details →</Link>
+              <Link
+                href="/how-it-works"
+                className="underline decoration-slate-300 underline-offset-4 hover:decoration-current"
+              >
+                Deep dive: pipeline details →
+              </Link>
             </div>
           </div>
 
@@ -155,7 +165,12 @@ export default function LandingPage() {
               <li className="rounded-xl border p-3"><b>Yield/ROI:</b> Propagated error; bands narrow as inputs confirm</li>
             </ul>
             <div>
-              <Link href="/accuracy" className="link">Read the full methodology →</Link>
+              <Link
+                href="/accuracy"
+                className="underline decoration-slate-300 underline-offset-4 hover:decoration-current"
+              >
+                Read the full methodology →
+              </Link>
             </div>
           </div>
           <div className="lg:col-span-5">

@@ -65,3 +65,14 @@ a { @apply transition-colors; }
   box-shadow: 0 10px 30px -12px rgba(2,6,23,0.25);
 }
 .cta-copy { @apply text-white/90; }
+
+/* globals.css */
+.link {
+  text-decoration: underline;
+  text-decoration-color: #cbd5e1; /* slate-300 */
+  text-underline-offset: 4px;
+}
+.link:hover {
+  text-decoration-color: currentColor;
+}
+
