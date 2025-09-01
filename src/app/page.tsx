@@ -3,6 +3,10 @@
 
 import Link from "next/link";
 
+/* -----------------------------------------------------------
+   Page
+----------------------------------------------------------- */
+
 export default function LandingPage() {
   return (
     <div className="bg-white">
@@ -149,6 +153,9 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* DIFFERENTIATION — fend off PMI / PropertyEngine comparisons */}
+      <DifferentiationSection />
+
       {/* ACCURACY / ROADMAP TEASERS */}
       <section className="py-20 bg-slate-50">
         <div className="container grid grid-cols-1 lg:grid-cols-12 gap-16">
@@ -192,6 +199,9 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* FAQ — competitor positioning + SEO JSON-LD */}
+      <CompetitorFAQSection />
+
       {/* TESTIMONIAL STRIP */}
       <section className="py-24">
         <div className="container grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -220,7 +230,173 @@ export default function LandingPage() {
   );
 }
 
-/* --- tiny local bits --- */
+/* -----------------------------------------------------------
+   Differentiation (inline)
+----------------------------------------------------------- */
+
+function DifferentiationSection() {
+  const features = [
+    { key: "url", label: "Paste a URL → full underwriting pack" },
+    { key: "vision", label: "Vision refurb from photos (regional trade rates)" },
+    { key: "rent", label: "Hybrid rent (priors + comps + AI) with bands" },
+    { key: "roi", label: "ROI, cash flow & mortgage scenarios" },
+    { key: "feedback", label: "Human-in-the-loop feedback that improves outputs" },
+    { key: "monitor", label: "Post-purchase monitoring & remortgage alerts" },
+    { key: "sourcing", label: "Deal sourcing & alerts" },
+    { key: "dashboards", label: "Market dashboards & heatmaps" },
+  ] as const;
+
+  const products = [
+    {
+      name: "PropertyScout",
+      tagline: "Automated underwriting & investor-ready reporting that learns from your edits.",
+      matrix: { url: "yes", vision: "yes", rent: "yes", roi: "yes", feedback: "yes", monitor: "yes", sourcing: "soon", dashboards: "soon" } as const,
+    },
+    {
+      name: "Property Market Intel",
+      tagline: "Market research & comps.",
+      matrix: { url: "no", vision: "no", rent: "no", roi: "no", feedback: "no", monitor: "no", sourcing: "no", dashboards: "yes" } as const,
+    },
+    {
+      name: "PropertyEngine",
+      tagline: "Deal sourcing & filters.",
+      matrix: { url: "no", vision: "no", rent: "no", roi: "yes", feedback: "no", monitor: "no", sourcing: "yes", dashboards: "no" } as const,
+    },
+  ] as const;
+
+  return (
+    <section className="container py-20">
+      <div className="mx-auto max-w-4xl text-center">
+        <p className="text-sm uppercase tracking-wider text-slate-500">Positioning</p>
+        <h2 className="mt-1 text-3xl font-semibold text-slate-900">
+          Not a calculator. Not a scraper. <span className="text-brand-700">An underwriting co-pilot.</span>
+        </h2>
+        <p className="mt-3 text-slate-600">
+          PropertyScout automates the underwriting pack from a single URL—refurb from photos,
+          rent bands, ROI & mortgage scenarios—then learns from your edits and monitors after purchase.
+        </p>
+      </div>
+
+      {/* Product cards */}
+      <div className="mt-10 grid gap-6 md:grid-cols-3">
+        {products.map((p) => (
+          <div key={p.name} className="rounded-2xl border bg-white p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-slate-900">{p.name}</h3>
+            <p className="mt-1 text-sm text-slate-600">{p.tagline}</p>
+            <ul className="mt-4 space-y-1.5 text-sm text-slate-700">
+              {[
+                "Underwrite from any listing link in minutes",
+                "Vision refurb with regional price book",
+                "Transparent methods + adjustable assumptions",
+              ].map((h) => (
+                <li key={h} className="flex items-start gap-2">
+                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-slate-300" />
+                  {h}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+
+      {/* Feature matrix */}
+      <div className="mt-10 overflow-x-auto">
+        <table className="w-full min-w-[720px] border-separate border-spacing-y-6">
+          <thead>
+            <tr className="text-left text-sm text-slate-600">
+              <th className="px-4">Feature</th>
+              {products.map((p) => (
+                <th key={p.name} className="px-4">{p.name}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {features.map((f) => (
+              <tr key={f.key} className="align-top">
+                <td className="px-4 text-sm font-medium text-slate-800">{f.label}</td>
+                {products.map((p) => (
+                  <td key={p.name} className="px-4">
+                    <Badge state={p.matrix[f.key as keyof typeof p.matrix]} />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* CTA / reassurance */}
+      <div className="mt-10 flex flex-col items-center justify-between gap-4 rounded-2xl border bg-slate-50 p-6 md:flex-row">
+        <p className="text-slate-700">
+          Have PMI or PropertyEngine already? Great—PropertyScout sits underneath as the <em>underwriting layer</em>.
+        </p>
+        <div className="flex gap-3">
+          <Link href="/book-demo" className="btn btn-primary">Book a demo</Link>
+          <Link href="/accuracy" className="btn">See accuracy plan</Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* -----------------------------------------------------------
+   FAQ (inline) + JSON-LD
+----------------------------------------------------------- */
+
+function CompetitorFAQSection() {
+  const faqs = [
+    {
+      q: "Is PropertyScout the same as Property Market Intel?",
+      a: "No. PMI is a market research tool with rich comps and dashboards. PropertyScout is an underwriting engine that builds an investor-ready pack from a single listing link and learns from your edits.",
+    },
+    {
+      q: "Is PropertyScout the same as PropertyEngine?",
+      a: "No. PropertyEngine focuses on sourcing and alerts. PropertyScout focuses on deep analysis—vision refurb from photos, hybrid rent bands, ROI & mortgage scenarios, EPC, and post-purchase monitoring.",
+    },
+    {
+      q: "Can PropertyScout replace my calculators and spreadsheets?",
+      a: "Yes for most workflows. You can export PDF/Excel and tweak assumptions (voids, management, fees). The system explains its methods and shows confidence bands.",
+    },
+    {
+      q: "Do you guarantee valuations or lending outcomes?",
+      a: "No. We provide transparent estimates, comps and assumptions to support decisions. Final valuations and lending terms depend on surveyors and lenders.",
+    },
+  ] as const;
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((f) => ({
+      "@type": "Question",
+      name: f.q,
+      acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
+  };
+
+  return (
+    <section className="container py-20">
+      <h2 className="text-2xl font-semibold text-slate-900">FAQ: How we differ from other tools</h2>
+      <div className="mt-6 space-y-6">
+        {faqs.map((f) => (
+          <div key={f.q} className="rounded-xl border bg-white p-5">
+            <h3 className="text-base font-semibold text-slate-900">{f.q}</h3>
+            <p className="mt-2 text-slate-700">{f.a}</p>
+          </div>
+        ))}
+      </div>
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+    </section>
+  );
+}
+
+/* -----------------------------------------------------------
+   Small inline helpers
+----------------------------------------------------------- */
+
 function Li({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <li>
@@ -243,6 +419,19 @@ function CheckIcon() {
     </svg>
   );
 }
+function Badge({ state }: { state: "yes" | "no" | "soon" }) {
+  const map = {
+    yes: { text: "Yes", cn: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+    no: { text: "No", cn: "bg-rose-50 text-rose-700 border-rose-200" },
+    soon: { text: "Soon", cn: "bg-amber-50 text-amber-700 border-amber-200" },
+  }[state];
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${map.cn}`}>
+      {map.text}
+    </span>
+  );
+}
+
 const TESTIMONIALS = [
   { name: "James P.", role: "Portfolio Investor", quote: "Cuts my underwrite time to minutes. Export pack is exactly what lenders want." },
   { name: "Maya K.", role: "Buying Agent", quote: "Photo-based refurb bands are a huge head start. Still sanity-check, but it’s fast and transparent." },

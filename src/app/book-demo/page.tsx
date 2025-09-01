@@ -72,9 +72,9 @@ export default function BookDemoPage() {
             <div className="card p-4 small text-slate-600">
               <strong>What happens after booking?</strong>
               <ol className="list-decimal pl-5 mt-2 space-y-1">
-                <li>Instant confirmation via Calendly.</li>
-                <li>Your slot appears in Google Calendar.</li>
-                <li>Our n8n workflow adds you to beta pipeline & sends prep notes.</li>
+                <li>Instant confirmation.</li>
+                <li>Your slot appears in the calender.</li>
+                <li>Our system adds you to beta users list and sends you prep notes</li>
               </ol>
             </div>
           </div>
