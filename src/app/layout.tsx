@@ -15,8 +15,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <header className="sticky top-0 z-30 border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-          <div className="container flex items-center justify-between py-2">
-            <Link href="/" className="flex items-center gap-2">
+          <div className="container flex items-center justify-between py-1">
+            <Link href="/" className="flex items-center gap-1">
               <Image src="/propvisions_logo.png" alt="PropVisions logo" width={120} height={35} priority />
             </Link>
             <nav className="flex items-center gap-5 text-sm">
