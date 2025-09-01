@@ -10,7 +10,7 @@ export const metadata = {
   description:
     "Paste a listing URL and get valuation, refurb costs, and full financials. Export polished PDF & Excel.",
   icons: {
-    icon: "/favicon.ico", // make sure /public/favicon.ico exists
+    icon: "/favicon.png", // make sure /public/favicon.ico exists
   },
 };
 
