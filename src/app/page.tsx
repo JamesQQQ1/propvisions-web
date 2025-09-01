@@ -257,7 +257,7 @@ export default function LandingPage() {
       </section>
 
       {/* FINAL CTA — strong, high-contrast stripe */}
-      <section className="py-20 bg-black">
+      <section className="py-20 bg-grey">
         <div className="container flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="text-white max-w-lg">
             <h3 className="text-2xl font-semibold">Ready to see it on your deals?</h3>
