@@ -257,22 +257,23 @@ export default function LandingPage() {
       </section>
 
       {/* FINAL CTA — strong, high-contrast stripe */}
-      <section className="py-20 bg-slate-50">
-        <div className="container flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="text-black max-w-lg">
-            <h3 className="text-2xl font-semibold">Ready to see it on your deals?</h3>
-            <p className="small text-slate-300 mt-2">
-              We’ll run a live example and share the export pack — instant, investor-ready insight.
-            </p>
-          </div>
-          <Link
-            href="/book-demo"
-            className="btn bg-blue text-black hover:bg-slate-200 px-6 py-3 text-base font-medium rounded-lg shadow-md transition"
-          >
-            Book a demo
-          </Link>
-        </div>
-      </section>
+<section className="py-20 bg-slate-50">
+  <div className="container flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+    <div className="text-black max-w-lg">
+      <h3 className="text-2xl font-semibold">Ready to see it on your deals?</h3>
+      <p className="small text-slate-500 mt-2">
+        We’ll run a live example and share the export pack — instant, investor-ready insight.
+      </p>
+    </div>
+    <Link
+      href="/book-demo"
+      className="btn btn-primary px-6 py-3 text-base font-medium rounded-lg shadow-md transition"
+    >
+      Book a demo
+    </Link>
+  </div>
+</section>
+
     </div>
   );
 }
