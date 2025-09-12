@@ -175,60 +175,91 @@ function normaliseProperty(p: PropertyRow | null) {
   }
 }
 
-/** Build display refurb rows from the NEW tables */
+/** Build display refurb rows from the NEW tables (robust if rooms missing) */
 function buildRefurbFromNewTables(
   rooms: RefurbRoomRow[],
   mats: RefurbMaterialRow[],
   labs: RefurbLabourRow[],
   property: ReturnType<typeof normaliseProperty> | null
 ) {
-  // index materials/labour by room_index
+  // index mats/lab by room_index
   const byRoomMat = new Map<number, RefurbMaterialRow[]>()
   const byRoomLab = new Map<number, RefurbLabourRow[]>()
 
-  mats.forEach(m => {
+  for (const m of mats) {
     const k = m.room_index
     if (!byRoomMat.has(k)) byRoomMat.set(k, [])
     byRoomMat.get(k)!.push(m)
-  })
-  labs.forEach(l => {
+  }
+  for (const l of labs) {
     const k = l.room_index
     if (!byRoomLab.has(k)) byRoomLab.set(k, [])
     byRoomLab.get(k)!.push(l)
-  })
+  }
+
+  // If rooms table is empty, synthesise rooms from the union of indices in mats/labs
+  let roomList: RefurbRoomRow[] = rooms
+  if (!Array.isArray(roomList) || roomList.length === 0) {
+    const allIdx = new Set<number>([...byRoomMat.keys(), ...byRoomLab.keys()])
+    roomList = Array.from(allIdx).sort((a, b) => a - b).map((idx) => ({
+      id: `room-${idx}`,
+      property_id: property?.property_id || '',
+      room_index: idx,
+      room_type: 'room',
+      image_id: null,
+      image_index: null,
+      materials_total_gbp: null,
+      labour_total_gbp: null,
+      room_total_gbp: null,
+      room_confidence: null,
+    }))
+  }
 
   const images = Array.isArray(property?.listing_images) ? property!.listing_images : []
 
-  return rooms
+  return roomList
+    .slice()
     .sort((a, b) => (a.room_index ?? 0) - (b.room_index ?? 0))
-    .map(r => {
+    .map((r) => {
       const mat = byRoomMat.get(r.room_index) || []
       const lab = byRoomLab.get(r.room_index) || []
 
-      // Prefer a direct index lookup into listing_images if present
-      const idx = (typeof r.image_index === 'number' && r.image_index >= 0) ? r.image_index : null
-      const image_url =
-        (idx != null && images[idx]) ? images[idx]
-        : null
+      // Try to resolve an image from listing_images by index
+      const idx = typeof r.image_index === 'number' && r.image_index >= 0 ? r.image_index : null
+      const image_url = idx != null && images[idx] ? images[idx] : null
 
-      // Build a legacy-compatible "works" list (so the table/old UI still shows something);
-      // category 'materials' and 'labour' with subtotals.
+      const matSum =
+        (r.materials_total_gbp ?? undefined) != null
+          ? Number(r.materials_total_gbp) || 0
+          : mat.reduce((a, m) => a + (Number(m.subtotal_gbp) || 0), 0)
+
+      const labSum =
+        (r.labour_total_gbp ?? undefined) != null
+          ? Number(r.labour_total_gbp) || 0
+          : lab.reduce((a, l) => a + (Number(l.labour_cost_gbp) || 0), 0)
+
+      const tot =
+        (r.room_total_gbp ?? undefined) != null
+          ? Number(r.room_total_gbp) || 0
+          : matSum + labSum
+
+      // Legacy-compatible works list (keeps old UI paths alive)
       const works = [
-        ...mat.map(m => ({
+        ...mat.map((m) => ({
           category: 'materials',
           description: m.item_key || 'material',
           unit: m.unit || '',
-          qty: m.qty ?? null,
-          unit_rate_gbp: m.unit_price_material_gbp ?? null,
-          subtotal_gbp: m.subtotal_gbp ?? null,
+          qty: (m.qty as number) ?? null,
+          unit_rate_gbp: (m.unit_price_material_gbp as number) ?? null,
+          subtotal_gbp: (m.subtotal_gbp as number) ?? null,
         })),
-        ...lab.map(l => ({
-          category: l.trade_key || 'labour',
+        ...lab.map((l) => ({
+          category: (l.trade_key || 'labour').toLowerCase(),
           description: l.notes || '',
           unit: 'hours',
-          qty: l.total_hours ?? null,
-          unit_rate_gbp: l.hourly_rate_gbp ?? null,
-          subtotal_gbp: l.labour_cost_gbp ?? null,
+          qty: (l.total_hours as number) ?? null,
+          unit_rate_gbp: (l.hourly_rate_gbp as number) ?? null,
+          subtotal_gbp: (l.labour_cost_gbp as number) ?? null,
         })),
       ]
 
@@ -236,15 +267,23 @@ function buildRefurbFromNewTables(
         id: r.id,
         detected_room_type: r.room_type ?? undefined,
         room_type: r.room_type ?? undefined,
+
         image_url,
-        // legacy category cols left undefined/0; the UI totals from works/room_total
-        estimated_total_gbp: r.room_total_gbp ?? ((r.materials_total_gbp ?? 0) + (r.labour_total_gbp ?? 0)),
-        // new totals for RoomCard v3 (if you used it)
-        materials_total_gbp: r.materials_total_gbp ?? 0,
-        labour_total_gbp: r.labour_total_gbp ?? 0,
-        room_total_gbp: r.room_total_gbp ?? null,
-        confidence: r.room_confidence ?? null,
-        works, // keeps old table rendering alive
+        image_id: r.image_id ?? null,
+        image_index: r.image_index ?? null,
+
+        // pass-through v2 arrays so RoomCard v3 can itemise
+        materials: mat,
+        labour: lab,
+
+        // explicit totals
+        materials_total_gbp: Math.round(matSum),
+        labour_total_gbp: Math.round(labSum),
+        room_total_gbp: Math.round(tot),
+        room_confidence: r.room_confidence ?? null,
+
+        // legacy path
+        works,
       }
     })
 }
@@ -317,7 +356,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const property = normaliseProperty(propResp.data ?? null)
 
-  // 4) Try NEW refurb tables first
+  // 4) Try NEW refurb tables first (treat as present if ANY of the three has rows)
   const [roomsResp, matsResp, labsResp] = await Promise.all([
     supabase.from<RefurbRoomRow>('refurb_rooms').select('*').eq('property_id', property_id),
     supabase.from<RefurbMaterialRow>('refurb_materials').select('*').eq('property_id', property_id),
@@ -325,14 +364,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   ])
 
   let refurb_estimates: any[] = []
-  const haveNew =
-    !roomsResp.error && Array.isArray(roomsResp.data) && roomsResp.data.length > 0
 
-  if (haveNew) {
+  const roomsOk = !roomsResp.error && Array.isArray(roomsResp.data)
+  const matsOk  = !matsResp.error  && Array.isArray(matsResp.data)
+  const labsOk  = !labsResp.error  && Array.isArray(labsResp.data)
+
+  const haveAnyV2 =
+    (roomsOk && roomsResp.data!.length > 0) ||
+    (matsOk  && matsResp.data!.length  > 0) ||
+    (labsOk  && labsResp.data!.length  > 0)
+
+  if (haveAnyV2) {
     refurb_estimates = buildRefurbFromNewTables(
-      roomsResp.data || [],
-      matsResp.data || [],
-      labsResp.data || [],
+      roomsOk ? (roomsResp.data as RefurbRoomRow[]) : [],
+      matsOk  ? (matsResp.data  as RefurbMaterialRow[]) : [],
+      labsOk  ? (labsResp.data  as RefurbLabourRow[]) : [],
       property
     )
   } else {
