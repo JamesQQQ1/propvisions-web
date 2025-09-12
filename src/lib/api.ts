@@ -1,7 +1,80 @@
 // src/lib/api.ts
-export type RunStatus = 'queued' | 'processing' | 'completed' | 'failed'
 
+export type RunStatus = 'queued' | 'processing' | 'completed' | 'failed'
 export type Usage = { count: number; limit: number; remaining: number }
+
+/** Matches what RoomCard v3 (materials + labour) consumes */
+export type RefurbRoom = {
+  id?: string
+  detected_room_type?: string | null
+  room_type?: string | null
+
+  // imagery
+  image_url?: string | null
+  image_id?: string | null
+  image_index?: number | null
+
+  // NEW model (v2+) fields
+  materials?: Array<{
+    job_line_id?: string | null
+    item_key?: string
+    unit?: string
+    qty?: number | string | null
+    unit_price_material_gbp?: number | string | null
+    subtotal_gbp?: number | string | null
+    waste_pct?: number | string | null
+    units_to_buy?: number | string | null
+    notes?: string | null
+    assumed_area_m2?: number | string | null
+    confidence?: number | string | null
+  }> | string | null
+
+  labour?: Array<{
+    job_line_id?: string | null
+    trade_key?: string | null
+    total_hours?: number | string | null
+    crew_size?: number | string | null
+    hourly_rate_gbp?: number | string | null
+    labour_cost_gbp?: number | string | null
+    ai_confidence?: number | string | null
+    notes?: string | null
+  }> | string | null
+
+  materials_total_gbp?: number | string | null
+  labour_total_gbp?: number | string | null
+  room_total_gbp?: number | string | null
+  room_confidence?: number | string | null
+
+  // legacy category fields (kept for back-compat)
+  wallpaper_or_paint_gbp?: number | string | null
+  flooring_gbp?: number | string | null
+  plumbing_gbp?: number | string | null
+  electrics_gbp?: number | string | null
+  mould_or_damp_gbp?: number | string | null
+  structure_gbp?: number | string | null
+  works?: Array<{
+    category: string
+    description?: string
+    unit?: string
+    qty?: number
+    unit_rate_gbp?: number
+    subtotal_gbp?: number
+  }> | string | null
+
+  // misc
+  confidence?: number | null
+  assumptions?: Record<string, any> | null
+  risk_flags?: Record<string, boolean> | null
+
+  // optional p70s (sometimes nested)
+  p70_total_low_gbp?: number | string | null
+  p70_total_high_gbp?: number | string | null
+  totals?: {
+    p70_total_low_gbp?: number | string | null
+    p70_total_high_gbp?: number | string | null
+    estimated_total_gbp?: number | string | null
+  } | null
+}
 
 type AnalyzeKickoff = {
   run_id?: string
@@ -10,14 +83,14 @@ type AnalyzeKickoff = {
   usage?: Usage
 }
 
-type StatusResponse = {
+export type StatusResponse = {
   status: RunStatus
   run?: any
   error?: string
   property_id?: string | null
   property?: any
   financials?: Record<string, unknown> | null
-  refurb_estimates?: any[]
+  refurb_estimates?: RefurbRoom[]
   pdf_url?: string | null
 }
 
@@ -25,7 +98,6 @@ async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> 
   let res: Response
   try {
     res = await fetch(input, {
-      // prevent caching unless caller overrides
       cache: init?.cache ?? 'no-store',
       ...init,
       headers: {
@@ -34,7 +106,6 @@ async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> 
       },
     })
   } catch (err: any) {
-    // Network / CORS / offline / aborted
     if (err?.name === 'AbortError') {
       const e: any = new Error('Request aborted')
       e.code = 'ABORTED'
