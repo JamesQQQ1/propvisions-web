@@ -214,14 +214,12 @@ const ni = (x: any) => {
   const v = Math.round(Number(x))
   return Number.isFinite(v) ? v : 0
 }
-
-/* ---------------- Build rooms from your price tables ---------------- */
-function groupKey(m?: { image_index?: number | null; room_type?: string | null }) {
-  const ii = m?.image_index != null ? `img:${m.image_index}` : 'img:-'
-  const rt = (m?.room_type || '').toLowerCase().trim()
-  return `${ii}|${rt || 'room'}`
+const num = (x: any) => {
+  const v = Number(x)
+  return Number.isFinite(v) ? v : 0
 }
 
+/* ---------------- Build rooms from your price tables ---------------- */
 function buildRoomsFromPriceTables(
   mats: MaterialPriceRow[],
   labs: LabourPriceRow[],
@@ -240,14 +238,23 @@ function buildRoomsFromPriceTables(
     return map.get(key)!
   }
 
+  // Tolerant grouping: accept image_idx/room as alternates
+  const keyFor = (x: { image_index?: any; room_type?: any } | any) => {
+    const iiRaw = x?.image_index ?? x?.image_idx ?? null
+    const ii = iiRaw != null ? Number(iiRaw) : null
+    const rt = (x?.room_type ?? x?.room ?? '').toString().toLowerCase().trim()
+    const k = `${ii != null ? `img:${ii}` : 'img:-'}|${rt || 'room'}`
+    return { k, ii, rt: rt || 'room' }
+  }
+
   for (const m of mats || []) {
-    const k = groupKey(m)
-    const agg = add(k, (m.image_index ?? null), (m.room_type ?? null))
+    const { k, ii, rt } = keyFor(m as any)
+    const agg = add(k, ii, rt)
     agg.materials.push(m)
   }
   for (const l of labs || []) {
-    const k = groupKey(l)
-    const agg = add(k, (l.image_index ?? null), (l.room_type ?? null))
+    const { k, ii, rt } = keyFor(l as any)
+    const agg = add(k, ii, rt)
     agg.labour.push(l)
   }
 
@@ -256,34 +263,60 @@ function buildRoomsFromPriceTables(
   const rooms = Array.from(map.values()).map((agg, idx) => {
     const image_url = pickImageUrl(agg.image_index, images)
 
-    // Map to RoomCard v3 material lines
-    const matLines = (agg.materials || []).map((m) => ({
-      job_line_id: m.job_line_id ?? null,
-      item_key: m.item_key || m.material || 'material',
-      unit: m.unit || null,
-      qty: m.qty_with_waste ?? m.qty ?? m.units_to_buy ?? null,
-      unit_price_material_gbp: m.unit_price_material_gbp ?? m.unit_price_withvat_gbp ?? null,
-      subtotal_gbp: m.material_subtotal_gbp ?? m.subtotal_gbp ?? null,
-      waste_pct: null,
-      units_to_buy: m.units_to_buy ?? null,
-      notes: m.notes ?? null,
-      assumed_area_m2: m.assumed_area_m2 ?? null,
-      confidence: m.confidence ?? null,
-    }))
+    // Map to RoomCard v3 material lines (with subtotal fallback)
+    const matLines = (agg.materials || []).map((m) => {
+      const qty =
+        m.qty_with_waste ??
+        m.qty ??
+        m.units_to_buy ??
+        null
 
-    const labLines = (agg.labour || []).map((l) => ({
-      job_line_id: l.job_line_id ?? null,
-      trade_key: l.trade_key || 'labour',
-      total_hours: l.total_hours ?? null,
-      crew_size: l.crew_size ?? null,
-      hourly_rate_gbp: l.hourly_rate_gbp ?? null,
-      labour_cost_gbp: l.labour_cost_gbp ?? null,
-      ai_confidence: l.ai_confidence ?? null,
-      notes: l.notes ?? null,
-    }))
+      const unitRate =
+        m.unit_price_material_gbp ??
+        m.unit_price_withvat_gbp ??
+        null
 
-    const matTotal = matLines.reduce((a, m) => a + n(m.subtotal_gbp), 0)
-    const labTotal = labLines.reduce((a, l) => a + n(l.labour_cost_gbp), 0)
+      const subtotal =
+        m.material_subtotal_gbp ??
+        m.subtotal_gbp ??
+        (unitRate != null && qty != null ? num(unitRate) * num(qty) : null)
+
+      return {
+        job_line_id: m.job_line_id ?? null,
+        item_key: m.item_key || m.material || 'material',
+        unit: m.unit || null,
+        qty,
+        unit_price_material_gbp: unitRate,
+        subtotal_gbp: subtotal,
+        waste_pct: null,
+        units_to_buy: m.units_to_buy ?? null,
+        notes: m.notes ?? null,
+        assumed_area_m2: m.assumed_area_m2 ?? null,
+        confidence: m.confidence ?? null,
+      }
+    })
+
+    // Labour lines (with cost fallback)
+    const labLines = (agg.labour || []).map((l) => {
+      const hours = l.total_hours ?? null
+      const crew  = l.crew_size ?? 1
+      const rate  = l.hourly_rate_gbp ?? null
+      const cost  = l.labour_cost_gbp ?? (hours != null && rate != null ? num(hours) * num(crew ?? 1) * num(rate) : null)
+
+      return {
+        job_line_id: l.job_line_id ?? null,
+        trade_key: l.trade_key || 'labour',
+        total_hours: hours,
+        crew_size: crew,
+        hourly_rate_gbp: rate,
+        labour_cost_gbp: cost,
+        ai_confidence: l.ai_confidence ?? null,
+        notes: l.notes ?? null,
+      }
+    })
+
+    const matTotal = matLines.reduce((a, m) => a + num(m.subtotal_gbp), 0)
+    const labTotal = labLines.reduce((a, l) => a + num(l.labour_cost_gbp), 0)
     const total = matTotal + labTotal
 
     return {
@@ -395,33 +428,47 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
   const property = normaliseProperty(propResp.data ?? null)
 
-  // 3) Read from ACTUAL price tables
-  const [matsResp, labsResp] = await Promise.all([
+  // 3) Read from ACTUAL price tables — try by run_id, then fallback by property_id
+  const [matsByRun, labsByRun] = await Promise.all([
     supabase.from<MaterialPriceRow>('material_refurb_prices').select('*').eq('run_id', run_id),
     supabase.from<LabourPriceRow>('labour_refurb_prices').select('*').eq('run_id', run_id),
   ])
 
-  let refurb_estimates: any[] = []
+  let matsRows = Array.isArray(matsByRun.data) ? matsByRun.data : []
+  let labsRows = Array.isArray(labsByRun.data) ? labsByRun.data : []
+
   let refurb_debug: any = {
     property_id,
     used: 'none',
-    material_rows: Array.isArray(matsResp.data) ? matsResp.data.length : 0,
-    labour_rows: Array.isArray(labsResp.data) ? labsResp.data.length : 0,
+    by_run: {
+      material_rows: matsRows.length,
+      labour_rows: labsRows.length,
+      error: { mats: matsByRun.error || null, labs: labsByRun.error || null },
+    },
+    by_property: { material_rows: 0, labour_rows: 0, error: null },
   }
 
-  const havePriceTables =
-    (!matsResp.error && Array.isArray(matsResp.data) && matsResp.data.length > 0) ||
-    (!labsResp.error && Array.isArray(labsResp.data) && labsResp.data.length > 0)
+  if ((matsRows.length === 0 && labsRows.length === 0) && property_id) {
+    const [matsByProp, labsByProp] = await Promise.all([
+      supabase.from<MaterialPriceRow>('material_refurb_prices').select('*').eq('property_id', property_id),
+      supabase.from<LabourPriceRow>('labour_refurb_prices').select('*').eq('property_id', property_id),
+    ])
+    matsRows = Array.isArray(matsByProp.data) ? matsByProp.data : []
+    labsRows = Array.isArray(labsByProp.data) ? labsByProp.data : []
+    refurb_debug.by_property = {
+      material_rows: matsRows.length,
+      labour_rows: labsRows.length,
+      error: { mats: matsByProp.error || null, labs: labsByProp.error || null },
+    }
+  }
 
-  if (havePriceTables) {
-    refurb_estimates = buildRoomsFromPriceTables(
-      matsResp.data || [],
-      labsResp.data || [],
-      property
-    )
+  let refurb_estimates: any[] = []
+
+  if (matsRows.length > 0 || labsRows.length > 0) {
+    refurb_estimates = buildRoomsFromPriceTables(matsRows, labsRows, property)
     refurb_debug.used = 'price_tables'
   } else {
-    // Legacy fallback if nothing in price tables
+    // Legacy fallback if nothing in price tables (by run or by property)
     const refurbResp = await supabase
       .from<LegacyRefurbRow>('refurb_estimates')
       .select('*')
