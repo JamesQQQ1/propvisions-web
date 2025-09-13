@@ -21,8 +21,6 @@ type RunRow = {
   property_id: string | null
   error_message: string | null
   pdf_url?: string | null
-  received_at?: string | null
-  finished_at?: string | null
 }
 
 type PropertyRow = {
@@ -67,25 +65,7 @@ type FinancialsRow = {
   total_refurbishment_gbp?: number | null
 }
 
-/* ---------------- Legacy refurb table (keep as last-resort fallback) ---------------- */
-type LegacyRefurbRow = {
-  id: string
-  property_id: string
-  room_type: string
-  wallpaper_or_paint_gbp: number | null
-  flooring_gbp: number | null
-  plumbing_gbp: number | null
-  electrics_gbp: number | null
-  mould_or_damp_gbp: number | null
-  structure_gbp: number | null
-  estimated_total_gbp: number | null
-  p70_total_low_gbp?: number | null
-  p70_total_high_gbp?: number | null
-  confidence?: number | null
-  image_id?: string | null
-}
-
-/* ---------------- Your ACTUAL price tables (source of truth) ---------------- */
+/* ---------------- Source-of-truth price tables ---------------- */
 type MaterialPriceRow = {
   id: string
   property_id?: string | null
@@ -98,20 +78,14 @@ type MaterialPriceRow = {
   material?: string | null
   spec?: string | null
   unit?: string | null
-
-  // quantities (note: your schema uses qty_raw)
   qty_raw?: number | null
   qty_with_waste?: number | null
   qty?: number | null
   units_to_buy?: number | null
-
-  // money
   unit_price_material_gbp?: number | null
   unit_price_withvat_gbp?: number | null
   subtotal_gbp?: number | null
   material_subtotal_gbp?: number | null
-
-  // misc
   assumed_area_m2?: number | null
   dimensions?: any
   confidence?: number | null
@@ -140,22 +114,20 @@ type LabourPriceRow = {
 /* ---------------- Helpers ---------------- */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const toStringQuery = (q: string | string[] | undefined) => (Array.isArray(q) ? q[0] : (q ?? ''))
+const num = (x: any) => (Number.isFinite(+x) ? +x : 0)
 
 function normaliseProperty(p: PropertyRow | null) {
   if (!p) return null
   const images = Array.isArray(p.listing_images) ? p.listing_images : []
   const image_url = images.length ? images[0] : null
-
   const display_price_gbp =
     p.purchase_price_gbp ?? p.guide_price_gbp ?? p.asking_price_gbp ?? p.price_gbp ?? null
-
   const price_label =
     p.purchase_price_gbp != null ? 'purchase_price_gbp'
-      : p.guide_price_gbp != null ? 'guide_price_gbp'
-      : p.asking_price_gbp != null ? 'asking_price_gbp'
-      : p.price_gbp != null ? 'price_gbp'
-      : 'unknown'
-
+    : p.guide_price_gbp != null ? 'guide_price_gbp'
+    : p.asking_price_gbp != null ? 'asking_price_gbp'
+    : p.price_gbp != null ? 'price_gbp'
+    : 'unknown'
   return {
     property_id: p.id,
     property_title: p.property_title ?? '',
@@ -186,24 +158,21 @@ function normaliseProperty(p: PropertyRow | null) {
 }
 
 function pickImageUrl(image_index: number | null | undefined, listing_images?: string[] | null) {
-  if (!listing_images || listing_images.length === 0) return null
+  if (!listing_images || !listing_images.length) return null
   if (image_index == null) return null
-  const candidates = [image_index, image_index - 1].filter(
-    (n): n is number => typeof n === 'number' && n >= 0 && n < listing_images.length
-  )
-  for (const i of candidates) {
+  const i0 = image_index
+  const i1 = image_index - 1
+  const cand = [i0, i1].filter((i): i is number => Number.isInteger(i) && i >= 0 && i < listing_images.length)
+  for (const i of cand) {
     const u = listing_images[i]
     if (u) return u
   }
   return null
 }
 
-const num = (x: any) => {
-  const v = Number(x)
-  return Number.isFinite(v) ? v : 0
-}
-
-function sampleRows<T extends { id?: any; property_id?: any; run_id?: any; room_type?: any }>(xs: T[] | null | undefined) {
+function sampleRows<T extends { id?: any; property_id?: any; run_id?: any; room_type?: any; image_index?: any }>(
+  xs: T[] | null | undefined
+) {
   return (Array.isArray(xs) ? xs : [])
     .slice(0, 3)
     .map(r => ({
@@ -211,10 +180,11 @@ function sampleRows<T extends { id?: any; property_id?: any; run_id?: any; room_
       property_id: (r as any).property_id ?? null,
       run_id: (r as any).run_id ?? null,
       room_type: (r as any).room_type ?? (r as any).room ?? null,
-    }));
+      image_index: (r as any).image_index ?? (r as any).image_idx ?? null,
+    }))
 }
 
-/* ---------------- Build rooms from your price tables ---------------- */
+/* ---------------- Build rooms from price tables ---------------- */
 function buildRoomsFromPriceTables(
   mats: MaterialPriceRow[],
   labs: LabourPriceRow[],
@@ -228,37 +198,34 @@ function buildRoomsFromPriceTables(
   }
   const map = new Map<string, RoomAgg>()
 
+  const keyFor = (x: { image_index?: any; room_type?: any } | any) => {
+    const iiRaw = x?.image_index ?? x?.image_idx ?? null
+    const ii = iiRaw != null ? Number(iiRaw) : null
+    const rt = (x?.room_type ?? x?.room ?? 'room').toString().toLowerCase().trim() || 'room'
+    const k = `${ii != null ? `img:${ii}` : 'img:-'}|${rt}`
+    return { k, ii, rt }
+  }
+
   const add = (key: string, image_index: number | null, room_type: string | null) => {
     if (!map.has(key)) map.set(key, { image_index, room_type, materials: [], labour: [] })
     return map.get(key)!
   }
 
-  const keyFor = (x: { image_index?: any; room_type?: any } | any) => {
-    const iiRaw = x?.image_index ?? x?.image_idx ?? null
-    const ii = iiRaw != null ? Number(iiRaw) : null
-    const rt = (x?.room_type ?? x?.room ?? '').toString().toLowerCase().trim() || 'room'
-    const k = `${ii != null ? `img:${ii}` : 'img:-'}|${rt}`
-    return { k, ii, rt }
-  }
-
   for (const m of mats || []) {
-    const { k, ii, rt } = keyFor(m as any)
-    const agg = add(k, ii, rt)
-    agg.materials.push(m)
+    const { k, ii, rt } = keyFor(m)
+    add(k, ii, rt).materials.push(m)
   }
   for (const l of labs || []) {
-    const { k, ii, rt } = keyFor(l as any)
-    const agg = add(k, ii, rt)
-    agg.labour.push(l)
+    const { k, ii, rt } = keyFor(l)
+    add(k, ii, rt).labour.push(l)
   }
 
   const images = property?.listing_images || null
 
-  const rooms = Array.from(map.values()).map((agg, idx) => {
+  return Array.from(map.values()).map((agg, idx) => {
     const image_url = pickImageUrl(agg.image_index, images)
 
     const matLines = (agg.materials || []).map((m) => {
-      // IMPORTANT: include qty_raw in the cascade (your schema)
       const qty =
         m.qty_with_waste ??
         m.qty_raw ??
@@ -296,7 +263,6 @@ function buildRoomsFromPriceTables(
       const crew  = l.crew_size ?? 1
       const rate  = l.hourly_rate_gbp ?? null
       const cost  = l.labour_cost_gbp ?? (hours != null && rate != null ? num(hours) * num(crew ?? 1) * num(rate) : null)
-
       return {
         job_line_id: l.job_line_id ?? null,
         trade_key: l.trade_key || 'labour',
@@ -309,9 +275,9 @@ function buildRoomsFromPriceTables(
       }
     })
 
-    const matTotal = matLines.reduce((a, m) => a + num(m.subtotal_gbp), 0)
-    const labTotal = labLines.reduce((a, l) => a + num(l.labour_cost_gbp), 0)
-    const total = matTotal + labTotal
+    const materials_total = matLines.reduce((a, m) => a + num(m.subtotal_gbp), 0)
+    const labour_total    = labLines.reduce((a, l) => a + num(l.labour_cost_gbp), 0)
+    const total           = materials_total + labour_total
 
     return {
       id: `rx-${idx}`,
@@ -320,14 +286,17 @@ function buildRoomsFromPriceTables(
       image_url,
       image_id: null,
       image_index: agg.image_index ?? null,
+
+      // v2 payload
       materials: matLines,
       labour: labLines,
-      materials_total_gbp: matTotal || null,
-      labour_total_gbp: labTotal || null,
+      materials_total_gbp: materials_total || null,
+      labour_total_gbp: labour_total || null,
       room_total_gbp: total || null,
       room_confidence: null,
       confidence: null,
-      // legacy back-compat
+
+      // legacy-like works array so your grid stays happy
       estimated_total_gbp: total || null,
       works: [
         ...matLines.map((m) => ({
@@ -349,8 +318,6 @@ function buildRoomsFromPriceTables(
       ],
     }
   })
-
-  return rooms
 }
 
 /* ---------------- API handler ---------------- */
@@ -361,149 +328,97 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Allow', 'GET')
     return res.status(405).json({ error: 'Method not allowed' })
   }
-
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     return res.status(500).json({ error: 'Server not configured (Supabase env missing)' })
   }
 
+  const debug = toStringQuery(req.query.debug) === '1'
+  let property_id = toStringQuery(req.query.property_id)
   const run_id = toStringQuery(req.query.run_id)
-  const property_id_param = toStringQuery(req.query.property_id)
 
-  // Resolve property_id:
-  let property_id: string | null = null
-  let run: RunRow | null = null
-  let runStatus: RunRow['status'] | 'idle' = 'idle'
-
-  if (property_id_param) {
-    property_id = property_id_param
-  } else {
-    if (!run_id) return res.status(400).json({ error: 'Provide run_id or property_id' })
-    if (!UUID_RE.test(run_id)) return res.status(400).json({ error: 'Invalid run_id format (must be UUID)' })
-
-    const runResp = await supabase.from<RunRow>('runs').select('*').eq('run_id', run_id).maybeSingle()
+  // Property-first: if property_id not given, we only *resolve* it from run_id
+  if (!property_id) {
+    if (!run_id) return res.status(400).json({ error: 'Provide property_id (preferred) or run_id' })
+    if (!UUID_RE.test(run_id)) return res.status(400).json({ error: 'Invalid run_id format (UUID required)' })
+    const runResp = await supabase.from<RunRow>('runs').select('run_id,status,property_id,pdf_url').eq('run_id', run_id).maybeSingle()
     if (runResp.error) {
       console.error('Supabase runs query error:', runResp.error)
       return res.status(500).json({ error: 'Supabase runs query failed' })
     }
-    run = runResp.data
-    if (!run) return res.status(404).json({ error: 'Run not found' })
-
-    runStatus = run.status
-    if (run.status !== 'completed') {
-      return res.status(200).json({
-        status: run.status,
-        run,
-        pdf_url: run.pdf_url ?? null,
-      })
+    if (!runResp.data || !runResp.data.property_id) {
+      return res.status(404).json({ error: 'Run not found or missing property_id' })
     }
-    property_id = run.property_id
+    property_id = runResp.data.property_id
   }
 
-  if (!property_id) {
-    return res.status(200).json({
-      status: 'completed' as const,
-      property_id: null,
-      property: null,
-      financials: null,
-      refurb_estimates: [],
-      pdf_url: run?.pdf_url ?? null,
-      refurb_debug: { used: 'no_property_id' },
-    })
-  }
-
-  // Fetch property + financials
+  // Fetch property + financials (optional if missing)
   const [finResp, propResp] = await Promise.all([
     supabase.from<FinancialsRow>('property_financials').select('*').eq('property_id', property_id).maybeSingle(),
     supabase.from<PropertyRow>('properties').select('*').eq('id', property_id).maybeSingle(),
   ])
   if (finResp.error || propResp.error) {
     console.error('Supabase fetch errors:', { fin: finResp.error, prop: propResp.error })
-    return res.status(500).json({ error: 'Supabase fetch error after completion' })
+    return res.status(500).json({ error: 'Supabase fetch error' })
   }
   const property = normaliseProperty(propResp.data ?? null)
 
-  /* ---------- Price tables: primary by property_id, plus debug & run fallbacks ---------- */
-  const [matsByProp, labsByProp] = await Promise.all([
+  // Price tables STRICTLY by property_id
+  const [matsResp, labsResp] = await Promise.all([
     supabase.from<MaterialPriceRow>('material_refurb_prices').select('*').eq('property_id', property_id),
     supabase.from<LabourPriceRow>('labour_refurb_prices').select('*').eq('property_id', property_id),
   ])
 
-  let matsRows = Array.isArray(matsByProp.data) ? matsByProp.data : []
-  let labsRows = Array.isArray(labsByProp.data) ? labsByProp.data : []
+  const mats = Array.isArray(matsResp.data) ? matsResp.data : []
+  const labs = Array.isArray(labsResp.data) ? labsResp.data : []
 
-  // Also fetch by run (diagnostic / rare fallback)
-  let matsByRun: any = { data: [], error: null }
-  let labsByRun: any = { data: [], error: null }
-  if (run?.run_id) {
-    const [mByRun, lByRun] = await Promise.all([
-      supabase.from<MaterialPriceRow>('material_refurb_prices').select('*').eq('run_id', run.run_id),
-      supabase.from<LabourPriceRow>('labour_refurb_prices').select('*').eq('run_id', run.run_id),
-    ])
-    matsByRun = mByRun
-    labsByRun = lByRun
-  }
+  const refurb_estimates = (mats.length || labs.length)
+    ? buildRoomsFromPriceTables(mats, labs, property)
+    : []
 
-  // If property rows empty but run rows exist, use them
-  if (matsRows.length === 0 && labsRows.length === 0) {
-    if (Array.isArray(matsByRun.data)) matsRows = matsByRun.data
-    if (Array.isArray(labsByRun.data)) labsRows = labsByRun.data
-  }
-
-  let refurb_estimates: any[] = []
-  let refurb_debug: any = {
-    used: (matsByProp.data?.length || labsByProp.data?.length) ? 'price_tables_by_property'
-         : (matsByRun.data?.length || labsByRun.data?.length) ? 'price_tables_by_run'
-         : 'none',
+  const refurb_debug: any = {
+    used: 'price_tables_by_property',
     property_id,
-    run_context: run ? { run_id: run.run_id, status: runStatus } : null,
-    env: { supabase_url_tail: (SUPABASE_URL || '').slice(-10) },
     counts: {
-      by_property: {
-        materials: Array.isArray(matsByProp.data) ? matsByProp.data.length : 0,
-        labour:    Array.isArray(labsByProp.data) ? labsByProp.data.length : 0,
-        error:     { mats: matsByProp.error || null, labs: labsByProp.error || null },
-        samples:   {
-          materials: sampleRows(matsByProp.data),
-          labour:    sampleRows(labsByProp.data),
-        }
+      materials: mats.length,
+      labour: labs.length,
+      errors: { mats: matsResp.error || null, labour: labsResp.error || null },
+      samples: {
+        materials: sampleRows(mats),
+        labour: sampleRows(labs),
       },
-      by_run: {
-        materials: Array.isArray(matsByRun.data) ? matsByRun.data.length : 0,
-        labour:    Array.isArray(labsByRun.data) ? labsByRun.data.length : 0,
-        error:     { mats: matsByRun.error || null, labs: labsByRun.error || null },
-        samples:   {
-          materials: sampleRows(matsByRun.data),
-          labour:    sampleRows(labsByRun.data),
-        }
-      }
-    }
+    },
+    env: { supabase_url_tail: (SUPABASE_URL || '').slice(-10) },
   }
 
-  if (matsRows.length > 0 || labsRows.length > 0) {
-    refurb_estimates = buildRoomsFromPriceTables(matsRows, labsRows, property)
-  } else {
-    // Legacy fallback
-    const refurbResp = await supabase
-      .from<LegacyRefurbRow>('refurb_estimates')
-      .select('*')
-      .eq('property_id', property_id)
-
-    if (refurbResp.error) {
-      console.error('Supabase refurb_estimates error:', refurbResp.error)
-      return res.status(500).json({ error: 'Supabase refurb fetch error' })
+  // Optional deeper debug: return first 10 raw rows (trimmed fields only)
+  if (debug) {
+    const trimMat = (r: MaterialPriceRow) => ({
+      id: r.id, property_id: r.property_id, run_id: r.run_id,
+      room_type: r.room_type, image_index: r.image_index,
+      item_key: r.item_key ?? r.material ?? null,
+      qty_with_waste: r.qty_with_waste, qty_raw: r.qty_raw, qty: r.qty, units_to_buy: r.units_to_buy,
+      unit_price_material_gbp: r.unit_price_material_gbp, material_subtotal_gbp: r.material_subtotal_gbp,
+      subtotal_gbp: r.subtotal_gbp, created_at: r.created_at,
+    })
+    const trimLab = (r: LabourPriceRow) => ({
+      id: r.id, property_id: r.property_id, run_id: r.run_id,
+      room_type: r.room_type, image_index: r.image_index,
+      trade_key: r.trade_key, total_hours: r.total_hours, crew_size: r.crew_size,
+      hourly_rate_gbp: r.hourly_rate_gbp, labour_cost_gbp: r.labour_cost_gbp, created_at: r.created_at,
+    })
+    refurb_debug.raw_preview = {
+      materials: mats.slice(0, 10).map(trimMat),
+      labour: labs.slice(0, 10).map(trimLab),
     }
-    refurb_estimates = Array.isArray(refurbResp.data) ? refurbResp.data : []
-    refurb_debug.used = 'legacy_table'
-    refurb_debug.legacy_count = refurb_estimates.length
   }
 
   return res.status(200).json({
-    status: (run?.status ?? 'completed') as 'completed' | 'queued' | 'processing' | 'failed',
+    status: 'completed' as const,
     property_id,
     property,
     financials: finResp.data ?? null,
     refurb_estimates,
-    pdf_url: run?.pdf_url ?? null,
+    pdf_url: null, // not managed here; keep if you attach PDFs elsewhere
     refurb_debug,
   })
 }
