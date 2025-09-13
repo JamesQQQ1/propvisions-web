@@ -12,7 +12,7 @@ import FeedbackBar from '../../components/FeedbackBar';
 import FinancialSliders, { type Derived as SliderDerived, type Assumptions as SliderAssumptions } from '@/components/FinancialSliders';
 
 /* ---------- branding ---------- */
-const LOGO_SRC = '/propvisions_logo.png'; // lives in /public (note lowercase)
+const LOGO_SRC = '/propvisions_logo.png';
 
 /* ---------- helpers ---------- */
 function formatGBP(n?: number | string | null) {
@@ -38,11 +38,10 @@ const toInt = (n: unknown) => {
   return Number.isFinite(v) && v > 0 ? v : 0;
 };
 
-// ensure we always have an absolute URL for the PDF (prevents SPA routing back to /demo)
 function normalizePdfUrl(maybeUrl?: string | null): string | null {
   if (!maybeUrl) return null;
   try {
-    if (/^https?:\/\//i.test(maybeUrl)) return maybeUrl; // already absolute
+    if (/^https?:\/\//i.test(maybeUrl)) return maybeUrl;
     return new URL(maybeUrl, window.location.origin).toString();
   } catch {
     return null;
@@ -70,7 +69,7 @@ function StatusBadge({ status }: { status?: RunStatus | 'idle' }) {
   );
 }
 
-/* ---------- tiny progress bar component ---------- */
+/* ---------- tiny progress bar ---------- */
 function ProgressBar({ percent, show }: { percent: number; show: boolean }) {
   return (
     <div className={classNames('mt-3 w-full', !show && 'hidden')} aria-hidden={!show}>
@@ -84,7 +83,7 @@ function ProgressBar({ percent, show }: { percent: number; show: boolean }) {
   );
 }
 
-/* ---------- small math helpers for refurb + prices ---------- */
+/* ---------- small helpers for refurb ---------- */
 function parseWorksArray(works: unknown): any[] {
   if (Array.isArray(works)) return works;
   if (typeof works === 'string') {
@@ -97,7 +96,6 @@ function parseWorksArray(works: unknown): any[] {
   }
   return [];
 }
-
 function refurbRowTotal(r: RefurbRow): number {
   const catSum =
     toInt(r.wallpaper_or_paint_gbp) +
@@ -110,16 +108,16 @@ function refurbRowTotal(r: RefurbRow): number {
   const worksArr = parseWorksArray(r.works);
   const worksSum = worksArr.reduce((acc, w) => acc + toInt(w?.subtotal_gbp), 0);
 
-  return Math.max(toInt(r.estimated_total_gbp), catSum, worksSum);
-}
+  // Prefer explicit v2 totals if present
+  const v2Total = toInt(r.room_total_gbp) || (toInt(r.materials_total_gbp) + toInt(r.labour_total_gbp));
 
+  return Math.max(v2Total, toInt(r.estimated_total_gbp), catSum, worksSum);
+}
 function sumRefurbTotals(rows: RefurbRow[] | undefined | null): number {
   if (!Array.isArray(rows)) return 0;
   return rows.reduce((acc, r) => acc + refurbRowTotal(r), 0);
 }
-
 function pickPrice(property: any): number {
-  // preference order: purchase -> guide -> asking -> display
   const p = Number(property?.purchase_price_gbp ?? 0)
     || Number(property?.guide_price_gbp ?? 0)
     || Number(property?.asking_price_gbp ?? 0)
@@ -140,18 +138,19 @@ export default function Page() {
     financials: Record<string, unknown> | null;
     refurb_estimates: RefurbRow[];
     pdf_url?: string | null;
+    refurb_debug?: any;
   } | null>(null);
 
-  // NEW: sliders state (derived + assumptions)
+  // Sliders
   const [slDerived, setSlDerived] = useState<SliderDerived | null>(null);
   const [slAssumptions, setSlAssumptions] = useState<SliderAssumptions | null>(null);
 
-  // UI state: filters + sort
+  // Filters/sort
   const [filterType, setFilterType] = useState<string>('All');
   const [sortKey, setSortKey] = useState<'total_desc' | 'total_asc' | 'room_asc'>('total_desc');
-  const [minConfidence, setMinConfidence] = useState<number>(0); // 0..100
+  const [minConfidence, setMinConfidence] = useState<number>(0);
 
-  // Keep the current run + exec ids so Stop can hard-cancel via API
+  // Run state
   const runIdRef = useRef<string | null>(null);
   const execIdRef = useRef<string | null>(null);
 
@@ -159,20 +158,18 @@ export default function Page() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const startedAtRef = useRef<number | null>(null);
-  const submittingRef = useRef(false); // client-side debounce
+  const submittingRef = useRef(false);
 
-  /* ---------- PROTECTED DEMO: logout control ---------- */
+  /* logout */
   async function handleLogout() {
-    try {
-      await fetch('/api/demo-logout', { method: 'POST' });
-    } catch {}
+    try { await fetch('/api/demo-logout', { method: 'POST' }); } catch {}
     window.location.href = '/demo-access?next=/demo';
   }
 
-  /* ---------- PROGRESS: slow ramp for 5 minutes then snap ---------- */
+  /* progress bar logic */
   const [progress, setProgress] = useState(0);
   const progressTickRef = useRef<NodeJS.Timeout | null>(null);
-  const RAMP_MS = 5 * 60 * 1000; // 5 minutes
+  const RAMP_MS = 5 * 60 * 1000;
   const MAX_DURING_RUN = 97;
 
   useEffect(() => {
@@ -241,7 +238,7 @@ export default function Page() {
     'https://auctions.savills.co.uk/auctions/19-august-2025-211/9-seedhill-road-11942',
   ];
 
-  /* ---------- run kickoff ---------- */
+  /* kickoff */
   async function handleStart(e: React.FormEvent) {
     e.preventDefault();
     if (submittingRef.current) return;
@@ -299,8 +296,9 @@ export default function Page() {
           financials: result.financials ?? null,
           refurb_estimates: Array.isArray(result.refurb_estimates) ? result.refurb_estimates : [],
           pdf_url: resolvedPdf,
+          refurb_debug: result.refurb_debug ?? undefined,
         });
-        console.log('PDF URL (resolved):', resolvedPdf);
+        if (result?.refurb_debug) console.log('refurb_debug:', result.refurb_debug);
       } catch (err: any) {
         setError(err?.message === 'Polling aborted' ? 'Cancelled.' : err?.message || 'Run failed');
         setStatus('failed');
@@ -330,7 +328,7 @@ export default function Page() {
     setError(execution_id ? 'Stop requested.' : 'Stopped locally (no execution id).');
   }
 
-  // Build filter chips and sorted/filtered refurb list
+  // Build filter chips
   const roomTypes = useMemo(() => {
     const set = new Set<string>();
     (data?.refurb_estimates || []).forEach((r) => {
@@ -343,9 +341,8 @@ export default function Page() {
   const refinedRefurbs = useMemo(() => {
     let list = (data?.refurb_estimates || []) as RefurbRow[];
 
-    // drop zero/hidden rows
-    list = list.filter((r) => refurbRowTotal(r) > 0);
-
+    // *** IMPORTANT: do NOT drop zero rows; we want to show "No work required" cards ***
+    // if (filterType !== 'All') filter to room_type
     if (filterType !== 'All') {
       list = list.filter((r) => {
         const t = (r.detected_room_type || r.room_type || 'Other').toString();
@@ -354,12 +351,11 @@ export default function Page() {
       });
     }
 
-    // min confidence gate (0..100)
+    // min confidence
     list = list.filter((r) =>
       typeof r.confidence === 'number' ? r.confidence * 100 >= minConfidence : true
     );
 
-    // Sort
     const byRoom = (r: RefurbRow) =>
       (r.detected_room_type || r.room_type || 'Other').toString().toLowerCase();
 
@@ -372,7 +368,7 @@ export default function Page() {
     return list;
   }, [data?.refurb_estimates, filterType, sortKey, minConfidence]);
 
-  // Base numbers for sliders (only when results exist)
+  // Sliders base numbers
   const basePrice = useMemo(() => pickPrice(data?.property), [data?.property]);
   const baseRent = useMemo(() => {
     const v = Number((data?.financials as any)?.monthly_rent_gbp ?? 0);
@@ -380,7 +376,6 @@ export default function Page() {
   }, [data?.financials]);
   const baseRefurb = useMemo(() => sumRefurbTotals(data?.refurb_estimates), [data?.refurb_estimates]);
 
-  // Map backend financials to MetricsCards.fallback when sliders not moved yet
   const fallbackForMetrics = useMemo(() => {
     const F = (data?.financials || {}) as Record<string, any>;
     const maybe = (k: string) => (Number.isFinite(+F[k]) ? +F[k] : undefined);
@@ -563,7 +558,6 @@ export default function Page() {
                   )}
                 </div>
 
-                {/* Financials thumbs (kept here for visibility) */}
                 <FeedbackBar
                   runId={runIdRef.current}
                   propertyId={data.property_id}
@@ -605,11 +599,10 @@ export default function Page() {
             </div>
           </section>
 
-          {/* Live “happiness” metrics */}
+          {/* User feedback overview */}
           {data?.property_id && (
             <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
               <h3 className="text-xl font-semibold mb-3">User Feedback (last 90 days)</h3>
-              {/* This component expects either `derived/fallback` or (if you have a different MetricsDashboard, wire it instead) */}
               <MetricsCards
                 derived={slDerived ?? undefined}
                 fallback={fallbackForMetrics}
@@ -623,7 +616,6 @@ export default function Page() {
               <h3 className="text-xl font-semibold">Refurbishment Estimates</h3>
 
               <div className="flex flex-wrap items-center gap-2 ml-auto">
-                {/* Filter */}
                 <label className="text-xs text-slate-600">Filter:</label>
                 <select
                   className="text-sm border rounded-md px-2 py-1"
@@ -635,7 +627,6 @@ export default function Page() {
                   ))}
                 </select>
 
-                {/* Sort */}
                 <label className="text-xs text-slate-600 ml-2">Sort:</label>
                 <select
                   className="text-sm border rounded-md px-2 py-1"
@@ -647,7 +638,6 @@ export default function Page() {
                   <option value="room_asc">Room (A → Z)</option>
                 </select>
 
-                {/* Confidence gate */}
                 <label className="text-xs text-slate-600 ml-2">Min confidence:</label>
                 <input
                   type="range"
@@ -706,7 +696,8 @@ export default function Page() {
                         const worksArr = parseWorksArray(est.works);
                         const worksSum = worksArr.reduce((acc, w) => acc + toInt(w?.subtotal_gbp), 0);
 
-                        const total = Math.max(toInt(est.estimated_total_gbp), catSum, worksSum);
+                        const v2Total = toInt(est.room_total_gbp) || (toInt(est.materials_total_gbp) + toInt(est.labour_total_gbp));
+                        const total = Math.max(v2Total, toInt(est.estimated_total_gbp), catSum, worksSum);
                         const other = Math.max(0, total - catSum);
                         const conf = typeof est.confidence === 'number' ? Math.round(est.confidence * 100) : null;
 
@@ -788,23 +779,21 @@ export default function Page() {
               )}
             </div>
 
-            {/* NEW: Live assumptions sliders */}
+            {/* Live assumptions sliders */}
             <div className="mb-4">
               <FinancialSliders
                 priceGBP={basePrice}
                 refurbTotalGBP={baseRefurb}
                 rentMonthlyGBP={baseRent}
-                defaults={{}} // you can prefill e.g. { mgmtPct: 12, voidsPct: 6 }
+                defaults={{}}
                 onChange={(a, d) => {
                   setSlAssumptions(a);
                   setSlDerived(d);
-                  // emit a metrics refresh if you want other widgets to listen
                   if (typeof window !== 'undefined') {
                     window.dispatchEvent(new CustomEvent('metrics:refresh'));
                   }
                 }}
               />
-              {/* Thumbs targeting assumptions vs outputs specifically */}
               <div className="mt-2 flex items-center gap-3">
                 <FeedbackBar
                   runId={runIdRef.current}
@@ -823,7 +812,7 @@ export default function Page() {
               </div>
             </div>
 
-            {/* Backend-calculated financials table (for transparency) */}
+            {/* Backend-calculated financials table */}
             {data.financials ? (
               <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
                 {Object.entries(data.financials)
@@ -839,7 +828,6 @@ export default function Page() {
               <p className="text-slate-600">No financials found for this property yet.</p>
             )}
 
-            {/* Section-level feedback (kept for module=financials) */}
             <FeedbackBar
               runId={runIdRef.current}
               propertyId={data.property_id}
@@ -847,7 +835,7 @@ export default function Page() {
             />
           </section>
 
-          {/* Report Preview (embedded PDF) */}
+          {/* Report Preview */}
           {data.pdf_url && (
             <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
               <h3 className="text-xl font-semibold mb-3">Report Preview</h3>

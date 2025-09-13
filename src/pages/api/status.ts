@@ -1,154 +1,158 @@
 // src/pages/api/status.ts
-import type { NextApiRequest, NextApiResponse } from 'next'
-import { createClient } from '@supabase/supabase-js'
+import type { NextApiRequest, NextApiResponse } from 'next';
+import { createClient } from '@supabase/supabase-js';
 
 /** --- Env & Supabase admin client (server-only) --- */
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  console.error('Missing env: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
+  console.error('Missing env: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
 }
 
 const supabase = createClient(SUPABASE_URL as string, SUPABASE_SERVICE_ROLE_KEY as string, {
   auth: { persistSession: false },
-})
+});
 
-/** --- Minimal table row types --- */
+/** --- Minimal table row types (runs, property, financials) --- */
 type RunRow = {
-  run_id: string
-  status: 'queued' | 'processing' | 'completed' | 'failed'
-  property_id: string | null
-  error_message: string | null
-  pdf_url?: string | null
-  received_at?: string | null
-  finished_at?: string | null
-}
+  run_id: string;
+  status: 'queued' | 'processing' | 'completed' | 'failed';
+  property_id: string | null;
+  error_message: string | null;
+  pdf_url?: string | null;
+  received_at?: string | null;
+  finished_at?: string | null;
+};
 
 type PropertyRow = {
-  id: string
-  property_title?: string | null
-  address?: string | null
-  postcode?: string | null
-  property_type?: string | null
-  tenure?: string | null
-  bedrooms?: number | null
-  bathrooms?: number | null
-  receptions?: number | null
-  floor_area_sqm?: number | null
-  epc_rating?: string | null
-  listing_url?: string | null
-  auction_date?: string | null
-  lot_number?: string | null
-  agent_name?: string | null
-  agent_phone?: string | null
-  agent_email?: string | null
-  listing_images?: string[] | null
-  purchase_price_gbp?: number | null
-  guide_price_gbp?: number | null
-  asking_price_gbp?: number | null
-  price_gbp?: number | null
-}
+  id: string;
+  property_title?: string | null;
+  address?: string | null;
+  postcode?: string | null;
+  property_type?: string | null;
+  tenure?: string | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  receptions?: number | null;
+  floor_area_sqm?: number | null;
+  epc_rating?: string | null;
+  listing_url?: string | null;
+  auction_date?: string | null;
+  lot_number?: string | null;
+  agent_name?: string | null;
+  agent_phone?: string | null;
+  agent_email?: string | null;
+  listing_images?: string[] | null;
+  purchase_price_gbp?: number | null;
+  guide_price_gbp?: number | null;
+  asking_price_gbp?: number | null;
+  price_gbp?: number | null;
+};
 
 type FinancialsRow = {
-  property_id: string
-  stamp_duty_gbp?: number
-  legal_fees_gbp?: number
-  survey_fees_gbp?: number
-  insurance_annual_gbp?: number
-  management_fees_gbp?: number
-  refurbishment_contingency_gbp?: number
-  total_investment_gbp?: number
-  annual_gross_rent_gbp?: number
-  annual_net_income_gbp?: number
-  roi_percent?: number
-  purchase_price_gbp?: number | null
-  monthly_rent_gbp?: number | null
-  total_refurbishment_gbp?: number | null
-}
+  property_id: string;
+  stamp_duty_gbp?: number;
+  legal_fees_gbp?: number;
+  survey_fees_gbp?: number;
+  insurance_annual_gbp?: number;
+  management_fees_gbp?: number;
+  refurbishment_contingency_gbp?: number;
+  total_investment_gbp?: number;
+  annual_gross_rent_gbp?: number;
+  annual_net_income_gbp?: number;
+  roi_percent?: number;
+  purchase_price_gbp?: number | null;
+  monthly_rent_gbp?: number | null;
+  total_refurbishment_gbp?: number | null;
+};
 
-/** Legacy table (back-compat) */
+/** --- Legacy refurb table (back-compat) --- */
 type LegacyRefurbRow = {
-  id: string
-  property_id: string
-  room_type: string
-  wallpaper_or_paint_gbp: number | null
-  flooring_gbp: number | null
-  plumbing_gbp: number | null
-  electrics_gbp: number | null
-  mould_or_damp_gbp: number | null
-  structure_gbp: number | null
-  estimated_total_gbp: number | null
-  p70_total_low_gbp?: number | null
-  p70_total_high_gbp?: number | null
-  confidence?: number | null
-  image_id?: string | null
-}
+  id: string;
+  property_id: string;
+  room_type: string;
+  wallpaper_or_paint_gbp: number | null;
+  flooring_gbp: number | null;
+  plumbing_gbp: number | null;
+  electrics_gbp: number | null;
+  mould_or_damp_gbp: number | null;
+  structure_gbp: number | null;
+  estimated_total_gbp: number | null;
+  p70_total_low_gbp?: number | null;
+  p70_total_high_gbp?: number | null;
+  confidence?: number | null;
+  image_id?: string | null;
+};
 
-/** New tables */
-type RefurbRoomRow = {
-  id: string
-  property_id: string
-  room_index: number
-  room_type: string | null
-  image_id: string | null
-  image_index: number | null
-  materials_total_gbp: number | null
-  labour_total_gbp: number | null
-  room_total_gbp: number | null
-  room_confidence: number | null
-}
-type RefurbMaterialRow = {
-  property_id: string
-  room_index: number
-  material_index: number
-  job_line_id?: string | null
-  item_key?: string | null
-  unit?: string | null
-  qty?: number | null
-  unit_price_material_gbp?: number | null
-  subtotal_gbp?: number | null
-  waste_pct?: number | null
-  units_to_buy?: number | null
-  notes?: string | null
-  assumed_area_m2?: number | null
-  confidence?: number | null
-}
-type RefurbLabourRow = {
-  property_id: string
-  room_index: number
-  labour_index: number
-  job_line_id?: string | null
-  trade_key?: string | null
-  total_hours?: number | null
-  crew_size?: number | null
-  hourly_rate_gbp?: number | null
-  labour_cost_gbp?: number | null
-  ai_confidence?: number | null
-  notes?: string | null
-}
+/** --- NEW SOURCE TABLES (your actual data) --- */
+/** material_refurb_prices */
+type MaterialPriceRow = {
+  id: string;
+  run_id?: string | null;
+  property_id?: string | null;
+  job_id?: string | null;
+  job_line_id?: string | null;
+  image_id?: string | null;
+  image_run_key?: string | null;
+  room_type?: string | null;         // may be null/unknown
+  item_key?: string | null;          // sometimes 'material'/'item_key'
+  material?: string | null;          // human name
+  spec?: string | null;
+  unit?: string | null;
+  qty?: number | null;               // if present
+  units_to_buy?: number | null;      // if present
+  qty_with_waste?: number | null;    // if present
+  unit_price_material_gbp?: number | null;
+  material_subtotal_gbp?: number | null;
+  assumed_area_m2?: number | null;
+  dimensions?: any | null;
+  created_at?: string | null;
+};
+
+/** labour_refurb_prices */
+type LabourPriceRow = {
+  id: string;
+  run_id?: string | null;
+  property_id?: string | null;
+  job_id?: string | null;
+  job_line_id?: string | null;
+  image_id?: string | null;
+  image_run_key?: string | null;
+  room_type?: string | null;
+  trade_key?: string | null;
+  total_hours?: number | null;
+  person_hours?: number | null;  // sometimes present
+  crew_size?: number | null;
+  hourly_rate_gbp?: number | null;
+  labour_cost_gbp?: number | null;
+  labour_cost_gbp_rounded?: number | null;
+  ai_confidence?: number | null;
+  notes?: string | null;
+  created_at?: string | null;
+};
 
 /** --- Helpers --- */
 const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const toStringQuery = (q: string | string[] | undefined) =>
-  Array.isArray(q) ? q[0] : (q ?? '')
+  Array.isArray(q) ? q[0] : (q ?? '');
 
 function normaliseProperty(p: PropertyRow | null) {
-  if (!p) return null
-  const images = Array.isArray(p.listing_images) ? p.listing_images : []
-  const image_url = images.length ? images[0] : null
+  if (!p) return null;
+  const images = Array.isArray(p.listing_images) ? p.listing_images : [];
+  const image_url = images.length ? images[0] : null;
 
   const display_price_gbp =
-    p.purchase_price_gbp ?? p.guide_price_gbp ?? p.asking_price_gbp ?? p.price_gbp ?? null
+    p.purchase_price_gbp ?? p.guide_price_gbp ?? p.asking_price_gbp ?? p.price_gbp ?? null;
 
   const price_label =
     p.purchase_price_gbp != null ? 'purchase_price_gbp'
       : p.guide_price_gbp != null ? 'guide_price_gbp'
       : p.asking_price_gbp != null ? 'asking_price_gbp'
       : p.price_gbp != null ? 'price_gbp'
-      : 'unknown'
+      : 'unknown';
 
   return {
     property_id: p.id,
@@ -176,230 +180,189 @@ function normaliseProperty(p: PropertyRow | null) {
     price_gbp: p.price_gbp ?? null,
     display_price_gbp,
     price_label,
-  }
+  };
 }
 
-/** Map by room_index for quick joins */
-function indexByRoom<T extends { room_index: number }>(rows: T[]): Map<number, T[]> {
-  const m = new Map<number, T[]>()
-  rows.forEach(r => {
-    const k = r.room_index
-    if (!m.has(k)) m.set(k, [])
-    m.get(k)!.push(r)
-  })
-  return m
+/** Pick image URL for an image_id if possible. Falls back to first listing image. */
+function inferImageUrl(image_id: string | null | undefined, listing_images: string[] | null | undefined): string | null {
+  if (!listing_images || !listing_images.length) return null;
+  if (!image_id) return listing_images[0] || null;
+  const id = String(image_id);
+  if (/^https?:\/\//i.test(id)) return id;              // already a URL
+  const bySubstring = listing_images.find(u => u.includes(id));
+  return bySubstring || listing_images[0] || null;
 }
 
-/** Choose an image URL from listing_images using a possibly 1-based index */
-function pickImageUrl(
-  image_index: number | null,
-  listing_images: string[] | null | undefined
-): string | null {
-  if (!listing_images || !listing_images.length || image_index == null) return null
-  const idxs = [image_index, image_index - 1].filter(
-    (n): n is number => typeof n === 'number' && n >= 0 && n < listing_images.length
-  )
-  for (const i of idxs) {
-    const u = listing_images[i]
-    if (u) return u
-  }
-  return null
-}
-
-/** Build display refurb rows from the NEW tables (includes materials + labour arrays) */
-function buildRefurbFromNewTables(
-  rooms: RefurbRoomRow[],
-  mats: RefurbMaterialRow[],
-  labs: RefurbLabourRow[],
+/** Build "synthetic rooms" grouped by (image_id, room_type) */
+function buildRoomsFromPriceTables(
+  mats: MaterialPriceRow[],
+  labs: LabourPriceRow[],
   property: ReturnType<typeof normaliseProperty> | null
 ) {
-  const byRoomMat = indexByRoom(mats || [])
-  const byRoomLab = indexByRoom(labs || [])
-  const images = property?.listing_images || null
+  type Group = {
+    image_id: string | null;
+    room_type: string | null;
+    mats: MaterialPriceRow[];
+    labs: LabourPriceRow[];
+  };
 
-  return (rooms || [])
-    .sort((a, b) => (a.room_index ?? 0) - (b.room_index ?? 0))
-    .map(r => {
-      const materials = byRoomMat.get(r.room_index) || []
-      const labour = byRoomLab.get(r.room_index) || []
+  const groups = new Map<string, Group>();
 
-      const image_url = pickImageUrl(r.image_index, images)
+  const put = (image_id: string | null, room_type: string | null) => {
+    const key = `${image_id ?? 'noimg'}|${(room_type ?? 'room').toLowerCase()}`;
+    if (!groups.has(key)) {
+      groups.set(key, { image_id, room_type, mats: [], labs: [] });
+    }
+    return groups.get(key)!;
+  };
 
-      // Totals: prefer explicit columns; UI can also sum line items if these are 0/NULL
-      const materials_total_gbp = r.materials_total_gbp ?? null
-      const labour_total_gbp = r.labour_total_gbp ?? null
-      const room_total_gbp =
-        r.room_total_gbp ??
-        (materials_total_gbp ?? 0) + (labour_total_gbp ?? 0)
+  (mats || []).forEach(m => {
+    put(m.image_id ?? null, m.room_type ?? null).mats.push(m);
+  });
+  (labs || []).forEach(l => {
+    put(l.image_id ?? null, l.room_type ?? null).labs.push(l);
+  });
 
+  const images = property?.listing_images || null;
+
+  // Transform to UI rows (compatible with RoomCard)
+  const rows = Array.from(groups.values()).map((g, i) => {
+    const image_url = inferImageUrl(g.image_id, images);
+
+    // Materials → RoomCard.materials lines
+    const materials = g.mats.map(m => ({
+      job_line_id: m.job_line_id ?? null,
+      item_key: (m.item_key || m.material || 'material') ?? undefined,
+      unit: m.unit ?? undefined,
+      qty: (m.qty ?? m.units_to_buy ?? m.qty_with_waste) ?? null,
+      unit_price_material_gbp: m.unit_price_material_gbp ?? null,
+      subtotal_gbp: m.material_subtotal_gbp ?? null,
+      notes: m.spec || undefined,
+      assumed_area_m2: m.assumed_area_m2 ?? null,
+      confidence: null,
+    }));
+
+    // Labour → RoomCard.labour lines
+    const labour = g.labs.map(l => {
+      const hours = (l.total_hours ?? l.person_hours ?? 0) || 0;
+      const crew = (l.crew_size ?? 1) || 1;
+      const rate = (l.hourly_rate_gbp ?? 0) || 0;
+      const subtotal =
+        l.labour_cost_gbp ??
+        l.labour_cost_gbp_rounded ??
+        (hours * crew * rate);
       return {
-        id: r.id,
-        detected_room_type: r.room_type ?? undefined,
-        room_type: r.room_type ?? undefined,
-        image_url,
-        image_id: r.image_id ?? null,
-        image_index: r.image_index ?? null,
+        job_line_id: l.job_line_id ?? null,
+        trade_key: l.trade_key ?? 'labour',
+        total_hours: hours,
+        crew_size: crew,
+        hourly_rate_gbp: rate,
+        labour_cost_gbp: subtotal ?? null,
+        ai_confidence: l.ai_confidence ?? null,
+        notes: l.notes ?? undefined,
+      };
+    });
 
-        // v2 arrays (CRUCIAL so the UI can compute even when totals are missing)
-        materials,
-        labour,
+    const matSum = materials.reduce((a, m) => a + (Number(m.subtotal_gbp) || 0), 0);
+    const labSum = labour.reduce((a, l) => a + (Number(l.labour_cost_gbp) || 0), 0);
+    const total = matSum + labSum;
 
-        // explicit totals (if present)
-        materials_total_gbp,
-        labour_total_gbp,
-        room_total_gbp,
+    // Build a legacy-style "works" array so the old table also has something to show
+    const works = [
+      ...materials.map(m => ({
+        category: 'materials',
+        description: m.item_key || 'material',
+        unit: m.unit || '',
+        qty: (typeof m.qty === 'number' ? m.qty : null) || undefined,
+        unit_rate_gbp: (typeof m.unit_price_material_gbp === 'number' ? m.unit_price_material_gbp : null) || undefined,
+        subtotal_gbp: (typeof m.subtotal_gbp === 'number' ? m.subtotal_gbp : null) || undefined,
+      })),
+      ...labour.map(l => ({
+        category: l.trade_key || 'labour',
+        description: l.notes || '',
+        unit: 'hours',
+        qty: (typeof l.total_hours === 'number' ? l.total_hours : null) || undefined,
+        unit_rate_gbp: (typeof l.hourly_rate_gbp === 'number' ? l.hourly_rate_gbp : null) || undefined,
+        subtotal_gbp: (typeof l.labour_cost_gbp === 'number' ? l.labour_cost_gbp : null) || undefined,
+      })),
+    ];
 
-        room_confidence: r.room_confidence ?? null,
-        confidence: r.room_confidence ?? null,
+    return {
+      id: `grp-${i}`,
+      detected_room_type: g.room_type ?? undefined,
+      room_type: g.room_type ?? undefined,
+      image_url,
+      image_id: g.image_id ?? null,
+      image_index: null,
 
-        // keep a small "works" list for legacy readers (category + subtotal only)
-        works: [
-          ...materials.map(m => ({
-            category: 'materials',
-            description: m.item_key || 'material',
-            unit: m.unit || '',
-            qty: m.qty ?? undefined,
-            unit_rate_gbp: m.unit_price_material_gbp ?? undefined,
-            subtotal_gbp: m.subtotal_gbp ?? undefined,
-          })),
-          ...labour.map(l => ({
-            category: l.trade_key || 'labour',
-            description: l.notes || '',
-            unit: 'hours',
-            qty: l.total_hours ?? undefined,
-            unit_rate_gbp: l.hourly_rate_gbp ?? undefined,
-            subtotal_gbp: l.labour_cost_gbp ?? undefined,
-          })),
-        ],
-      }
-    })
-}
+      // v2 fields used by RoomCard
+      materials,
+      labour,
+      materials_total_gbp: matSum,
+      labour_total_gbp: labSum,
+      room_total_gbp: total,
+      room_confidence: null,
+      confidence: null,
 
-/** If no rooms exist but materials/labour do, synthesize rooms grouped by room_index */
-function synthesizeRoomsFromLines(
-  mats: RefurbMaterialRow[],
-  labs: RefurbLabourRow[],
-  property: ReturnType<typeof normaliseProperty> | null,
-  property_id: string
-) {
-  const byMat = indexByRoom(mats || [])
-  const byLab = indexByRoom(labs || [])
-  const roomIndexes = Array.from(new Set<number>([
-    ...Array.from(byMat.keys()),
-    ...Array.from(byLab.keys()),
-  ]))
+      // legacy helpers
+      works,
+      estimated_total_gbp: total,
+    };
+  });
 
-  const images = property?.listing_images || null
-
-  return roomIndexes
-    .sort((a, b) => a - b)
-    .map(room_index => {
-      const materials = byMat.get(room_index) || []
-      const labour = byLab.get(room_index) || []
-
-      const matSum = materials.reduce((a, m) => a + (m.subtotal_gbp ?? 0), 0)
-      const labSum = labour.reduce((a, l) => a + (l.labour_cost_gbp ?? 0), 0)
-
-      const image_index =
-        materials[0]?.['image_index' as any] ??
-        (labour[0] as any)?.image_index ?? null
-      const image_url = pickImageUrl(
-        typeof image_index === 'number' ? image_index : null,
-        images
-      )
-
-      return {
-        id: `syn-${property_id}-${room_index}`,
-        detected_room_type: undefined,
-        room_type: 'room',
-        image_url,
-        image_id: null,
-        image_index: (typeof image_index === 'number' ? image_index : null),
-
-        materials,
-        labour,
-
-        materials_total_gbp: matSum || null,
-        labour_total_gbp: labSum || null,
-        room_total_gbp: (matSum + labSum) || null,
-        room_confidence: null,
-        confidence: null,
-
-        works: [
-          ...materials.map(m => ({
-            category: 'materials',
-            description: m.item_key || 'material',
-            unit: m.unit || '',
-            qty: m.qty ?? undefined,
-            unit_rate_gbp: m.unit_price_material_gbp ?? undefined,
-            subtotal_gbp: m.subtotal_gbp ?? undefined,
-          })),
-          ...labour.map(l => ({
-            category: l.trade_key || 'labour',
-            description: l.notes || '',
-            unit: 'hours',
-            qty: l.total_hours ?? undefined,
-            unit_rate_gbp: l.hourly_rate_gbp ?? undefined,
-            subtotal_gbp: l.labour_cost_gbp ?? undefined,
-          })),
-        ],
-      }
-    })
+  return rows;
 }
 
 /** --- API handler --- */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  res.setHeader('Cache-Control', 'no-store')
+  res.setHeader('Cache-Control', 'no-store');
 
   if (req.method !== 'GET') {
-    res.setHeader('Allow', 'GET')
-    return res.status(405).json({ error: 'Method not allowed' })
+    res.setHeader('Allow', 'GET');
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    return res.status(500).json({ error: 'Server not configured (Supabase env missing)' })
+    return res.status(500).json({ error: 'Server not configured (Supabase env missing)' });
   }
 
   // 1) Validate run_id
-  const run_id = toStringQuery(req.query.run_id)
-  if (!run_id) return res.status(400).json({ error: 'Missing run_id' })
+  const run_id = toStringQuery(req.query.run_id);
+  if (!run_id) return res.status(400).json({ error: 'Missing run_id' });
   if (!UUID_RE.test(run_id)) {
-    return res.status(400).json({ error: 'Invalid run_id format (must be UUID)' })
+    return res.status(400).json({ error: 'Invalid run_id format (must be UUID)' });
   }
 
   // 2) Look up the run row
-  const runResp = await supabase
-    .from<RunRow>('runs')
-    .select('*')
-    .eq('run_id', run_id)
-    .maybeSingle()
+  const runResp = await supabase.from<RunRow>('runs').select('*').eq('run_id', run_id).maybeSingle();
 
   if (runResp.error) {
-    console.error('Supabase runs query error:', runResp.error)
-    return res.status(500).json({ error: 'Supabase runs query failed' })
+    console.error('Supabase runs query error:', runResp.error);
+    return res.status(500).json({ error: 'Supabase runs query failed' });
   }
-  const run = runResp.data
-  if (!run) return res.status(404).json({ error: 'Run not found' })
+  const run = runResp.data;
+  if (!run) return res.status(404).json({ error: 'Run not found' });
 
-  // 3) Status fan-out (always include pdf_url if present)
+  // status short-circuits
   if (run.status === 'failed') {
     return res.status(200).json({
       status: 'failed' as const,
       run,
       pdf_url: run.pdf_url ?? null,
       error: run.error_message ?? 'Unknown error',
-    })
+    });
   }
   if (run.status !== 'completed') {
     return res.status(200).json({
       status: run.status,
       run,
       pdf_url: run.pdf_url ?? null,
-    })
+    });
   }
 
-  // 4) Completed → fetch rows for UI
-  const property_id = run.property_id
+  // 3) Completed → fetch rows for UI
+  const property_id = run.property_id;
+
   if (!property_id) {
     return res.status(200).json({
       status: 'completed' as const,
@@ -408,82 +371,55 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       financials: null,
       refurb_estimates: [],
       pdf_url: run.pdf_url ?? null,
-    })
+    });
   }
 
   const [finResp, propResp] = await Promise.all([
-    supabase
-      .from<FinancialsRow>('property_financials')
-      .select('*')
-      .eq('property_id', property_id)
-      .maybeSingle(),
-    supabase
-      .from<PropertyRow>('properties')
-      .select('*')
-      .eq('id', property_id)
-      .maybeSingle(),
-  ])
+    supabase.from<FinancialsRow>('property_financials').select('*').eq('property_id', property_id).maybeSingle(),
+    supabase.from<PropertyRow>('properties').select('*').eq('id', property_id).maybeSingle(),
+  ]);
 
   if (finResp.error || propResp.error) {
-    console.error('Supabase fetch errors:', {
-      fin: finResp.error, prop: propResp.error,
-    })
-    return res.status(500).json({ error: 'Supabase fetch error after completion' })
+    console.error('Supabase fetch errors:', { fin: finResp.error, prop: propResp.error });
+    return res.status(500).json({ error: 'Supabase fetch error after completion' });
   }
 
-  const property = normaliseProperty(propResp.data ?? null)
+  const property = normaliseProperty(propResp.data ?? null);
 
-  // NEW refurb tables
-  const [roomsResp, matsResp, labsResp] = await Promise.all([
-    supabase.from<RefurbRoomRow>('refurb_rooms').select('*').eq('property_id', property_id),
-    supabase.from<RefurbMaterialRow>('refurb_materials').select('*').eq('property_id', property_id),
-    supabase.from<RefurbLabourRow>('refurb_labour').select('*').eq('property_id', property_id),
-  ])
+  // 4) NEW: read actual pricing tables keyed by this run
+  const [matsResp, labsResp] = await Promise.all([
+    supabase.from<MaterialPriceRow>('material_refurb_prices').select('*').eq('run_id', run_id),
+    supabase.from<LabourPriceRow>('labour_refurb_prices').select('*').eq('run_id', run_id),
+  ]);
 
-  let refurb_estimates: any[] = []
+  let refurb_estimates: any[] = [];
   let refurb_debug: any = {
-    property_id,
-    new_rooms_count: Array.isArray(roomsResp.data) ? roomsResp.data.length : 0,
-    new_materials_count: Array.isArray(matsResp.data) ? matsResp.data.length : 0,
-    new_labour_count: Array.isArray(labsResp.data) ? labsResp.data.length : 0,
     used: 'none',
-  }
+    material_rows: Array.isArray(matsResp.data) ? matsResp.data.length : 0,
+    labour_rows: Array.isArray(labsResp.data) ? labsResp.data.length : 0,
+  };
 
-  const haveRooms = !roomsResp.error && Array.isArray(roomsResp.data) && roomsResp.data.length > 0
-  const haveLines =
+  const havePriceTables =
     (!matsResp.error && Array.isArray(matsResp.data) && matsResp.data.length > 0) ||
-    (!labsResp.error && Array.isArray(labsResp.data) && labsResp.data.length > 0)
+    (!labsResp.error && Array.isArray(labsResp.data) && labsResp.data.length > 0);
 
-  if (haveRooms) {
-    refurb_estimates = buildRefurbFromNewTables(
-      roomsResp.data || [],
-      matsResp.data || [],
-      labsResp.data || [],
-      property
-    )
-    refurb_debug.used = 'new_tables_rooms'
-  } else if (haveLines) {
-    refurb_estimates = synthesizeRoomsFromLines(
-      matsResp.data || [],
-      labsResp.data || [],
-      property,
-      property_id
-    )
-    refurb_debug.used = 'new_tables_synth'
+  if (havePriceTables) {
+    refurb_estimates = buildRoomsFromPriceTables(matsResp.data || [], labsResp.data || [], property);
+    refurb_debug.used = 'price_tables_grouped';
   } else {
-    // Legacy fallback
+    // 5) Fallback to legacy table if nothing in price tables
     const refurbResp = await supabase
       .from<LegacyRefurbRow>('refurb_estimates')
       .select('*')
-      .eq('property_id', property_id)
+      .eq('property_id', property_id);
 
     if (refurbResp.error) {
-      console.error('Supabase refurb_estimates error:', refurbResp.error)
-      return res.status(500).json({ error: 'Supabase refurb fetch error' })
+      console.error('Supabase refurb_estimates error:', refurbResp.error);
+      return res.status(500).json({ error: 'Supabase refurb fetch error' });
     }
-    refurb_estimates = Array.isArray(refurbResp.data) ? refurbResp.data : []
-    refurb_debug.used = 'legacy_table'
-    refurb_debug.legacy_count = refurb_estimates.length
+    refurb_estimates = Array.isArray(refurbResp.data) ? refurbResp.data : [];
+    refurb_debug.used = 'legacy_table';
+    refurb_debug.legacy_count = refurb_estimates.length;
   }
 
   return res.status(200).json({
@@ -493,8 +429,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     financials: finResp.data ?? null,
     refurb_estimates,
     pdf_url: run.pdf_url ?? null,
-
-    // helper for debugging in Network tab (ignored by UI)
-    refurb_debug,
-  })
+    refurb_debug, // handy in Network tab
+  });
 }
