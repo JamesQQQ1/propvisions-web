@@ -2,27 +2,18 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { createClient } from '@supabase/supabase-js'
 
-/* ---------------- Env & Supabase admin client (server-only) ---------------- */
+/* ---------------- Supabase admin client ---------------- */
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error('Missing env: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
 }
-
 const supabase = createClient(SUPABASE_URL as string, SUPABASE_SERVICE_ROLE_KEY as string, {
   auth: { persistSession: false },
 })
 
-/* ---------------- Minimal table row types (runs/properties/financials) ---------------- */
-type RunRow = {
-  run_id: string
-  status: 'queued' | 'processing' | 'completed' | 'failed'
-  property_id: string | null
-  error_message: string | null
-  pdf_url?: string | null
-}
-
+/* ---------------- Table row types (only the columns you really have) ---------------- */
 type PropertyRow = {
   id: string
   property_title?: string | null
@@ -50,22 +41,22 @@ type PropertyRow = {
 
 type FinancialsRow = {
   property_id: string
-  stamp_duty_gbp?: number
-  legal_fees_gbp?: number
-  survey_fees_gbp?: number
-  insurance_annual_gbp?: number
-  management_fees_gbp?: number
-  refurbishment_contingency_gbp?: number
-  total_investment_gbp?: number
-  annual_gross_rent_gbp?: number
-  annual_net_income_gbp?: number
-  roi_percent?: number
+  stamp_duty_gbp?: number | null
+  legal_fees_gbp?: number | null
+  survey_fees_gbp?: number | null
+  insurance_annual_gbp?: number | null
+  management_fees_gbp?: number | null
+  refurbishment_contingency_gbp?: number | null
+  total_investment_gbp?: number | null
+  annual_gross_rent_gbp?: number | null
+  annual_net_income_gbp?: number | null
+  roi_percent?: number | null
   purchase_price_gbp?: number | null
   monthly_rent_gbp?: number | null
   total_refurbishment_gbp?: number | null
 }
 
-/* ---------------- Source-of-truth price tables ---------------- */
+/* ---- materials (as shown in your screenshots) ---- */
 type MaterialPriceRow = {
   id: string
   property_id?: string | null
@@ -77,22 +68,28 @@ type MaterialPriceRow = {
   item_key?: string | null
   material?: string | null
   spec?: string | null
-  unit?: string | null
-  qty_raw?: number | null
-  qty_with_waste?: number | null
-  qty?: number | null
-  units_to_buy?: number | null
-  unit_price_material_gbp?: number | null
-  unit_price_withvat_gbp?: number | null
-  subtotal_gbp?: number | null
-  material_subtotal_gbp?: number | null
-  assumed_area_m2?: number | null
-  dimensions?: any
-  confidence?: number | null
+  condition?: string | null
   notes?: string | null
+  confidence?: number | null
+
+  // qtys/pricing you actually have
+  qty_with_waste?: number | null
+  qty_raw?: number | null
+  units_to_buy?: number | null
+  unit?: string | null
+  unit_price_material_gbp?: number | null
+  material_subtotal_gbp?: number | null
+  subtotal_gbp?: number | null
+
+  // extra (occasionally used)
+  assumed_area_m2?: number | null
+  coverage_m2_per_unit?: number | null
+  coverage_lm_per_unit?: number | null
+  count_per_unit?: number | null
   created_at?: string | null
 }
 
+/* ---- labour (as shown in your screenshots) ---- */
 type LabourPriceRow = {
   id: string
   property_id?: string | null
@@ -112,7 +109,6 @@ type LabourPriceRow = {
 }
 
 /* ---------------- Helpers ---------------- */
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const toStringQuery = (q: string | string[] | undefined) => (Array.isArray(q) ? q[0] : (q ?? ''))
 const num = (x: any) => (Number.isFinite(+x) ? +x : 0)
 
@@ -120,14 +116,17 @@ function normaliseProperty(p: PropertyRow | null) {
   if (!p) return null
   const images = Array.isArray(p.listing_images) ? p.listing_images : []
   const image_url = images.length ? images[0] : null
+
   const display_price_gbp =
     p.purchase_price_gbp ?? p.guide_price_gbp ?? p.asking_price_gbp ?? p.price_gbp ?? null
+
   const price_label =
     p.purchase_price_gbp != null ? 'purchase_price_gbp'
-    : p.guide_price_gbp != null ? 'guide_price_gbp'
+    : p.guide_price_gbp  != null ? 'guide_price_gbp'
     : p.asking_price_gbp != null ? 'asking_price_gbp'
-    : p.price_gbp != null ? 'price_gbp'
+    : p.price_gbp       != null ? 'price_gbp'
     : 'unknown'
+
   return {
     property_id: p.id,
     property_title: p.property_title ?? '',
@@ -160,10 +159,10 @@ function normaliseProperty(p: PropertyRow | null) {
 function pickImageUrl(image_index: number | null | undefined, listing_images?: string[] | null) {
   if (!listing_images || !listing_images.length) return null
   if (image_index == null) return null
-  const i0 = image_index
-  const i1 = image_index - 1
-  const cand = [i0, i1].filter((i): i is number => Number.isInteger(i) && i >= 0 && i < listing_images.length)
-  for (const i of cand) {
+  const idxs = [image_index, image_index - 1].filter(
+    (i): i is number => Number.isInteger(i) && i >= 0 && i < listing_images.length
+  )
+  for (const i of idxs) {
     const u = listing_images[i]
     if (u) return u
   }
@@ -179,12 +178,12 @@ function sampleRows<T extends { id?: any; property_id?: any; run_id?: any; room_
       id: (r as any).id,
       property_id: (r as any).property_id ?? null,
       run_id: (r as any).run_id ?? null,
-      room_type: (r as any).room_type ?? (r as any).room ?? null,
-      image_index: (r as any).image_index ?? (r as any).image_idx ?? null,
+      room_type: (r as any).room_type ?? null,
+      image_index: (r as any).image_index ?? null,
     }))
 }
 
-/* ---------------- Build rooms from price tables ---------------- */
+/* ---------------- Build rooms (group by room_type + image_index) ---------------- */
 function buildRoomsFromPriceTables(
   mats: MaterialPriceRow[],
   labs: LabourPriceRow[],
@@ -198,17 +197,15 @@ function buildRoomsFromPriceTables(
   }
   const map = new Map<string, RoomAgg>()
 
-  const keyFor = (x: { image_index?: any; room_type?: any } | any) => {
-    const iiRaw = x?.image_index ?? x?.image_idx ?? null
-    const ii = iiRaw != null ? Number(iiRaw) : null
-    const rt = (x?.room_type ?? x?.room ?? 'room').toString().toLowerCase().trim() || 'room'
-    const k = `${ii != null ? `img:${ii}` : 'img:-'}|${rt}`
-    return { k, ii, rt }
+  const keyFor = (x: { image_index?: any; room_type?: any }) => {
+    const ii = x?.image_index != null ? Number(x.image_index) : null
+    const rt = (x?.room_type || 'room').toString().toLowerCase().trim() || 'room'
+    return { k: `${ii != null ? `img:${ii}` : 'img:-'}|${rt}`, ii, rt }
   }
 
-  const add = (key: string, image_index: number | null, room_type: string | null) => {
-    if (!map.has(key)) map.set(key, { image_index, room_type, materials: [], labour: [] })
-    return map.get(key)!
+  const add = (k: string, ii: number | null, rt: string | null) => {
+    if (!map.has(k)) map.set(k, { image_index: ii, room_type: rt, materials: [], labour: [] })
+    return map.get(k)!
   }
 
   for (const m of mats || []) {
@@ -229,14 +226,11 @@ function buildRoomsFromPriceTables(
       const qty =
         m.qty_with_waste ??
         m.qty_raw ??
-        m.qty ??
         m.units_to_buy ??
         null
 
       const unitRate =
-        m.unit_price_material_gbp ??
-        m.unit_price_withvat_gbp ??
-        null
+        m.unit_price_material_gbp ?? null
 
       const subtotal =
         m.material_subtotal_gbp ??
@@ -262,7 +256,7 @@ function buildRoomsFromPriceTables(
       const hours = l.total_hours ?? null
       const crew  = l.crew_size ?? 1
       const rate  = l.hourly_rate_gbp ?? null
-      const cost  = l.labour_cost_gbp ?? (hours != null && rate != null ? num(hours) * num(crew ?? 1) * num(rate) : null)
+      const cost  = l.labour_cost_gbp ?? (hours != null && rate != null ? num(hours) * num(crew) * num(rate) : null)
       return {
         job_line_id: l.job_line_id ?? null,
         trade_key: l.trade_key || 'labour',
@@ -283,11 +277,11 @@ function buildRoomsFromPriceTables(
       id: `rx-${idx}`,
       detected_room_type: agg.room_type ?? undefined,
       room_type: agg.room_type ?? undefined,
+
       image_url,
       image_id: null,
       image_index: agg.image_index ?? null,
 
-      // v2 payload
       materials: matLines,
       labour: labLines,
       materials_total_gbp: materials_total || null,
@@ -296,7 +290,7 @@ function buildRoomsFromPriceTables(
       room_confidence: null,
       confidence: null,
 
-      // legacy-like works array so your grid stays happy
+      // legacy-like "works" for your table rendering
       estimated_total_gbp: total || null,
       works: [
         ...matLines.map((m) => ({
@@ -323,7 +317,6 @@ function buildRoomsFromPriceTables(
 /* ---------------- API handler ---------------- */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'no-store')
-
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET')
     return res.status(405).json({ error: 'Method not allowed' })
@@ -332,26 +325,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: 'Server not configured (Supabase env missing)' })
   }
 
+  const property_id = toStringQuery(req.query.property_id)
   const debug = toStringQuery(req.query.debug) === '1'
-  let property_id = toStringQuery(req.query.property_id)
-  const run_id = toStringQuery(req.query.run_id)
+  if (!property_id) return res.status(400).json({ error: 'Provide property_id' })
 
-  // Property-first: if property_id not given, we only *resolve* it from run_id
-  if (!property_id) {
-    if (!run_id) return res.status(400).json({ error: 'Provide property_id (preferred) or run_id' })
-    if (!UUID_RE.test(run_id)) return res.status(400).json({ error: 'Invalid run_id format (UUID required)' })
-    const runResp = await supabase.from<RunRow>('runs').select('run_id,status,property_id,pdf_url').eq('run_id', run_id).maybeSingle()
-    if (runResp.error) {
-      console.error('Supabase runs query error:', runResp.error)
-      return res.status(500).json({ error: 'Supabase runs query failed' })
-    }
-    if (!runResp.data || !runResp.data.property_id) {
-      return res.status(404).json({ error: 'Run not found or missing property_id' })
-    }
-    property_id = runResp.data.property_id
-  }
-
-  // Fetch property + financials (optional if missing)
+  // Property + financials
   const [finResp, propResp] = await Promise.all([
     supabase.from<FinancialsRow>('property_financials').select('*').eq('property_id', property_id).maybeSingle(),
     supabase.from<PropertyRow>('properties').select('*').eq('id', property_id).maybeSingle(),
@@ -362,7 +340,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
   const property = normaliseProperty(propResp.data ?? null)
 
-  // Price tables STRICTLY by property_id
+  // Refurb price tables — STRICTLY by property_id
   const [matsResp, labsResp] = await Promise.all([
     supabase.from<MaterialPriceRow>('material_refurb_prices').select('*').eq('property_id', property_id),
     supabase.from<LabourPriceRow>('labour_refurb_prices').select('*').eq('property_id', property_id),
@@ -381,7 +359,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     counts: {
       materials: mats.length,
       labour: labs.length,
-      errors: { mats: matsResp.error || null, labour: labsResp.error || null },
+      errors: { materials: matsResp.error || null, labour: labsResp.error || null },
       samples: {
         materials: sampleRows(mats),
         labour: sampleRows(labs),
@@ -390,21 +368,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     env: { supabase_url_tail: (SUPABASE_URL || '').slice(-10) },
   }
 
-  // Optional deeper debug: return first 10 raw rows (trimmed fields only)
   if (debug) {
     const trimMat = (r: MaterialPriceRow) => ({
       id: r.id, property_id: r.property_id, run_id: r.run_id,
       room_type: r.room_type, image_index: r.image_index,
       item_key: r.item_key ?? r.material ?? null,
-      qty_with_waste: r.qty_with_waste, qty_raw: r.qty_raw, qty: r.qty, units_to_buy: r.units_to_buy,
-      unit_price_material_gbp: r.unit_price_material_gbp, material_subtotal_gbp: r.material_subtotal_gbp,
-      subtotal_gbp: r.subtotal_gbp, created_at: r.created_at,
+      qty_with_waste: r.qty_with_waste, qty_raw: r.qty_raw, units_to_buy: r.units_to_buy,
+      unit_price_material_gbp: r.unit_price_material_gbp,
+      material_subtotal_gbp: r.material_subtotal_gbp,
+      subtotal_gbp: r.subtotal_gbp,
+      created_at: r.created_at,
     })
     const trimLab = (r: LabourPriceRow) => ({
       id: r.id, property_id: r.property_id, run_id: r.run_id,
       room_type: r.room_type, image_index: r.image_index,
       trade_key: r.trade_key, total_hours: r.total_hours, crew_size: r.crew_size,
-      hourly_rate_gbp: r.hourly_rate_gbp, labour_cost_gbp: r.labour_cost_gbp, created_at: r.created_at,
+      hourly_rate_gbp: r.hourly_rate_gbp, labour_cost_gbp: r.labour_cost_gbp,
+      created_at: r.created_at,
     })
     refurb_debug.raw_preview = {
       materials: mats.slice(0, 10).map(trimMat),
@@ -418,7 +398,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     property,
     financials: finResp.data ?? null,
     refurb_estimates,
-    pdf_url: null, // not managed here; keep if you attach PDFs elsewhere
+    pdf_url: null,
     refurb_debug,
   })
 }
