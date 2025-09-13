@@ -98,13 +98,20 @@ type MaterialPriceRow = {
   material?: string | null
   spec?: string | null
   unit?: string | null
-  qty?: number | null
+
+  // quantities (note: your schema uses qty_raw)
+  qty_raw?: number | null
   qty_with_waste?: number | null
+  qty?: number | null
   units_to_buy?: number | null
+
+  // money
   unit_price_material_gbp?: number | null
   unit_price_withvat_gbp?: number | null
   subtotal_gbp?: number | null
   material_subtotal_gbp?: number | null
+
+  // misc
   assumed_area_m2?: number | null
   dimensions?: any
   confidence?: number | null
@@ -196,6 +203,17 @@ const num = (x: any) => {
   return Number.isFinite(v) ? v : 0
 }
 
+function sampleRows<T extends { id?: any; property_id?: any; run_id?: any; room_type?: any }>(xs: T[] | null | undefined) {
+  return (Array.isArray(xs) ? xs : [])
+    .slice(0, 3)
+    .map(r => ({
+      id: (r as any).id,
+      property_id: (r as any).property_id ?? null,
+      run_id: (r as any).run_id ?? null,
+      room_type: (r as any).room_type ?? (r as any).room ?? null,
+    }));
+}
+
 /* ---------------- Build rooms from your price tables ---------------- */
 function buildRoomsFromPriceTables(
   mats: MaterialPriceRow[],
@@ -240,8 +258,10 @@ function buildRoomsFromPriceTables(
     const image_url = pickImageUrl(agg.image_index, images)
 
     const matLines = (agg.materials || []).map((m) => {
+      // IMPORTANT: include qty_raw in the cascade (your schema)
       const qty =
         m.qty_with_waste ??
+        m.qty_raw ??
         m.qty ??
         m.units_to_buy ??
         null
@@ -350,8 +370,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const property_id_param = toStringQuery(req.query.property_id)
 
   // Resolve property_id:
-  // - If property_id provided, use it directly.
-  // - Else use run_id → lookup run → get property_id
   let property_id: string | null = null
   let run: RunRow | null = null
   let runStatus: RunRow['status'] | 'idle' = 'idle'
@@ -404,7 +422,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
   const property = normaliseProperty(propResp.data ?? null)
 
-  // Price tables: PRIMARY fetch by property_id (aggregates all runs for this property)
+  /* ---------- Price tables: primary by property_id, plus debug & run fallbacks ---------- */
   const [matsByProp, labsByProp] = await Promise.all([
     supabase.from<MaterialPriceRow>('material_refurb_prices').select('*').eq('property_id', property_id),
     supabase.from<LabourPriceRow>('labour_refurb_prices').select('*').eq('property_id', property_id),
@@ -413,20 +431,52 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let matsRows = Array.isArray(matsByProp.data) ? matsByProp.data : []
   let labsRows = Array.isArray(labsByProp.data) ? labsByProp.data : []
 
-  // Optional: if you *also* want to see rows that match a specific run_id (when provided),
-  // you could sort or filter here. For now we just aggregate everything for the property.
+  // Also fetch by run (diagnostic / rare fallback)
+  let matsByRun: any = { data: [], error: null }
+  let labsByRun: any = { data: [], error: null }
+  if (run?.run_id) {
+    const [mByRun, lByRun] = await Promise.all([
+      supabase.from<MaterialPriceRow>('material_refurb_prices').select('*').eq('run_id', run.run_id),
+      supabase.from<LabourPriceRow>('labour_refurb_prices').select('*').eq('run_id', run.run_id),
+    ])
+    matsByRun = mByRun
+    labsByRun = lByRun
+  }
+
+  // If property rows empty but run rows exist, use them
+  if (matsRows.length === 0 && labsRows.length === 0) {
+    if (Array.isArray(matsByRun.data)) matsRows = matsByRun.data
+    if (Array.isArray(labsByRun.data)) labsRows = labsByRun.data
+  }
 
   let refurb_estimates: any[] = []
   let refurb_debug: any = {
-    used: 'price_tables_by_property',
+    used: (matsByProp.data?.length || labsByProp.data?.length) ? 'price_tables_by_property'
+         : (matsByRun.data?.length || labsByRun.data?.length) ? 'price_tables_by_run'
+         : 'none',
     property_id,
-    by_property: {
-      material_rows: matsRows.length,
-      labour_rows: labsRows.length,
-      error: { mats: matsByProp.error || null, labs: labsByProp.error || null },
-    },
     run_context: run ? { run_id: run.run_id, status: runStatus } : null,
     env: { supabase_url_tail: (SUPABASE_URL || '').slice(-10) },
+    counts: {
+      by_property: {
+        materials: Array.isArray(matsByProp.data) ? matsByProp.data.length : 0,
+        labour:    Array.isArray(labsByProp.data) ? labsByProp.data.length : 0,
+        error:     { mats: matsByProp.error || null, labs: labsByProp.error || null },
+        samples:   {
+          materials: sampleRows(matsByProp.data),
+          labour:    sampleRows(labsByProp.data),
+        }
+      },
+      by_run: {
+        materials: Array.isArray(matsByRun.data) ? matsByRun.data.length : 0,
+        labour:    Array.isArray(labsByRun.data) ? labsByRun.data.length : 0,
+        error:     { mats: matsByRun.error || null, labs: labsByRun.error || null },
+        samples:   {
+          materials: sampleRows(matsByRun.data),
+          labour:    sampleRows(labsByRun.data),
+        }
+      }
+    }
   }
 
   if (matsRows.length > 0 || labsRows.length > 0) {
