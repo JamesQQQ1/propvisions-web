@@ -199,7 +199,7 @@ function sampleRows<T extends { id?: any; property_id?: any; run_id?: any; room_
 function buildZeroRoomsFromImages(
   property: ReturnType<typeof normaliseProperty> | null,
   {
-    maxImages = 12,
+    maxImages = 30,
     defaultRoomType = 'room',
   }: { maxImages?: number; defaultRoomType?: string } = {}
 ) {
