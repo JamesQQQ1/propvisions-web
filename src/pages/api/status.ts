@@ -195,9 +195,7 @@ function sampleRows<T extends { id?: any; property_id?: any; run_id?: any; room_
     }))
 }
 
-/** Build zero-cost rooms purely from the property's images.
- * Lets the UI show cards + "No work required" even if there are no refurb rows yet.
- */
+/** Build zero-cost rooms from property images; always return at least 1 placeholder. */
 function buildZeroRoomsFromImages(
   property: ReturnType<typeof normaliseProperty> | null,
   {
@@ -205,36 +203,52 @@ function buildZeroRoomsFromImages(
     defaultRoomType = 'room',
   }: { maxImages?: number; defaultRoomType?: string } = {}
 ) {
-  const images = Array.isArray(property?.listing_images) ? property!.listing_images : []
-  const take = images.slice(0, maxImages)
+  const urls = Array.isArray(property?.listing_images) ? property!.listing_images.slice(0, maxImages) : [];
 
-  return take.map((url, idx) => ({
+  const rooms = urls.map((url, idx) => ({
     id: `img-${idx}`,
     detected_room_type: defaultRoomType,
     room_type: defaultRoomType,
-    image_url: url,
+    image_url: url || null,
     image_id: null,
     image_index: idx,
-
-    // no lines
     materials: [] as any[],
     labour: [] as any[],
-
-    // totals = 0 ensures RoomCard shows "No work required"
     materials_total_gbp: 0,
     labour_total_gbp: 0,
     room_total_gbp: 0,
     room_confidence: null,
     confidence: null,
-
-    // legacy-friendly props (your grid expects these)
     estimated_total_gbp: 0,
     works: [] as any[],
-
-    // optional explanation
     assumptions: { note: 'No refurbishment required detected (no price rows saved).' },
-  }))
+  }));
+
+  // If there are no images, still return a single placeholder "no work required" room.
+  if (rooms.length === 0) {
+    rooms.push({
+      id: 'img-0',
+      detected_room_type: defaultRoomType,
+      room_type: defaultRoomType,
+      image_url: null,        // RoomCard will show “No image”
+      image_id: null,
+      image_index: 0,
+      materials: [] as any[],
+      labour: [] as any[],
+      materials_total_gbp: 0,
+      labour_total_gbp: 0,
+      room_total_gbp: 0,
+      room_confidence: null,
+      confidence: null,
+      estimated_total_gbp: 0,
+      works: [] as any[],
+      assumptions: { note: 'No refurbishment required detected (no price rows saved and no listing images).' },
+    });
+  }
+
+  return rooms;
 }
+
 
 /** Group mats/labs by (room_type, image_index), compute line costs and totals. */
 function buildRoomsFromPriceTables(
