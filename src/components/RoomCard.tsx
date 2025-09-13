@@ -41,17 +41,14 @@ type LegacyWork = {
 };
 
 export type RefurbRoom = {
-  // Common
   id?: string;
   detected_room_type?: string | null;
   room_type?: string | null;
 
-  // Image support (either direct URL or only an image_id/index)
   image_url?: string | null;
   image_id?: string | null;
   image_index?: number | null;
 
-  // NEW model fields
   materials?: MaterialLine[] | string | null;
   labour?: LabourLine[] | string | null;
   materials_total_gbp?: number | string | null;
@@ -59,7 +56,6 @@ export type RefurbRoom = {
   room_total_gbp?: number | string | null;
   room_confidence?: number | string | null;
 
-  // Legacy totals (kept for back-compat display)
   wallpaper_or_paint_gbp?: number | string | null;
   flooring_gbp?: number | string | null;
   plumbing_gbp?: number | string | null;
@@ -67,15 +63,12 @@ export type RefurbRoom = {
   mould_or_damp_gbp?: number | string | null;
   structure_gbp?: number | string | null;
 
-  // Legacy itemised works
   works?: LegacyWork[] | string | null;
 
-  // Meta
-  confidence?: number | null; // legacy
+  confidence?: number | null;
   assumptions?: Record<string, any> | null;
   risk_flags?: Record<string, boolean> | null;
 
-  // Optional p70 fields (either at root or inside assumptions/totals)
   p70_total_low_gbp?: number | string | null;
   p70_total_high_gbp?: number | string | null;
   totals?: {
@@ -122,6 +115,7 @@ function parseArray<T = unknown>(x: T[] | string | null | undefined): T[] {
   }
   return [];
 }
+
 const LABEL_MAP: Record<string, string> = {
   carpet_m2: 'Carpet',
   laminate_floor_m2: 'Laminate floor',
@@ -170,20 +164,16 @@ export default function RoomCard({
 }) {
   const [open, setOpen] = useState(false);
 
-  // Signature so it’s easy to confirm live bundle in console
   console.log('RoomCard v3 (materials+labour) loaded');
 
-  // Title & image
   const title = (room.detected_room_type || room.room_type || 'room').replace(/_/g, ' ');
   const img =
     typeof room.image_url === 'string' && room.image_url.trim()
       ? room.image_url
-      : null; // no implicit storage URL guessing — safe placeholder if null
+      : null;
 
-  // Risk flags (truthy only)
   const riskFlags = Object.entries(room.risk_flags || {}).filter(([, v]) => !!v);
 
-  // Parse v2 arrays (robust to string payloads)
   const materials = useMemo<MaterialLine[]>(
     () => parseArray<MaterialLine>(room.materials),
     [room.materials]
@@ -192,14 +182,11 @@ export default function RoomCard({
     () => parseArray<LabourLine>(room.labour),
     [room.labour]
   );
-
-  // Legacy works (still displayed if present)
   const legacyWorks = useMemo<LegacyWork[]>(
     () => parseArray<LegacyWork>(room.works),
     [room.works]
   );
 
-  // Totals (prefer v2 explicit totals, else compute, else legacy best-effort)
   const v2Mat = toInt(room.materials_total_gbp);
   const v2Lab = toInt(room.labour_total_gbp);
   const v2Room = toInt(room.room_total_gbp);
@@ -221,12 +208,10 @@ export default function RoomCard({
   const materialsTotal = v2Mat || computedMat || 0;
   const labourTotal = v2Lab || computedLab || 0;
   const total =
-    v2Room || computedRoom || Math.max(legacyCats, legacyWorksSum, toInt(room.estimated_total_gbp));
+    v2Room || computedRoom || Math.max(legacyCats, legacyWorksSum, toInt((room as any).estimated_total_gbp));
 
-  // “Other” = any gap vs legacy 6-category sum (purely informational)
   const other = Math.max(0, total - legacyCats);
 
-  // Confidence (prefer v2 room_confidence, else legacy confidence)
   const conf =
     room.room_confidence != null
       ? clamp01(room.room_confidence)
@@ -234,17 +219,20 @@ export default function RoomCard({
       ? clamp01(room.confidence)
       : null;
 
-  // Early exit: hide zero rows (keeps grid clean)
-  if (!total || total <= 0) return null;
+  // NEW: allow zero-total cards (show image + message)
+  const noWork =
+    total <= 0 &&
+    materials.length === 0 &&
+    labour.length === 0 &&
+    legacyWorks.length === 0;
 
-  // Optional p70 range (wherever it appears)
   const p70Low =
-    room.p70_total_low_gbp ??
+    (room as any).p70_total_low_gbp ??
     room.totals?.p70_total_low_gbp ??
     room.assumptions?.p70_total_low_gbp ??
     null;
   const p70High =
-    room.p70_total_high_gbp ??
+    (room as any).p70_total_high_gbp ??
     room.totals?.p70_total_high_gbp ??
     room.assumptions?.p70_total_high_gbp ??
     null;
@@ -274,12 +262,14 @@ export default function RoomCard({
           </span>
         </div>
 
-        {/* Top-right: total */}
-        <div className="absolute top-2 right-2">
-          <span className="inline-block text-[11px] bg-black/70 text-white px-2 py-1 rounded-full shadow-sm">
-            Total {formatGBP(total)}
-          </span>
-        </div>
+        {/* Top-right: total (hide when zero) */}
+        {total > 0 && (
+          <div className="absolute top-2 right-2">
+            <span className="inline-block text-[11px] bg-black/70 text-white px-2 py-1 rounded-full shadow-sm">
+              Total {formatGBP(total)}
+            </span>
+          </div>
+        )}
 
         {/* Confidence bar */}
         {conf !== null && (
@@ -298,7 +288,7 @@ export default function RoomCard({
 
       {/* Body */}
       <div className="p-4 space-y-3">
-        {/* Tags / chips */}
+        {/* Chips */}
         <div className="flex flex-wrap items-center gap-2 text-xs">
           {conf !== null && (
             <span className="px-2 py-0.5 bg-blue-50 text-blue-800 border border-blue-200 rounded-full">
@@ -323,6 +313,11 @@ export default function RoomCard({
               Other {formatGBP(other)}
             </span>
           )}
+          {noWork && (
+            <span className="px-2 py-0.5 bg-slate-50 text-slate-700 border border-slate-200 rounded-full">
+              No work items detected
+            </span>
+          )}
           {riskFlags.map(([k]) => (
             <span
               key={k}
@@ -337,7 +332,7 @@ export default function RoomCard({
           </span>
         </div>
 
-        {/* Legacy compact subtotals (only render if any > 0) */}
+        {/* Legacy category strip (only if any > 0) */}
         {(legacyCats > 0) && (
           <div className="text-xs text-slate-700 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1">
             <div>Paint: {formatGBP(room.wallpaper_or_paint_gbp)}</div>
@@ -349,7 +344,7 @@ export default function RoomCard({
           </div>
         )}
 
-        {/* Toggle */}
+        {/* Toggle (always available so user can see the “no work” message) */}
         <div className="pt-1">
           <button
             type="button"
@@ -370,8 +365,15 @@ export default function RoomCard({
           }`}
         >
           <div className="mt-3 border-t pt-3 space-y-4">
+            {/* When no work lines at all */}
+            {noWork && (
+              <div className="text-sm text-slate-600">
+                No refurbishment items were detected for this photo. If this looks wrong, please leave feedback below.
+              </div>
+            )}
+
             {/* Materials list (v2) */}
-            {materials.length > 0 && (
+            {!noWork && materials.length > 0 && (
               <div>
                 <div className="text-xs font-semibold text-slate-700 mb-1">Materials</div>
                 <ul className="text-sm list-disc pl-5 space-y-1">
@@ -397,7 +399,7 @@ export default function RoomCard({
             )}
 
             {/* Labour list (v2) */}
-            {labour.length > 0 && (
+            {!noWork && labour.length > 0 && (
               <div>
                 <div className="text-xs font-semibold text-slate-700 mb-1">Labour</div>
                 <ul className="text-sm list-disc pl-5 space-y-1">
@@ -406,10 +408,10 @@ export default function RoomCard({
                     .map((l, i) => {
                       const hours = toNum(l.total_hours);
                       const crew = Math.max(1, toNum(l.crew_size) || 1);
-                      const ph = hours * crew; // do not persist; shown only
+                      const ph = hours * crew;
                       const rate = toNum(l.hourly_rate_gbp);
                       const cost = toInt(l.labour_cost_gbp || ph * rate);
-                      const trade = (l.trade_key || 'trade').toLowerCase();
+                      const trade = (l.trade_key || 'labour').toLowerCase();
                       return (
                         <li key={l.job_line_id || i}>
                           <span className="capitalize font-medium">{trade}</span>
@@ -424,8 +426,8 @@ export default function RoomCard({
               </div>
             )}
 
-            {/* Legacy works list (only if provided) */}
-            {legacyWorks.length > 0 && (
+            {/* Legacy works (if present) */}
+            {!noWork && legacyWorks.length > 0 && (
               <div>
                 <div className="text-xs font-semibold text-slate-700 mb-1">Itemised (legacy)</div>
                 <ul className="text-sm list-disc pl-5 space-y-1">
@@ -446,7 +448,7 @@ export default function RoomCard({
               </div>
             )}
 
-            {/* Footer actions / info */}
+            {/* Footer actions */}
             <div className="pt-1 flex flex-wrap items-center gap-2">
               {img && (
                 <a
