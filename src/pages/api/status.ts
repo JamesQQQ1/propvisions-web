@@ -2,18 +2,27 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { createClient } from '@supabase/supabase-js'
 
-/* ---------------- Supabase admin client ---------------- */
+/* ──────────────────────────── Supabase (server-only) ─────────────────────────── */
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error('Missing env: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
 }
+
 const supabase = createClient(SUPABASE_URL as string, SUPABASE_SERVICE_ROLE_KEY as string, {
   auth: { persistSession: false },
 })
 
-/* ---------------- Table row types (only the columns you really have) ---------------- */
+/* ───────────────────────────── Table Row Types ──────────────────────────────── */
+// Minimal "runs" shape (only to resolve property_id if caller passes run_id)
+type RunRow = {
+  run_id: string
+  status: 'queued' | 'processing' | 'completed' | 'failed'
+  property_id: string | null
+  pdf_url?: string | null
+}
+
 type PropertyRow = {
   id: string
   property_title?: string | null
@@ -27,12 +36,12 @@ type PropertyRow = {
   floor_area_sqm?: number | null
   epc_rating?: string | null
   listing_url?: string | null
+  listing_images?: string[] | null
   auction_date?: string | null
   lot_number?: string | null
   agent_name?: string | null
   agent_phone?: string | null
   agent_email?: string | null
-  listing_images?: string[] | null
   purchase_price_gbp?: number | null
   guide_price_gbp?: number | null
   asking_price_gbp?: number | null
@@ -56,7 +65,7 @@ type FinancialsRow = {
   total_refurbishment_gbp?: number | null
 }
 
-/* ---- materials (as shown in your screenshots) ---- */
+/* ── materials (matches your screenshots / actual schema) ── */
 type MaterialPriceRow = {
   id: string
   property_id?: string | null
@@ -72,16 +81,18 @@ type MaterialPriceRow = {
   notes?: string | null
   confidence?: number | null
 
-  // qtys/pricing you actually have
+  // quantities & unit price you actually have
   qty_with_waste?: number | null
   qty_raw?: number | null
   units_to_buy?: number | null
   unit?: string | null
   unit_price_material_gbp?: number | null
+
+  // stored subtotals (if present)
   material_subtotal_gbp?: number | null
   subtotal_gbp?: number | null
 
-  // extra (occasionally used)
+  // misc
   assumed_area_m2?: number | null
   coverage_m2_per_unit?: number | null
   coverage_lm_per_unit?: number | null
@@ -89,7 +100,7 @@ type MaterialPriceRow = {
   created_at?: string | null
 }
 
-/* ---- labour (as shown in your screenshots) ---- */
+/* ── labour (matches your screenshots / actual schema) ── */
 type LabourPriceRow = {
   id: string
   property_id?: string | null
@@ -108,7 +119,8 @@ type LabourPriceRow = {
   created_at?: string | null
 }
 
-/* ---------------- Helpers ---------------- */
+/* ──────────────────────────────── Helpers ──────────────────────────────────── */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const toStringQuery = (q: string | string[] | undefined) => (Array.isArray(q) ? q[0] : (q ?? ''))
 const num = (x: any) => (Number.isFinite(+x) ? +x : 0)
 
@@ -159,10 +171,10 @@ function normaliseProperty(p: PropertyRow | null) {
 function pickImageUrl(image_index: number | null | undefined, listing_images?: string[] | null) {
   if (!listing_images || !listing_images.length) return null
   if (image_index == null) return null
-  const idxs = [image_index, image_index - 1].filter(
+  const candidates = [image_index, image_index - 1].filter(
     (i): i is number => Number.isInteger(i) && i >= 0 && i < listing_images.length
   )
-  for (const i of idxs) {
+  for (const i of candidates) {
     const u = listing_images[i]
     if (u) return u
   }
@@ -183,7 +195,48 @@ function sampleRows<T extends { id?: any; property_id?: any; run_id?: any; room_
     }))
 }
 
-/* ---------------- Build rooms (group by room_type + image_index) ---------------- */
+/** Build zero-cost rooms purely from the property's images.
+ * Lets the UI show cards + "No work required" even if there are no refurb rows yet.
+ */
+function buildZeroRoomsFromImages(
+  property: ReturnType<typeof normaliseProperty> | null,
+  {
+    maxImages = 12,
+    defaultRoomType = 'room',
+  }: { maxImages?: number; defaultRoomType?: string } = {}
+) {
+  const images = Array.isArray(property?.listing_images) ? property!.listing_images : []
+  const take = images.slice(0, maxImages)
+
+  return take.map((url, idx) => ({
+    id: `img-${idx}`,
+    detected_room_type: defaultRoomType,
+    room_type: defaultRoomType,
+    image_url: url,
+    image_id: null,
+    image_index: idx,
+
+    // no lines
+    materials: [] as any[],
+    labour: [] as any[],
+
+    // totals = 0 ensures RoomCard shows "No work required"
+    materials_total_gbp: 0,
+    labour_total_gbp: 0,
+    room_total_gbp: 0,
+    room_confidence: null,
+    confidence: null,
+
+    // legacy-friendly props (your grid expects these)
+    estimated_total_gbp: 0,
+    works: [] as any[],
+
+    // optional explanation
+    assumptions: { note: 'No refurbishment required detected (no price rows saved).' },
+  }))
+}
+
+/** Group mats/labs by (room_type, image_index), compute line costs and totals. */
 function buildRoomsFromPriceTables(
   mats: MaterialPriceRow[],
   labs: LabourPriceRow[],
@@ -222,6 +275,7 @@ function buildRoomsFromPriceTables(
   return Array.from(map.values()).map((agg, idx) => {
     const image_url = pickImageUrl(agg.image_index, images)
 
+    // MATERIALS: prefer stored subtotal; else compute unit * qty
     const matLines = (agg.materials || []).map((m) => {
       const qty =
         m.qty_with_waste ??
@@ -229,8 +283,7 @@ function buildRoomsFromPriceTables(
         m.units_to_buy ??
         null
 
-      const unitRate =
-        m.unit_price_material_gbp ?? null
+      const unitRate = m.unit_price_material_gbp ?? null
 
       const subtotal =
         m.material_subtotal_gbp ??
@@ -252,6 +305,7 @@ function buildRoomsFromPriceTables(
       }
     })
 
+    // LABOUR: prefer stored cost; else compute hours * crew * rate
     const labLines = (agg.labour || []).map((l) => {
       const hours = l.total_hours ?? null
       const crew  = l.crew_size ?? 1
@@ -290,7 +344,7 @@ function buildRoomsFromPriceTables(
       room_confidence: null,
       confidence: null,
 
-      // legacy-like "works" for your table rendering
+      // legacy-like "works" so table view keeps working
       estimated_total_gbp: total || null,
       works: [
         ...matLines.map((m) => ({
@@ -314,9 +368,10 @@ function buildRoomsFromPriceTables(
   })
 }
 
-/* ---------------- API handler ---------------- */
+/* ─────────────────────────────── API Handler ──────────────────────────────── */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'no-store')
+
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET')
     return res.status(405).json({ error: 'Method not allowed' })
@@ -325,11 +380,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: 'Server not configured (Supabase env missing)' })
   }
 
-  const property_id = toStringQuery(req.query.property_id)
   const debug = toStringQuery(req.query.debug) === '1'
-  if (!property_id) return res.status(400).json({ error: 'Provide property_id' })
+  let property_id = toStringQuery(req.query.property_id)
+  const run_id = toStringQuery(req.query.run_id)
 
-  // Property + financials
+  // Property-first: resolve property_id from run_id only if not supplied
+  if (!property_id) {
+    if (!run_id) return res.status(400).json({ error: 'Provide property_id (preferred) or run_id' })
+    if (!UUID_RE.test(run_id)) return res.status(400).json({ error: 'Invalid run_id format (UUID required)' })
+    const runResp = await supabase
+      .from<RunRow>('runs')
+      .select('run_id,status,property_id,pdf_url')
+      .eq('run_id', run_id)
+      .maybeSingle()
+    if (runResp.error) {
+      console.error('Supabase runs query error:', runResp.error)
+      return res.status(500).json({ error: 'Supabase runs query failed' })
+    }
+    if (!runResp.data?.property_id) {
+      return res.status(404).json({ error: 'Run not found or missing property_id' })
+    }
+    property_id = runResp.data.property_id
+  }
+
+  /* ── property + financials ── */
   const [finResp, propResp] = await Promise.all([
     supabase.from<FinancialsRow>('property_financials').select('*').eq('property_id', property_id).maybeSingle(),
     supabase.from<PropertyRow>('properties').select('*').eq('id', property_id).maybeSingle(),
@@ -340,7 +414,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
   const property = normaliseProperty(propResp.data ?? null)
 
-  // Refurb price tables — STRICTLY by property_id
+  /* ── refurb price tables — STRICTLY by property_id ── */
   const [matsResp, labsResp] = await Promise.all([
     supabase.from<MaterialPriceRow>('material_refurb_prices').select('*').eq('property_id', property_id),
     supabase.from<LabourPriceRow>('labour_refurb_prices').select('*').eq('property_id', property_id),
@@ -349,12 +423,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const mats = Array.isArray(matsResp.data) ? matsResp.data : []
   const labs = Array.isArray(labsResp.data) ? labsResp.data : []
 
-  const refurb_estimates = (mats.length || labs.length)
-    ? buildRoomsFromPriceTables(mats, labs, property)
-    : []
+  let refurb_estimates: any[] = []
+  let used: string = 'price_tables_by_property'
 
+  if (mats.length || labs.length) {
+    refurb_estimates = buildRoomsFromPriceTables(mats, labs, property)
+  } else {
+    // No rows? We still return image-based zero-cost rooms so the UI shows “No work required”.
+    refurb_estimates = buildZeroRoomsFromImages(property, { maxImages: 12 })
+    used = 'images_only_no_refurb'
+  }
+
+  /* ── rich debugging ── */
   const refurb_debug: any = {
-    used: 'price_tables_by_property',
+    used,
     property_id,
     counts: {
       materials: mats.length,
@@ -368,6 +450,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     env: { supabase_url_tail: (SUPABASE_URL || '').slice(-10) },
   }
 
+  // Optional deeper debug: first 10 raw rows (trimmed fields only)
   if (debug) {
     const trimMat = (r: MaterialPriceRow) => ({
       id: r.id, property_id: r.property_id, run_id: r.run_id,
@@ -398,7 +481,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     property,
     financials: finResp.data ?? null,
     refurb_estimates,
-    pdf_url: null,
+    pdf_url: null, // keep null here unless you wire in PDFs elsewhere
     refurb_debug,
   })
 }
