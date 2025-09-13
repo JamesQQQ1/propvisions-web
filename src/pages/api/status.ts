@@ -86,41 +86,29 @@ type LegacyRefurbRow = {
 }
 
 /* ---------------- Your ACTUAL price tables (source of truth) ---------------- */
-// NOTE: Columns are relaxed/optional so we can map robustly whatever exists now.
 type MaterialPriceRow = {
   id: string
   property_id?: string | null
   run_id?: string | null
   job_line_id?: string | null
-
-  // room grouping
   image_id?: string | null
-  image_index?: number | null        // used for grouping + image choice
+  image_index?: number | null
   room_type?: string | null
-
-  // describing the item
   item_key?: string | null
-  material?: string | null           // sometimes present
+  material?: string | null
   spec?: string | null
   unit?: string | null
-
-  // quantities
   qty?: number | null
   qty_with_waste?: number | null
   units_to_buy?: number | null
-
-  // money
   unit_price_material_gbp?: number | null
   unit_price_withvat_gbp?: number | null
   subtotal_gbp?: number | null
   material_subtotal_gbp?: number | null
-
-  // misc
   assumed_area_m2?: number | null
   dimensions?: any
   confidence?: number | null
   notes?: string | null
-
   created_at?: string | null
 }
 
@@ -129,19 +117,14 @@ type LabourPriceRow = {
   property_id?: string | null
   run_id?: string | null
   job_line_id?: string | null
-
-  // room grouping
   image_id?: string | null
   image_index?: number | null
   room_type?: string | null
-
-  // labour
   trade_key?: string | null
   total_hours?: number | null
   crew_size?: number | null
   hourly_rate_gbp?: number | null
   labour_cost_gbp?: number | null
-
   ai_confidence?: number | null
   notes?: string | null
   created_at?: string | null
@@ -198,7 +181,6 @@ function normaliseProperty(p: PropertyRow | null) {
 function pickImageUrl(image_index: number | null | undefined, listing_images?: string[] | null) {
   if (!listing_images || listing_images.length === 0) return null
   if (image_index == null) return null
-  // try as 0-based then (defensively) 1-based
   const candidates = [image_index, image_index - 1].filter(
     (n): n is number => typeof n === 'number' && n >= 0 && n < listing_images.length
   )
@@ -209,11 +191,6 @@ function pickImageUrl(image_index: number | null | undefined, listing_images?: s
   return null
 }
 
-const n = (x: any) => (Number.isFinite(+x) ? +x : 0)
-const ni = (x: any) => {
-  const v = Math.round(Number(x))
-  return Number.isFinite(v) ? v : 0
-}
 const num = (x: any) => {
   const v = Number(x)
   return Number.isFinite(v) ? v : 0
@@ -238,13 +215,12 @@ function buildRoomsFromPriceTables(
     return map.get(key)!
   }
 
-  // Tolerant grouping: accept image_idx/room as alternates
   const keyFor = (x: { image_index?: any; room_type?: any } | any) => {
     const iiRaw = x?.image_index ?? x?.image_idx ?? null
     const ii = iiRaw != null ? Number(iiRaw) : null
-    const rt = (x?.room_type ?? x?.room ?? '').toString().toLowerCase().trim()
-    const k = `${ii != null ? `img:${ii}` : 'img:-'}|${rt || 'room'}`
-    return { k, ii, rt: rt || 'room' }
+    const rt = (x?.room_type ?? x?.room ?? '').toString().toLowerCase().trim() || 'room'
+    const k = `${ii != null ? `img:${ii}` : 'img:-'}|${rt}`
+    return { k, ii, rt }
   }
 
   for (const m of mats || []) {
@@ -263,7 +239,6 @@ function buildRoomsFromPriceTables(
   const rooms = Array.from(map.values()).map((agg, idx) => {
     const image_url = pickImageUrl(agg.image_index, images)
 
-    // Map to RoomCard v3 material lines (with subtotal fallback)
     const matLines = (agg.materials || []).map((m) => {
       const qty =
         m.qty_with_waste ??
@@ -296,7 +271,6 @@ function buildRoomsFromPriceTables(
       }
     })
 
-    // Labour lines (with cost fallback)
     const labLines = (agg.labour || []).map((l) => {
       const hours = l.total_hours ?? null
       const crew  = l.crew_size ?? 1
@@ -323,12 +297,9 @@ function buildRoomsFromPriceTables(
       id: `rx-${idx}`,
       detected_room_type: agg.room_type ?? undefined,
       room_type: agg.room_type ?? undefined,
-
       image_url,
       image_id: null,
       image_index: agg.image_index ?? null,
-
-      // v2 payload
       materials: matLines,
       labour: labLines,
       materials_total_gbp: matTotal || null,
@@ -336,25 +307,24 @@ function buildRoomsFromPriceTables(
       room_total_gbp: total || null,
       room_confidence: null,
       confidence: null,
-
-      // legacy back-compat for the grid/table & filters
+      // legacy back-compat
       estimated_total_gbp: total || null,
       works: [
         ...matLines.map((m) => ({
           category: 'materials',
           description: m.item_key || 'material',
           unit: m.unit || '',
-          qty: n(m.qty) || undefined,
-          unit_rate_gbp: n(m.unit_price_material_gbp) || undefined,
-          subtotal_gbp: n(m.subtotal_gbp) || undefined,
+          qty: num(m.qty) || undefined,
+          unit_rate_gbp: num(m.unit_price_material_gbp) || undefined,
+          subtotal_gbp: num(m.subtotal_gbp) || undefined,
         })),
         ...labLines.map((l) => ({
           category: (l.trade_key || 'labour'),
           description: l.notes || '',
           unit: 'hours',
-          qty: n(l.total_hours) || undefined,
-          unit_rate_gbp: n(l.hourly_rate_gbp) || undefined,
-          subtotal_gbp: n(l.labour_cost_gbp) || undefined,
+          qty: num(l.total_hours) || undefined,
+          unit_rate_gbp: num(l.hourly_rate_gbp) || undefined,
+          subtotal_gbp: num(l.labour_cost_gbp) || undefined,
         })),
       ],
     }
@@ -377,36 +347,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const run_id = toStringQuery(req.query.run_id)
-  if (!run_id) return res.status(400).json({ error: 'Missing run_id' })
-  if (!UUID_RE.test(run_id)) return res.status(400).json({ error: 'Invalid run_id format (must be UUID)' })
+  const property_id_param = toStringQuery(req.query.property_id)
 
-  // 1) Look up the run
-  const runResp = await supabase.from<RunRow>('runs').select('*').eq('run_id', run_id).maybeSingle()
-  if (runResp.error) {
-    console.error('Supabase runs query error:', runResp.error)
-    return res.status(500).json({ error: 'Supabase runs query failed' })
-  }
-  const run = runResp.data
-  if (!run) return res.status(404).json({ error: 'Run not found' })
+  // Resolve property_id:
+  // - If property_id provided, use it directly.
+  // - Else use run_id → lookup run → get property_id
+  let property_id: string | null = null
+  let run: RunRow | null = null
+  let runStatus: RunRow['status'] | 'idle' = 'idle'
 
-  if (run.status === 'failed') {
-    return res.status(200).json({
-      status: 'failed' as const,
-      run,
-      pdf_url: run.pdf_url ?? null,
-      error: run.error_message ?? 'Unknown error',
-    })
-  }
-  if (run.status !== 'completed') {
-    return res.status(200).json({
-      status: run.status,
-      run,
-      pdf_url: run.pdf_url ?? null,
-    })
+  if (property_id_param) {
+    property_id = property_id_param
+  } else {
+    if (!run_id) return res.status(400).json({ error: 'Provide run_id or property_id' })
+    if (!UUID_RE.test(run_id)) return res.status(400).json({ error: 'Invalid run_id format (must be UUID)' })
+
+    const runResp = await supabase.from<RunRow>('runs').select('*').eq('run_id', run_id).maybeSingle()
+    if (runResp.error) {
+      console.error('Supabase runs query error:', runResp.error)
+      return res.status(500).json({ error: 'Supabase runs query failed' })
+    }
+    run = runResp.data
+    if (!run) return res.status(404).json({ error: 'Run not found' })
+
+    runStatus = run.status
+    if (run.status !== 'completed') {
+      return res.status(200).json({
+        status: run.status,
+        run,
+        pdf_url: run.pdf_url ?? null,
+      })
+    }
+    property_id = run.property_id
   }
 
-  // 2) Completed → fetch rows
-  const property_id = run.property_id
   if (!property_id) {
     return res.status(200).json({
       status: 'completed' as const,
@@ -414,10 +388,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       property: null,
       financials: null,
       refurb_estimates: [],
-      pdf_url: run.pdf_url ?? null,
+      pdf_url: run?.pdf_url ?? null,
+      refurb_debug: { used: 'no_property_id' },
     })
   }
 
+  // Fetch property + financials
   const [finResp, propResp] = await Promise.all([
     supabase.from<FinancialsRow>('property_financials').select('*').eq('property_id', property_id).maybeSingle(),
     supabase.from<PropertyRow>('properties').select('*').eq('id', property_id).maybeSingle(),
@@ -428,47 +404,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
   const property = normaliseProperty(propResp.data ?? null)
 
-  // 3) Read from ACTUAL price tables — try by run_id, then fallback by property_id
-  const [matsByRun, labsByRun] = await Promise.all([
-    supabase.from<MaterialPriceRow>('material_refurb_prices').select('*').eq('run_id', run_id),
-    supabase.from<LabourPriceRow>('labour_refurb_prices').select('*').eq('run_id', run_id),
+  // Price tables: PRIMARY fetch by property_id (aggregates all runs for this property)
+  const [matsByProp, labsByProp] = await Promise.all([
+    supabase.from<MaterialPriceRow>('material_refurb_prices').select('*').eq('property_id', property_id),
+    supabase.from<LabourPriceRow>('labour_refurb_prices').select('*').eq('property_id', property_id),
   ])
 
-  let matsRows = Array.isArray(matsByRun.data) ? matsByRun.data : []
-  let labsRows = Array.isArray(labsByRun.data) ? labsByRun.data : []
+  let matsRows = Array.isArray(matsByProp.data) ? matsByProp.data : []
+  let labsRows = Array.isArray(labsByProp.data) ? labsByProp.data : []
 
+  // Optional: if you *also* want to see rows that match a specific run_id (when provided),
+  // you could sort or filter here. For now we just aggregate everything for the property.
+
+  let refurb_estimates: any[] = []
   let refurb_debug: any = {
+    used: 'price_tables_by_property',
     property_id,
-    used: 'none',
-    by_run: {
-      material_rows: matsRows.length,
-      labour_rows: labsRows.length,
-      error: { mats: matsByRun.error || null, labs: labsByRun.error || null },
-    },
-    by_property: { material_rows: 0, labour_rows: 0, error: null },
-  }
-
-  if ((matsRows.length === 0 && labsRows.length === 0) && property_id) {
-    const [matsByProp, labsByProp] = await Promise.all([
-      supabase.from<MaterialPriceRow>('material_refurb_prices').select('*').eq('property_id', property_id),
-      supabase.from<LabourPriceRow>('labour_refurb_prices').select('*').eq('property_id', property_id),
-    ])
-    matsRows = Array.isArray(matsByProp.data) ? matsByProp.data : []
-    labsRows = Array.isArray(labsByProp.data) ? labsByProp.data : []
-    refurb_debug.by_property = {
+    by_property: {
       material_rows: matsRows.length,
       labour_rows: labsRows.length,
       error: { mats: matsByProp.error || null, labs: labsByProp.error || null },
-    }
+    },
+    run_context: run ? { run_id: run.run_id, status: runStatus } : null,
+    env: { supabase_url_tail: (SUPABASE_URL || '').slice(-10) },
   }
-
-  let refurb_estimates: any[] = []
 
   if (matsRows.length > 0 || labsRows.length > 0) {
     refurb_estimates = buildRoomsFromPriceTables(matsRows, labsRows, property)
-    refurb_debug.used = 'price_tables'
   } else {
-    // Legacy fallback if nothing in price tables (by run or by property)
+    // Legacy fallback
     const refurbResp = await supabase
       .from<LegacyRefurbRow>('refurb_estimates')
       .select('*')
@@ -484,12 +448,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   return res.status(200).json({
-    status: 'completed' as const,
+    status: (run?.status ?? 'completed') as 'completed' | 'queued' | 'processing' | 'failed',
     property_id,
     property,
     financials: finResp.data ?? null,
     refurb_estimates,
-    pdf_url: run.pdf_url ?? null,
-    refurb_debug, // inspect in Network tab if needed
+    pdf_url: run?.pdf_url ?? null,
+    refurb_debug,
   })
 }
