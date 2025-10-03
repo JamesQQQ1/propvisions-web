@@ -131,7 +131,7 @@ export default function Page() {
   /* progress bar logic */
   const [progress, setProgress] = useState(0);
   const progressTickRef = useRef<NodeJS.Timeout | null>(null);
-  const RAMP_MS = 5 * 60 * 1000;
+  const RAMP_MS = 100 * 60 * 1000;
   const MAX_DURING_RUN = 97;
 
   useEffect(() => {
@@ -242,7 +242,7 @@ export default function Page() {
       try {
         const result: any = await pollUntilDone(kickoff.run_id, {
           intervalMs: 2500,
-          timeoutMs: 10 * 60 * 1000,
+          timeoutMs: 100 * 60 * 1000,
           onTick: (s) => setStatus(s),
           signal: controller.signal,
         });
