@@ -213,10 +213,10 @@ export default function Page() {
       try {
         const result: any = await pollUntilDone(kickoff.run_id, {
           intervalMs: 2500,
-          timeoutMs: 1000 * 60 * 1000,
+          timeoutMs: 0,            // ⬅️ disable client-side timeout for the demo
           onTick: (s) => setStatus(s),
           signal: controller.signal,
-        })
+        });
 
         setStatus('completed')
         setProgress(100) // snap to full on success
