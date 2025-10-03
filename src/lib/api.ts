@@ -99,6 +99,7 @@ export type StatusResponse = {
   refurb_debug?: any
 }
 
+/* ───────────── fetch helper ───────────── */
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   let res: Response
   try {
@@ -144,6 +145,8 @@ async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> 
   return json as T
 }
 
+/* ───────────── public client functions ───────────── */
+
 export async function startAnalyze(url: string): Promise<{ run_id: string; execution_id: string; usage?: Usage }> {
   const payload = await fetchJson<AnalyzeKickoff>('/api/analyze', {
     method: 'POST',
@@ -176,8 +179,24 @@ export async function getStatus(run_id: string): Promise<StatusResponse> {
   )
 }
 
-export const POLL_BUILD = 'pv-2025-10-03-B'; // bump when redeploying
+export async function stopRun(
+  run_id: string,
+  execution_id: string
+): Promise<{ ok: boolean; message?: string }> {
+  // Align with client (demo page) which posts to /api/run/cancel
+  return await fetchJson<{ ok: boolean; message?: string }>(`/api/run/cancel`, {
+    method: 'POST',
+    body: JSON.stringify({ run_id, execution_id }),
+  })
+}
 
+/** Bump this when you redeploy to verify the new bundle is live */
+export const POLL_BUILD = 'pv-2025-10-03-C'
+
+/**
+ * Poll the status endpoint until completed/failed.
+ * - `timeoutMs`: number = limit; `0` or `null` = disabled (no client timeout).
+ */
 export async function pollUntilDone(
   run_id: string,
   opts: {
@@ -188,103 +207,25 @@ export async function pollUntilDone(
   } = {}
 ): Promise<StatusResponse> {
   if (typeof window !== 'undefined' && !(window as any).__pv_poll_init_logged) {
-    console.debug('[poll:init]', { POLL_BUILD, passedTimeout: opts.timeoutMs });
-    (window as any).__pv_poll_init_logged = true;
+    console.debug('[poll:init]', { POLL_BUILD, passedTimeout: opts.timeoutMs })
+    ;(window as any).__pv_poll_init_logged = true
   }
 
-  const baseInterval = Math.max(750, opts.intervalMs ?? 3000);
+  const baseInterval = Math.max(750, opts.intervalMs ?? 3000)
 
-  // ✅ Harden the timeout: 0 or null => disabled, else keep what was passed, else default 1h
+  // ✅ Hardened timeout control
   const timeoutMs =
     opts.timeoutMs === 0 || opts.timeoutMs === null
       ? 0
       : typeof opts.timeoutMs === 'number'
       ? opts.timeoutMs
-      : 60 * 60 * 1000;
+      : 60 * 60 * 1000
 
-  console.debug('[poll:config]', { POLL_BUILD, timeoutMs });
+  console.debug('[poll:config]', { POLL_BUILD, timeoutMs })
 
-  const startTs = Date.now();
-  let backoffMs = 0;
-  const backoffMax = 10_000;
-
-  while (true) {
-    if (opts.signal?.aborted) {
-      const e: any = new Error('Polling aborted');
-      e.code = 'ABORTED';
-      throw e;
-    }
-
-    // ⛔ ONLY enforce if nonzero
-    if (timeoutMs !== 0 && Date.now() - startTs > timeoutMs) {
-      throw new Error(`Polling timed out [${POLL_BUILD}]`);
-    }
-
-    try {
-      const statusPayload = await getStatus(run_id);
-      backoffMs = 0;
-
-      const s = statusPayload.status;
-      opts.onTick?.(s);
-
-      if (s === 'completed') return statusPayload;
-      if (s === 'failed') throw new Error(statusPayload.error || 'Run failed');
-
-      await new Promise((r) => setTimeout(r, baseInterval));
-    } catch (e: any) {
-      if (e?.code === 'ABORTED' || e?.name === 'AbortError') throw e;
-
-      if (e?.status === 404) {
-        opts.onTick?.('queued');
-        await new Promise((r) => setTimeout(r, baseInterval));
-        continue;
-      }
-
-      const transient =
-        !e?.status || e.status >= 500 || e.status === 429 || e.status === 408 || e.code === 'NETWORK';
-      if (transient) {
-        backoffMs = backoffMs ? Math.min(backoffMs * 2, backoffMax) : baseInterval;
-        const jitter = Math.floor(Math.random() * 400);
-        await new Promise((r) => setTimeout(r, backoffMs + jitter));
-        continue;
-      }
-
-      throw e;
-    }
-  }
-}
-
-
-export async function stopRun(
-  run_id: string,
-  execution_id: string
-): Promise<{ ok: boolean; message?: string }> {
-  // Align with client (demo page) which posts to /api/run/cancel
-  const resp = await fetchJson<{ ok: boolean; message?: string }>(`/api/run/cancel`, {
-    method: 'POST',
-    body: JSON.stringify({ run_id, execution_id }),
-  })
-  return resp
-}
-
-export async function pollUntilDone(
-  run_id: string,
-  opts: {
-    intervalMs?: number
-    timeoutMs?: number | 0 | null // default below; pass 0/null to disable
-    onTick?: (s: RunStatus) => void
-    signal?: AbortSignal
-  } = {}
-): Promise<StatusResponse> {
-  const baseInterval = Math.max(750, opts.intervalMs ?? 3000)
-
-  // Default timeout = 1 hour (override by passing opts.timeoutMs; use 0/null to disable)
-  const timeoutMs = opts.timeoutMs ?? 60 * 60 * 1000
   const startTs = Date.now()
-
-  // Backoff state for transient errors
   let backoffMs = 0
-  const backoffMax = 10_000 // cap at 10s
+  const backoffMax = 10_000
 
   while (true) {
     if (opts.signal?.aborted) {
@@ -292,13 +233,13 @@ export async function pollUntilDone(
       e.code = 'ABORTED'
       throw e
     }
-    if (timeoutMs && Date.now() - startTs > timeoutMs) {
-      throw new Error('Polling timed out')
+
+    if (timeoutMs !== 0 && Date.now() - startTs > timeoutMs) {
+      throw new Error(`Polling timed out [${POLL_BUILD}]`)
     }
 
     try {
-      const statusPayload = await getStatus(run_id) // no-store
-      // Reset backoff after success
+      const statusPayload = await getStatus(run_id)
       backoffMs = 0
 
       const s = statusPayload.status
@@ -307,20 +248,17 @@ export async function pollUntilDone(
       if (s === 'completed') return statusPayload
       if (s === 'failed') throw new Error(statusPayload.error || 'Run failed')
 
-      // keep polling
       await new Promise((r) => setTimeout(r, baseInterval))
     } catch (e: any) {
-      // Ignore user/navigation aborts
       if (e?.code === 'ABORTED' || e?.name === 'AbortError') throw e
 
-      // Treat 404 as "queued" (race before status row exists)
       if (e?.status === 404) {
+        // treat as "queued" until status row exists
         opts.onTick?.('queued')
         await new Promise((r) => setTimeout(r, baseInterval))
         continue
       }
 
-      // Transient errors: 5xx / 429 / 408 / network
       const transient =
         !e?.status || e.status >= 500 || e.status === 429 || e.status === 408 || e.code === 'NETWORK'
       if (transient) {
@@ -330,7 +268,6 @@ export async function pollUntilDone(
         continue
       }
 
-      // Non-transient → bubble up
       throw e
     }
   }
