@@ -1,18 +1,19 @@
-// src/app/demo/page.tsx
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
-import { pollUntilDone, type RunStatus, startAnalyze } from '@/lib/api';
-import RoomCard, { RefurbRow } from '../../components/RoomCard';
-import PDFViewer from '../../components/PDFViewer';
-import MetricsCards from '../../components/MetricsCards';
-import FeedbackBar from '../../components/FeedbackBar';
+import Image from 'next/image';
+import { pollUntilDone, type RunStatus, startAnalyze, POLL_BUILD } from '@/lib/api';
+import RoomCard, { type RefurbRoom } from '@/components/RoomCard';
+import FeedbackBar from '@/components/FeedbackBar';
+import PDFViewer from '@/components/PDFViewer';
 import FinancialSliders, { type Derived as SliderDerived, type Assumptions as SliderAssumptions } from '@/components/FinancialSliders';
+import MetricsCards from '@/components/MetricsCards';
+
+console.debug('[demo-page] POLL_BUILD =', POLL_BUILD);
 
 /* ---------- branding ---------- */
-const LOGO_SRC = '/propvisions_logo.png'; // lives in /public (note lowercase)
+const LOGO_SRC = '/propvisions_logo.png';
 
 /* ---------- helpers ---------- */
 function formatGBP(n?: number | string | null) {
@@ -37,21 +38,12 @@ const toInt = (n: unknown) => {
   const v = Math.round(Number(n ?? 0));
   return Number.isFinite(v) && v > 0 ? v : 0;
 };
-
-// ensure we always have an absolute URL for the PDF (prevents SPA routing back to /demo)
-function normalizePdfUrl(maybeUrl?: string | null): string | null {
-  if (!maybeUrl) return null;
-  try {
-    if (/^https?:\/\//i.test(maybeUrl)) return maybeUrl; // already absolute
-    return new URL(maybeUrl, window.location.origin).toString();
-  } catch {
-    return null;
-  }
-}
-const asPdfProxy = (u?: string | null) =>
-  u ? `/api/pdf-proxy?url=${encodeURIComponent(u)}` : null;
-
-type Usage = { count: number; limit: number; remaining: number } | null;
+const pickPrice = (p: any): number =>
+  Number(p?.purchase_price_gbp ?? 0) ||
+  Number(p?.guide_price_gbp ?? 0) ||
+  Number(p?.asking_price_gbp ?? 0) ||
+  Number(p?.display_price_gbp ?? 0) ||
+  0;
 
 /* ---------- status badge ---------- */
 function StatusBadge({ status }: { status?: RunStatus | 'idle' }) {
@@ -70,7 +62,7 @@ function StatusBadge({ status }: { status?: RunStatus | 'idle' }) {
   );
 }
 
-/* ---------- tiny progress bar component ---------- */
+/* ---------- tiny progress bar ---------- */
 function ProgressBar({ percent, show }: { percent: number; show: boolean }) {
   return (
     <div className={classNames('mt-3 w-full', !show && 'hidden')} aria-hidden={!show}>
@@ -84,47 +76,17 @@ function ProgressBar({ percent, show }: { percent: number; show: boolean }) {
   );
 }
 
-/* ---------- small math helpers for refurb + prices ---------- */
-function parseWorksArray(works: unknown): any[] {
-  if (Array.isArray(works)) return works;
-  if (typeof works === 'string') {
-    try {
-      const p = JSON.parse(works);
-      return Array.isArray(p) ? p : [];
-    } catch {
-      return [];
-    }
-  }
-  return [];
+/* ---------- v2 refurb helpers ---------- */
+function roomV2Total(r: RefurbRoom): number {
+  const v2 =
+    toInt(r.room_total_with_vat_gbp) ||
+    toInt(r.room_total_gbp) ||
+    (toInt(r.materials_total_with_vat_gbp ?? r.materials_total_gbp) + toInt(r.labour_total_gbp));
+  return v2;
 }
-
-function refurbRowTotal(r: RefurbRow): number {
-  const catSum =
-    toInt(r.wallpaper_or_paint_gbp) +
-    toInt(r.flooring_gbp) +
-    toInt(r.plumbing_gbp) +
-    toInt(r.electrics_gbp) +
-    toInt(r.mould_or_damp_gbp) +
-    toInt(r.structure_gbp);
-
-  const worksArr = parseWorksArray(r.works);
-  const worksSum = worksArr.reduce((acc, w) => acc + toInt(w?.subtotal_gbp), 0);
-
-  return Math.max(toInt(r.estimated_total_gbp), catSum, worksSum);
-}
-
-function sumRefurbTotals(rows: RefurbRow[] | undefined | null): number {
+function sumV2Totals(rows: RefurbRoom[] | undefined | null): number {
   if (!Array.isArray(rows)) return 0;
-  return rows.reduce((acc, r) => acc + refurbRowTotal(r), 0);
-}
-
-function pickPrice(property: any): number {
-  // preference order: purchase -> guide -> asking -> display
-  const p = Number(property?.purchase_price_gbp ?? 0)
-    || Number(property?.guide_price_gbp ?? 0)
-    || Number(property?.asking_price_gbp ?? 0)
-    || Number(property?.display_price_gbp ?? 0);
-  return Number.isFinite(p) ? p : 0;
+  return rows.reduce((acc, r) => acc + roomV2Total(r), 0);
 }
 
 /* ---------- page ---------- */
@@ -133,25 +95,26 @@ export default function Page() {
   const [status, setStatus] = useState<RunStatus | 'idle'>('idle');
   const [error, setError] = useState<string>();
   const [elapsedMs, setElapsedMs] = useState(0);
-  const [usage, setUsage] = useState<Usage>(null);
+  const [usage, setUsage] = useState<{ count: number; limit: number; remaining: number } | null>(null);
   const [data, setData] = useState<{
     property_id: string | null;
     property: any;
     financials: Record<string, unknown> | null;
-    refurb_estimates: RefurbRow[];
+    refurb_estimates: RefurbRoom[];
     pdf_url?: string | null;
+    refurb_debug?: any;
   } | null>(null);
 
-  // NEW: sliders state (derived + assumptions)
+  // Sliders
   const [slDerived, setSlDerived] = useState<SliderDerived | null>(null);
   const [slAssumptions, setSlAssumptions] = useState<SliderAssumptions | null>(null);
 
-  // UI state: filters + sort
+  // Filters/sort
   const [filterType, setFilterType] = useState<string>('All');
   const [sortKey, setSortKey] = useState<'total_desc' | 'total_asc' | 'room_asc'>('total_desc');
-  const [minConfidence, setMinConfidence] = useState<number>(0); // 0..100
+  const [minConfidence, setMinConfidence] = useState<number>(0);
 
-  // Keep the current run + exec ids so Stop can hard-cancel via API
+  // Run state
   const runIdRef = useRef<string | null>(null);
   const execIdRef = useRef<string | null>(null);
 
@@ -159,20 +122,18 @@ export default function Page() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const startedAtRef = useRef<number | null>(null);
-  const submittingRef = useRef(false); // client-side debounce
+  const submittingRef = useRef(false);
 
-  /* ---------- PROTECTED DEMO: logout control ---------- */
+  /* logout */
   async function handleLogout() {
-    try {
-      await fetch('/api/demo-logout', { method: 'POST' });
-    } catch {}
+    try { await fetch('/api/demo-logout', { method: 'POST' }); } catch {}
     window.location.href = '/demo-access?next=/demo';
   }
 
-  /* ---------- PROGRESS: slow ramp for 5 minutes then snap ---------- */
+  /* progress bar logic */
   const [progress, setProgress] = useState(0);
   const progressTickRef = useRef<NodeJS.Timeout | null>(null);
-  const RAMP_MS = 5 * 60 * 1000; // 5 minutes
+  const RAMP_MS = 100 * 60 * 1000; // very slow ramp for long jobs
   const MAX_DURING_RUN = 97;
 
   useEffect(() => {
@@ -241,7 +202,7 @@ export default function Page() {
     'https://auctions.savills.co.uk/auctions/19-august-2025-211/9-seedhill-road-11942',
   ];
 
-  /* ---------- run kickoff ---------- */
+  /* kickoff */
   async function handleStart(e: React.FormEvent) {
     e.preventDefault();
     if (submittingRef.current) return;
@@ -262,17 +223,17 @@ export default function Page() {
       setStatus('queued');
       setProgress((p) => (p < 6 ? 6 : p));
 
-      let kickoff: { run_id: string; execution_id?: string; usage?: Usage };
+      let kickoff: { run_id: string; execution_id?: string; usage?: any };
       try {
         kickoff = await startAnalyze(url);
       } catch (err: any) {
         setStatus('failed');
         setError(err?.message || 'Failed to start analysis');
-        if (err?.usage) setUsage(err.usage as Usage);
+        if (err?.usage) setUsage(err.usage as any);
         return;
       }
 
-      if (kickoff.usage) setUsage(kickoff.usage as Usage);
+      if (kickoff.usage) setUsage(kickoff.usage as any);
 
       runIdRef.current = kickoff.run_id || null;
       execIdRef.current = kickoff.execution_id ?? null;
@@ -283,13 +244,10 @@ export default function Page() {
       try {
         const result: any = await pollUntilDone(kickoff.run_id, {
           intervalMs: 2500,
-          timeoutMs: 10 * 60 * 1000,
+          timeoutMs: 0, // ⬅️ disable client-side timeout entirely
           onTick: (s) => setStatus(s),
           signal: controller.signal,
         });
-
-        const resolvedPdf =
-          typeof window !== 'undefined' ? normalizePdfUrl(result.pdf_url) : (result.pdf_url ?? null);
 
         setStatus('completed');
         setProgress(100);
@@ -297,10 +255,11 @@ export default function Page() {
           property_id: result.property_id ?? null,
           property: result.property ?? null,
           financials: result.financials ?? null,
-          refurb_estimates: Array.isArray(result.refurb_estimates) ? result.refurb_estimates : [],
-          pdf_url: resolvedPdf,
+          refurb_estimates: Array.isArray(result.refurb_estimates) ? (result.refurb_estimates as RefurbRoom[]) : [],
+          pdf_url: result.pdf_url ?? null,
+          refurb_debug: result.refurb_debug ?? undefined,
         });
-        console.log('PDF URL (resolved):', resolvedPdf);
+        if (result?.refurb_debug) console.log('refurb_debug:', result.refurb_debug);
       } catch (err: any) {
         setError(err?.message === 'Polling aborted' ? 'Cancelled.' : err?.message || 'Run failed');
         setStatus('failed');
@@ -330,7 +289,7 @@ export default function Page() {
     setError(execution_id ? 'Stop requested.' : 'Stopped locally (no execution id).');
   }
 
-  // Build filter chips and sorted/filtered refurb list
+  // Build filter chips from v2 room types
   const roomTypes = useMemo(() => {
     const set = new Set<string>();
     (data?.refurb_estimates || []).forEach((r) => {
@@ -341,10 +300,7 @@ export default function Page() {
   }, [data?.refurb_estimates]);
 
   const refinedRefurbs = useMemo(() => {
-    let list = (data?.refurb_estimates || []) as RefurbRow[];
-
-    // drop zero/hidden rows
-    list = list.filter((r) => refurbRowTotal(r) > 0);
+    let list = (data?.refurb_estimates || []) as RefurbRoom[];
 
     if (filterType !== 'All') {
       list = list.filter((r) => {
@@ -354,33 +310,27 @@ export default function Page() {
       });
     }
 
-    // min confidence gate (0..100)
     list = list.filter((r) =>
-      typeof r.confidence === 'number' ? r.confidence * 100 >= minConfidence : true
+      typeof r.confidence === 'number' ? r.confidence * 100 >= minConfidence : true,
     );
 
-    // Sort
-    const byRoom = (r: RefurbRow) =>
+    const byRoom = (r: RefurbRoom) =>
       (r.detected_room_type || r.room_type || 'Other').toString().toLowerCase();
 
     list = [...list].sort((a, b) => {
-      if (sortKey === 'total_desc') return refurbRowTotal(b) - refurbRowTotal(a);
-      if (sortKey === 'total_asc') return refurbRowTotal(a) - refurbRowTotal(b);
+      if (sortKey === 'total_desc') return roomV2Total(b) - roomV2Total(a);
+      if (sortKey === 'total_asc') return roomV2Total(a) - roomV2Total(b);
       return byRoom(a).localeCompare(byRoom(b));
     });
 
     return list;
   }, [data?.refurb_estimates, filterType, sortKey, minConfidence]);
 
-  // Base numbers for sliders (only when results exist)
+  // Slider bases
   const basePrice = useMemo(() => pickPrice(data?.property), [data?.property]);
-  const baseRent = useMemo(() => {
-    const v = Number((data?.financials as any)?.monthly_rent_gbp ?? 0);
-    return Number.isFinite(v) ? v : 0;
-  }, [data?.financials]);
-  const baseRefurb = useMemo(() => sumRefurbTotals(data?.refurb_estimates), [data?.refurb_estimates]);
+  const baseRent = useMemo(() => Number((data?.financials as any)?.monthly_rent_gbp ?? 0) || 0, [data?.financials]);
+  const baseRefurb = useMemo(() => sumV2Totals(data?.refurb_estimates), [data?.refurb_estimates]);
 
-  // Map backend financials to MetricsCards.fallback when sliders not moved yet
   const fallbackForMetrics = useMemo(() => {
     const F = (data?.financials || {}) as Record<string, any>;
     const maybe = (k: string) => (Number.isFinite(+F[k]) ? +F[k] : undefined);
@@ -532,8 +482,8 @@ export default function Page() {
                   <span><strong>Beds:</strong> {data.property?.bedrooms ?? '—'}</span>
                   <span><strong>Baths:</strong> {data.property?.bathrooms ?? '—'}</span>
                   <span><strong>Receptions:</strong> {data.property?.receptions ?? '—'}</span>
-                  <span><strong>EPC:</strong> {data.property?.epc_rating ?? '—'}</span>
-                  <span><strong>Area:</strong> {data.property?.floor_area_sqm ?? '—'} m²</span>
+                  <span><strong>EPC:</strong> {data.property?.epc_rating_current ?? data.property?.epc_rating ?? '—'}</span>
+                  <span><strong>Area:</strong> {data.property?.floorplan_total_area_sqm ?? data.property?.floor_area_sqm ?? '—'} m²</span>
                 </div>
                 <div className="text-sm mt-3 flex items-center gap-3">
                   {data.property?.listing_url ? (
@@ -551,7 +501,7 @@ export default function Page() {
                   {data.pdf_url && (
                     <>
                       <a
-                        href={asPdfProxy(data.pdf_url)!}
+                        href={`/api/pdf-proxy?url=${encodeURIComponent(data.pdf_url)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center rounded-lg bg-blue-600 text-white px-3 py-1.5 hover:bg-blue-700"
@@ -563,7 +513,6 @@ export default function Page() {
                   )}
                 </div>
 
-                {/* Financials thumbs (kept here for visibility) */}
                 <FeedbackBar
                   runId={runIdRef.current}
                   propertyId={data.property_id}
@@ -573,10 +522,10 @@ export default function Page() {
 
               <div>
                 <div className="rounded-lg overflow-hidden border">
-                  {data.property?.image_url ? (
+                  {data.property?.listing_images?.[0] ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={data.property.image_url}
+                      src={data.property.listing_images[0]}
                       alt="Property"
                       className="w-full h-48 object-cover"
                       loading="lazy"
@@ -590,9 +539,14 @@ export default function Page() {
                 <div className="mt-3 text-sm space-y-1">
                   <div>
                     <strong>Displayed Price:</strong>{' '}
-                    {formatGBP(data.property?.display_price_gbp)}{' '}
+                    {formatGBP(
+                      data.property?.purchase_price_gbp ??
+                      data.property?.guide_price_gbp ??
+                      data.property?.asking_price_gbp ??
+                      data.property?.display_price_gbp
+                    )}{' '}
                     <span className="text-slate-500">
-                      ({data.property?.price_label || 'unknown'})
+                      ({data.property?.price_label || 'price'})
                     </span>
                   </div>
                   <div className="text-slate-600">
@@ -605,11 +559,10 @@ export default function Page() {
             </div>
           </section>
 
-          {/* Live “happiness” metrics */}
+          {/* User feedback overview */}
           {data?.property_id && (
             <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
               <h3 className="text-xl font-semibold mb-3">User Feedback (last 90 days)</h3>
-              {/* This component expects either `derived/fallback` or (if you have a different MetricsDashboard, wire it instead) */}
               <MetricsCards
                 derived={slDerived ?? undefined}
                 fallback={fallbackForMetrics}
@@ -623,7 +576,6 @@ export default function Page() {
               <h3 className="text-xl font-semibold">Refurbishment Estimates</h3>
 
               <div className="flex flex-wrap items-center gap-2 ml-auto">
-                {/* Filter */}
                 <label className="text-xs text-slate-600">Filter:</label>
                 <select
                   className="text-sm border rounded-md px-2 py-1"
@@ -635,7 +587,6 @@ export default function Page() {
                   ))}
                 </select>
 
-                {/* Sort */}
                 <label className="text-xs text-slate-600 ml-2">Sort:</label>
                 <select
                   className="text-sm border rounded-md px-2 py-1"
@@ -647,7 +598,6 @@ export default function Page() {
                   <option value="room_asc">Room (A → Z)</option>
                 </select>
 
-                {/* Confidence gate */}
                 <label className="text-xs text-slate-600 ml-2">Min confidence:</label>
                 <input
                   type="range"
@@ -668,7 +618,7 @@ export default function Page() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                   {refinedRefurbs.map((est, idx) => (
                     <RoomCard
-                      key={est.id ?? idx}
+                      key={est.id ?? `${est.room_type}-${idx}`}
                       room={est}
                       runId={runIdRef.current}
                       propertyId={data.property_id}
@@ -676,58 +626,57 @@ export default function Page() {
                   ))}
                 </div>
 
-                {/* Totals table */}
+                {/* Totals table (v2: room totals only) */}
                 <div className="overflow-x-auto">
                   <table className="w-full border text-sm">
                     <thead>
                       <tr className="bg-slate-50">
                         <th className="p-2 text-left">Room</th>
-                        <th className="p-2 text-right">Total</th>
-                        <th className="p-2 text-right">Paint</th>
-                        <th className="p-2 text-right">Floor</th>
-                        <th className="p-2 text-right">Plumbing</th>
-                        <th className="p-2 text-right">Electrics</th>
-                        <th className="p-2 text-right">Mould/Damp</th>
-                        <th className="p-2 text-right">Structure</th>
-                        <th className="p-2 text-right">Other</th>
+                        <th className="p-2 text-right">Materials (gross)</th>
+                        <th className="p-2 text-right">Labour</th>
+                        <th className="p-2 text-right">Room Total</th>
                         <th className="p-2 text-right">Conf.</th>
                       </tr>
                     </thead>
                     <tbody>
                       {refinedRefurbs.map((est, i) => {
-                        const paint = toInt(est.wallpaper_or_paint_gbp);
-                        const floor = toInt(est.flooring_gbp);
-                        const plumb = toInt(est.plumbing_gbp);
-                        const elec = toInt(est.electrics_gbp);
-                        const damp = toInt(est.mould_or_damp_gbp);
-                        const struct = toInt(est.structure_gbp);
-                        const catSum = paint + floor + plumb + elec + damp + struct;
-
-                        const worksArr = parseWorksArray(est.works);
-                        const worksSum = worksArr.reduce((acc, w) => acc + toInt(w?.subtotal_gbp), 0);
-
-                        const total = Math.max(toInt(est.estimated_total_gbp), catSum, worksSum);
-                        const other = Math.max(0, total - catSum);
-                        const conf = typeof est.confidence === 'number' ? Math.round(est.confidence * 100) : null;
+                        const mat = toInt(est.materials_total_with_vat_gbp ?? est.materials_total_gbp);
+                        const lab = toInt(est.labour_total_gbp);
+                        const total = roomV2Total(est);
+                        const conf = typeof est.confidence === 'number'
+                          ? Math.round(est.confidence * 100)
+                          : (typeof est.room_confidence === 'number'
+                              ? Math.round(Number(est.room_confidence) * 100)
+                              : null);
 
                         return (
                           <tr key={est.id ?? `row-${i}`} className="border-t">
                             <td className="p-2 capitalize">
-                              {(est.detected_room_type || est.room_type || 'room').replace(/_/g, ' ')}
+                              {(est.detected_room_type || est.room_type || 'room').toString().replace(/_/g, ' ')}
                             </td>
-                            <td className="p-2 text-right">{formatGBP(total)}</td>
-                            <td className="p-2 text-right">{formatGBP(paint)}</td>
-                            <td className="p-2 text-right">{formatGBP(floor)}</td>
-                            <td className="p-2 text-right">{formatGBP(plumb)}</td>
-                            <td className="p-2 text-right">{formatGBP(elec)}</td>
-                            <td className="p-2 text-right">{formatGBP(damp)}</td>
-                            <td className="p-2 text-right">{formatGBP(struct)}</td>
-                            <td className="p-2 text-right">{formatGBP(other)}</td>
+                            <td className="p-2 text-right">{formatGBP(mat)}</td>
+                            <td className="p-2 text-right">{formatGBP(lab)}</td>
+                            <td className="p-2 text-right font-semibold">{formatGBP(total)}</td>
                             <td className="p-2 text-right">{conf !== null ? `${conf}%` : '—'}</td>
                           </tr>
                         );
                       })}
                     </tbody>
+                    <tfoot>
+                      <tr className="border-t bg-slate-50">
+                        <td className="p-2 text-right font-medium">Totals</td>
+                        <td className="p-2 text-right font-medium">
+                          {formatGBP(refinedRefurbs.reduce((a, r) => a + toInt(r.materials_total_with_vat_gbp ?? r.materials_total_gbp), 0))}
+                        </td>
+                        <td className="p-2 text-right font-medium">
+                          {formatGBP(refinedRefurbs.reduce((a, r) => a + toInt(r.labour_total_gbp), 0))}
+                        </td>
+                        <td className="p-2 text-right font-semibold">
+                          {formatGBP(refinedRefurbs.reduce((a, r) => a + roomV2Total(r), 0))}
+                        </td>
+                        <td className="p-2" />
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
               </>
@@ -759,7 +708,7 @@ export default function Page() {
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xl font-semibold">EPC Data</h3>
               <span className="text-sm text-slate-600">
-                Rating: <strong>{data.property?.epc_rating ?? '—'}</strong>
+                Rating: <strong>{data.property?.epc_rating_current ?? data.property?.epc_rating ?? '—'}</strong>
               </span>
             </div>
             <p className="text-sm text-slate-600 mb-2">
@@ -778,7 +727,7 @@ export default function Page() {
               <h3 className="text-xl font-semibold">Financial Summary</h3>
               {data.pdf_url && (
                 <a
-                  href={asPdfProxy(data.pdf_url)!}
+                  href={`/api/pdf-proxy?url=${encodeURIComponent(data.pdf_url)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm inline-flex items-center rounded-md border px-3 py-1.5 hover:bg-slate-50"
@@ -788,23 +737,21 @@ export default function Page() {
               )}
             </div>
 
-            {/* NEW: Live assumptions sliders */}
+            {/* Live assumptions sliders */}
             <div className="mb-4">
               <FinancialSliders
-                priceGBP={basePrice}
-                refurbTotalGBP={baseRefurb}
-                rentMonthlyGBP={baseRent}
-                defaults={{}} // you can prefill e.g. { mgmtPct: 12, voidsPct: 6 }
+                priceGBP={pickPrice(data.property)}
+                refurbTotalGBP={sumV2Totals(data.refurb_estimates)}
+                rentMonthlyGBP={Number((data.financials as any)?.monthly_rent_gbp ?? 0) || 0}
+                defaults={{}}
                 onChange={(a, d) => {
                   setSlAssumptions(a);
                   setSlDerived(d);
-                  // emit a metrics refresh if you want other widgets to listen
                   if (typeof window !== 'undefined') {
                     window.dispatchEvent(new CustomEvent('metrics:refresh'));
                   }
                 }}
               />
-              {/* Thumbs targeting assumptions vs outputs specifically */}
               <div className="mt-2 flex items-center gap-3">
                 <FeedbackBar
                   runId={runIdRef.current}
@@ -823,7 +770,7 @@ export default function Page() {
               </div>
             </div>
 
-            {/* Backend-calculated financials table (for transparency) */}
+            {/* Backend-calculated financials table */}
             {data.financials ? (
               <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
                 {Object.entries(data.financials)
@@ -839,7 +786,6 @@ export default function Page() {
               <p className="text-slate-600">No financials found for this property yet.</p>
             )}
 
-            {/* Section-level feedback (kept for module=financials) */}
             <FeedbackBar
               runId={runIdRef.current}
               propertyId={data.property_id}
@@ -847,11 +793,11 @@ export default function Page() {
             />
           </section>
 
-          {/* Report Preview (embedded PDF) */}
+          {/* Report Preview */}
           {data.pdf_url && (
             <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
               <h3 className="text-xl font-semibold mb-3">Report Preview</h3>
-              <PDFViewer pdfUrl={data.pdf_url} />
+              <PDFViewer pdfUrl={`/api/pdf-proxy?url=${encodeURIComponent(data.pdf_url)}`} />
             </section>
           )}
         </div>

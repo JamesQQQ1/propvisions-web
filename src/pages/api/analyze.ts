@@ -1,3 +1,5 @@
+// --- This seems to just perform the demo usage count, double check. --- \\
+
 // pages/api/analyze.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
