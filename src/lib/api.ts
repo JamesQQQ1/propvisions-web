@@ -181,7 +181,7 @@ export async function stopRun(
 }
 
 /** bump this whenever you redeploy so we can see in Console the new bundle loaded */
-export const POLL_BUILD = 'pv-2025-10-03-C';
+export const POLL_BUILD = 'pv-2025-10-03-D';
 
 /* ───────── single, canonical poller (NO DUPLICATES) ───────── */
 export async function pollUntilDone(
@@ -240,9 +240,18 @@ export async function pollUntilDone(
     } catch (e: any) {
       if (e?.code === 'ABORTED' || e?.name === 'AbortError') throw e;
 
-      if (e?.status === 404) {
+      // Treat any timeouts (edge/CDN/proxy wording) as transient
+      const msg = (e?.message || '').toLowerCase();
+      const bodyMsg = (e?.body && JSON.stringify(e.body).toLowerCase()) || '';
+      const looksLikeEdgeTimeout =
+        msg.includes('timed out') || msg.includes('timeout') ||
+        bodyMsg.includes('timed out') || bodyMsg.includes('timeout');
+
+      if (e?.status === 404 || looksLikeEdgeTimeout) {
         opts.onTick?.('queued');
-        await new Promise((r) => setTimeout(r, baseInterval));
+        backoffMs = backoffMs ? Math.min(backoffMs * 2, backoffMax) : baseInterval;
+        const jitter = Math.floor(Math.random() * 400);
+        await new Promise((r) => setTimeout(r, backoffMs + jitter));
         continue;
       }
 
