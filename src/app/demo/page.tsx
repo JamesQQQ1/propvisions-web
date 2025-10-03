@@ -16,9 +16,11 @@ console.debug('[demo-page] POLL_BUILD =', POLL_BUILD);
 const LOGO_SRC = '/propvisions_logo.png';
 
 /* ---------- helpers ---------- */
+const gbpFmt = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 });
 function formatGBP(n?: number | string | null) {
+  if (n === null || n === undefined || n === '') return '—';
   const v = typeof n === 'string' ? Number(n) : n;
-  return Number.isFinite(v as number) ? `£${Math.round(v as number).toLocaleString()}` : '—';
+  return Number.isFinite(v as number) ? gbpFmt.format(v as number) : '—';
 }
 function classNames(...xs: (string | false | null | undefined)[]) {
   return xs.filter(Boolean).join(' ');
@@ -45,6 +47,22 @@ const pickPrice = (p: any): number =>
   Number(p?.display_price_gbp ?? 0) ||
   0;
 
+/* ---------- totals helpers (front end stays agnostic re: VAT logic) ---------- */
+function roomV2Total(r: RefurbRoom): number {
+  // Prefer explicit totals; fallback to materials+labour
+  const direct =
+    toInt(r.room_total_with_vat_gbp) ||
+    toInt(r.room_total_gbp);
+  if (direct) return direct;
+  const mat = toInt(r.materials_total_with_vat_gbp ?? r.materials_total_gbp);
+  const lab = toInt(r.labour_total_gbp);
+  return mat + lab;
+}
+function sumV2Totals(rows: RefurbRoom[] | undefined | null): number {
+  if (!Array.isArray(rows)) return 0;
+  return rows.reduce((acc, r) => acc + roomV2Total(r), 0);
+}
+
 /* ---------- status badge ---------- */
 function StatusBadge({ status }: { status?: RunStatus | 'idle' }) {
   const color =
@@ -53,7 +71,7 @@ function StatusBadge({ status }: { status?: RunStatus | 'idle' }) {
       : status === 'failed'
       ? 'bg-red-100 text-red-800 border-red-200'
       : status === 'queued' || status === 'processing'
-      ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      ? 'bg-amber-100 text-amber-900 border-amber-200'
       : 'bg-gray-100 text-gray-800 border-gray-200';
   return (
     <span className={classNames('inline-block px-2 py-0.5 text-xs rounded border', color)}>
@@ -76,19 +94,6 @@ function ProgressBar({ percent, show }: { percent: number; show: boolean }) {
   );
 }
 
-/* ---------- v2 refurb helpers ---------- */
-function roomV2Total(r: RefurbRoom): number {
-  const v2 =
-    toInt(r.room_total_with_vat_gbp) ||
-    toInt(r.room_total_gbp) ||
-    (toInt(r.materials_total_with_vat_gbp ?? r.materials_total_gbp) + toInt(r.labour_total_gbp));
-  return v2;
-}
-function sumV2Totals(rows: RefurbRoom[] | undefined | null): number {
-  if (!Array.isArray(rows)) return 0;
-  return rows.reduce((acc, r) => acc + roomV2Total(r), 0);
-}
-
 /* ---------- page ---------- */
 export default function Page() {
   const [url, setUrl] = useState('');
@@ -96,13 +101,15 @@ export default function Page() {
   const [error, setError] = useState<string>();
   const [elapsedMs, setElapsedMs] = useState(0);
   const [usage, setUsage] = useState<{ count: number; limit: number; remaining: number } | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
   const [data, setData] = useState<{
     property_id: string | null;
     property: any;
     financials: Record<string, unknown> | null;
     refurb_estimates: RefurbRoom[];
     pdf_url?: string | null;
-    refurb_debug?: any;
+    refurb_debug?: { materials_count?: number; labour_count?: number } | any;
+    run?: any;
   } | null>(null);
 
   // Sliders
@@ -209,10 +216,14 @@ export default function Page() {
     submittingRef.current = true;
 
     try {
+      setShowDebug(false);
       setError(undefined);
       setData(null);
       setSlDerived(null);
       setSlAssumptions(null);
+      setFilterType('All');
+      setSortKey('total_desc');
+      setMinConfidence(0);
 
       if (usage && usage.remaining === 0) {
         setStatus('failed');
@@ -244,7 +255,7 @@ export default function Page() {
       try {
         const result: any = await pollUntilDone(kickoff.run_id, {
           intervalMs: 2500,
-          timeoutMs: 0, // ⬅️ disable client-side timeout entirely
+          timeoutMs: 0, // disable client-side timeout entirely
           onTick: (s) => setStatus(s),
           signal: controller.signal,
         });
@@ -258,6 +269,7 @@ export default function Page() {
           refurb_estimates: Array.isArray(result.refurb_estimates) ? (result.refurb_estimates as RefurbRoom[]) : [],
           pdf_url: result.pdf_url ?? null,
           refurb_debug: result.refurb_debug ?? undefined,
+          run: result.run ?? undefined,
         });
         if (result?.refurb_debug) console.log('refurb_debug:', result.refurb_debug);
       } catch (err: any) {
@@ -344,6 +356,13 @@ export default function Page() {
     };
   }, [data?.financials]);
 
+  const elapsedLabel = useMemo(() => {
+    const s = Math.floor(elapsedMs / 1000);
+    const m = Math.floor(s / 60);
+    const rs = s % 60;
+    return m ? `${m}m ${rs}s` : `${rs}s`;
+  }, [elapsedMs]);
+
   return (
     <main className="p-6 max-w-6xl mx-auto space-y-8">
       {/* Protected banner + logout */}
@@ -360,32 +379,43 @@ export default function Page() {
         </button>
       </div>
 
-      {/* Header */}
-      <header className="flex items-start md:items-center justify-between gap-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <Image
-              src={LOGO_SRC}
-              alt="PropVisions"
-              width={120}
-              height={32}
-              priority
-              className="h-9 w-auto md:h-10"
-            />
-            <h1 className="text-3xl font-bold tracking-tight">PropVisions Demo</h1>
+      {/* Sticky header with status */}
+      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b border-slate-200 pb-3 pt-4 -mt-4">
+        <div className="flex items-start md:items-center justify-between gap-4 max-w-6xl mx-auto">
+          <div className="flex-1">
+            <div className="flex items-center gap-3">
+              <Image
+                src={LOGO_SRC}
+                alt="PropVisions"
+                width={120}
+                height={32}
+                priority
+                className="h-9 w-auto md:h-10"
+              />
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">PropVisions Demo</h1>
+            </div>
+            <p className="text-slate-600 mt-1">
+              Paste a listing URL to generate valuations, refurb breakdown, and financials.
+            </p>
+            <ProgressBar percent={progress} show={status === 'queued' || status === 'processing'} />
           </div>
-          <p className="text-slate-600 mt-1">
-            Paste a listing URL to generate valuations, refurb breakdown, and financials.
-          </p>
-          <ProgressBar percent={progress} show={status === 'queued' || status === 'processing'} />
-        </div>
-        <div className="flex items-center gap-3">
-          <StatusBadge status={status} />
-          {(status === 'queued' || status === 'processing') && (
-            <span className="text-sm text-slate-600" aria-live="polite">
-              Elapsed: {elapsedLabel}
-            </span>
-          )}
+          <div className="flex items-center gap-3">
+            <StatusBadge status={status} />
+            {(status === 'queued' || status === 'processing') && (
+              <span className="text-sm text-slate-600" aria-live="polite">
+                Elapsed: {elapsedLabel}
+              </span>
+            )}
+            {running && (
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="px-3 py-1.5 bg-slate-200 text-slate-800 rounded-lg hover:bg-slate-300"
+              >
+                Stop
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -413,7 +443,7 @@ export default function Page() {
             inputMode="url"
             aria-invalid={!validUrl && url.length > 0}
           />
-          <button
+        <button
             type="submit"
             disabled={running || !validUrl || (usage ? usage.remaining === 0 : false)}
             className="px-4 py-3 bg-blue-600 text-white rounded-lg disabled:opacity-50"
@@ -421,18 +451,9 @@ export default function Page() {
           >
             {running ? 'Running…' : 'Analyze'}
           </button>
-          {running && (
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="px-4 py-3 bg-slate-200 text-slate-800 rounded-lg hover:bg-slate-300"
-            >
-              Stop
-            </button>
-          )}
         </form>
 
-        {/* Samples */}
+        {/* Samples + usage */}
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-slate-500">Try a sample:</span>
           {sampleUrls.map((s) => (
@@ -681,7 +702,18 @@ export default function Page() {
                 </div>
               </>
             ) : (
-              <p className="text-slate-600">No refurbishment rows were saved for this property.</p>
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-slate-700">
+                <p className="font-medium">No refurbishment rows were saved for this property.</p>
+                {data?.refurb_debug && (
+                  <p className="text-sm mt-1">
+                    Materials rows: <strong>{data.refurb_debug.materials_count ?? 0}</strong> · Labour rows:{' '}
+                    <strong>{data.refurb_debug.labour_count ?? 0}</strong>
+                  </p>
+                )}
+                <p className="text-sm mt-1">
+                  If the listing had very few photos or room types couldn’t be detected, this can happen.
+                </p>
+              </div>
             )}
           </section>
 
@@ -740,9 +772,9 @@ export default function Page() {
             {/* Live assumptions sliders */}
             <div className="mb-4">
               <FinancialSliders
-                priceGBP={pickPrice(data.property)}
-                refurbTotalGBP={sumV2Totals(data.refurb_estimates)}
-                rentMonthlyGBP={Number((data.financials as any)?.monthly_rent_gbp ?? 0) || 0}
+                priceGBP={basePrice}
+                refurbTotalGBP={baseRefurb}
+                rentMonthlyGBP={baseRent}
                 defaults={{}}
                 onChange={(a, d) => {
                   setSlAssumptions(a);
@@ -800,6 +832,23 @@ export default function Page() {
               <PDFViewer pdfUrl={`/api/pdf-proxy?url=${encodeURIComponent(data.pdf_url)}`} />
             </section>
           )}
+
+          {/* Debug drawer */}
+          <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-4">
+            <button
+              className="text-sm rounded-md border px-3 py-1.5 hover:bg-slate-50"
+              onClick={() => setShowDebug((s) => !s)}
+            >
+              {showDebug ? 'Hide Debug' : 'Show Debug'}
+            </button>
+            {showDebug && (
+              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <pre className="bg-slate-50 p-3 rounded border overflow-auto"><code>{JSON.stringify({ status, run: data?.run }, null, 2)}</code></pre>
+                <pre className="bg-slate-50 p-3 rounded border overflow-auto"><code>{JSON.stringify({ property: data?.property, financials: data?.financials }, null, 2)}</code></pre>
+                <pre className="bg-slate-50 p-3 rounded border overflow-auto md:col-span-2"><code>{JSON.stringify({ refurb_estimates: data?.refurb_estimates }, null, 2)}</code></pre>
+              </div>
+            )}
+          </section>
         </div>
       )}
     </main>
