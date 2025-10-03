@@ -71,7 +71,6 @@ type RoomMaterialsRow = {
   property_id: string;
   image_id: string | null;
   room_type: string | null;
-  // canonical rollups from your pricing step
   subtotals: {
     all?: { net?: number; vat?: number; gross?: number } | null;
     by_category?: Record<
@@ -86,15 +85,15 @@ type RoomLabourRow = {
   property_id: string;
   image_id: string | null;
   room_type: string | null;
-  trade_key?: string | null;       // <-- add this column if you have it
+  trade_key?: string | null;
   trade_name: string | null;
   crew_size?: number | null;
   trade_total_hours?: number | null;
-  hourly_rate_gbp?: number | null; // <-- add if available
-  labour_cost_mean_charge?: number | null; // usually the charged (often VAT-incl) value
-  job_line_id?: string | null;     // <-- add if available
-  ai_confidence?: number | null;   // <-- add if available
-  notes?: string | null;           // <-- add if available
+  hourly_rate_gbp?: number | null;
+  labour_cost_mean_charge?: number | null;
+  job_line_id?: string | null;
+  ai_confidence?: number | null;
+  notes?: string | null;
 };
 
 type RunsRow = {
@@ -112,12 +111,7 @@ function buildRooms(
 ) {
   const index = new Map<
     string,
-    {
-      image_id: string | null;
-      room_type: string | null;
-      materials_rows: RoomMaterialsRow[];
-      labour_rows: RoomLabourRow[];
-    }
+    { image_id: string | null; room_type: string | null; materials_rows: RoomMaterialsRow[]; labour_rows: RoomLabourRow[] }
   >();
 
   const keyOf = (image_id?: string | null, room_type?: string | null) =>
@@ -136,26 +130,20 @@ function buildRooms(
     index.get(k)!.labour_rows.push(r);
   }
 
-  // helper to produce an image URL
   const resolveImageUrl = (image_id: string | null): string | null => {
     if (!image_id) return null;
-    // 1) explicit map (best)
     const mapped = property?.images_map?.[image_id];
     if (mapped) return mapped;
-
-    // 2) fallback: try parse "_<index>" suffix and pull from listing_images
     const m = image_id.match(/_(\d+)$/);
     const idx = m ? Number(m[1]) : NaN;
     const arr = property?.listing_images || [];
     if (Number.isFinite(idx) && idx >= 0 && idx < arr.length) return arr[idx];
-
-    // 3) no luck
     return null;
   };
 
   const out: any[] = [];
   Array.from(index.values()).forEach((group, idx) => {
-    // --- Materials aggregation into MaterialCategory[]
+    // Materials → MaterialCategory[]
     const materials: any[] = [];
     let materials_net = 0;
     let materials_vat = 0;
@@ -175,7 +163,6 @@ function buildRooms(
         const vat = N(v.vat);
         const gross = N(v.gross);
         const lines = (v as any)?.lines ?? null;
-        // conform to MaterialCategory
         materials.push({
           item_key: catKey,
           net_gbp: net || null,
@@ -187,11 +174,11 @@ function buildRooms(
       }
     }
 
-    // --- Labour aggregation into LabourTrade[]
+    // Labour → LabourTrade[]
     const labour: any[] = [];
     let labour_total = 0;
     for (const l of group.labour_rows) {
-      const cost = N(l.labour_cost_mean_charge); // if ex-VAT, we’ll handle below
+      const cost = N(l.labour_cost_mean_charge);
       labour_total += cost;
       labour.push({
         job_line_id: l.job_line_id ?? null,
@@ -206,7 +193,6 @@ function buildRooms(
       });
     }
 
-    // VAT handling for labour (flip the flag above if you store ex-VAT)
     const labour_with_vat = LABOUR_PRICES_INCLUDE_VAT ? labour_total : labour_total * 1.2;
 
     const room_total_ex_vat = materials_net + (LABOUR_PRICES_INCLUDE_VAT ? labour_total / 1.2 : labour_total);
@@ -233,7 +219,6 @@ function buildRooms(
     });
   });
 
-  // neat ordering
   const order = ['kitchen', 'bathroom', 'living', 'sitting', 'reception', 'bedroom', 'hall', 'landing'];
   out.sort((a, b) => {
     const ia = order.findIndex((k) => (a.room_type || '').toLowerCase().includes(k));
@@ -275,7 +260,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json({ status: 'failed' as const, error: run.error || 'Run failed', run });
       }
       if (!run.property_id || !UUID_RE.test(run.property_id)) {
-        // run exists but property still being created
         return res.status(200).json({ status: (run.status as any) || 'processing', run });
       }
       property_id = run.property_id;
@@ -285,7 +269,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Provide a valid property_id (UUID) or a run_id that resolves to one' });
     }
 
-    // Pull run again if we don't have it yet (e.g., ?property_id path)
     if (!run) {
       const r = await supabase
         .from<RunsRow>(RUNS_TABLE)
@@ -322,7 +305,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const labs = Array.isArray(labsResp.data) ? labsResp.data : [];
 
     if (!property) {
-      // property row may lag briefly
       return res.status(200).json({ status: (run?.status as any) || 'processing', run, property_id });
     }
 
@@ -342,7 +324,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const pdf_url = property.property_pdf ?? null;
 
-    // Reflect the real run status if present; otherwise mark completed when we have property+room data
     const effectiveStatus =
       (run?.status as any) ||
       (refurb_estimates.length > 0 ? ('completed' as const) : ('processing' as const));
@@ -355,6 +336,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       financials,
       refurb_estimates,
       pdf_url,
+      refurb_debug: { materials_count: mats.length, labour_count: labs.length },
     });
   } catch (err: any) {
     console.error('STATUS_HANDLER_ERR', err?.message || err);

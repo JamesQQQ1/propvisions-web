@@ -1,3 +1,4 @@
+// src/app/demo/page.tsx
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -9,6 +10,10 @@ import FeedbackBar from '@/components/FeedbackBar';
 import PDFViewer from '@/components/PDFViewer';
 import FinancialSliders, { type Derived as SliderDerived, type Assumptions as SliderAssumptions } from '@/components/FinancialSliders';
 import MetricsCards from '@/components/MetricsCards';
+
+/* ---------- demo mode config (REQUIRED) ---------- */
+// Using the provided run_id for demo mode:
+const DEFAULT_DEMO_RUN_ID = '72e42cef-fb24-4fb1-a310-e964c46a7395';
 
 console.debug('[demo-page] POLL_BUILD =', POLL_BUILD);
 
@@ -47,9 +52,8 @@ const pickPrice = (p: any): number =>
   Number(p?.display_price_gbp ?? 0) ||
   0;
 
-/* ---------- totals helpers (front end stays agnostic re: VAT logic) ---------- */
+/* ---------- totals helpers ---------- */
 function roomV2Total(r: RefurbRoom): number {
-  // Prefer explicit totals; fallback to materials+labour
   const direct =
     toInt(r.room_total_with_vat_gbp) ||
     toInt(r.room_total_gbp);
@@ -112,6 +116,21 @@ export default function Page() {
     run?: any;
   } | null>(null);
 
+  // DEMO toggle state (pre-filled from DEFAULT_DEMO_RUN_ID)
+  const [useDemo, setUseDemo] = useState<boolean>(!!DEFAULT_DEMO_RUN_ID);
+  const [demoRunId, setDemoRunId] = useState<string>(DEFAULT_DEMO_RUN_ID);
+
+  // Allow overriding by URL: ?run=<uuid> turns demo mode on and sets the run
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const usp = new URLSearchParams(window.location.search);
+    const qRun = usp.get('run');
+    if (qRun) {
+      setUseDemo(true);
+      setDemoRunId(qRun);
+    }
+  }, []);
+
   // Sliders
   const [slDerived, setSlDerived] = useState<SliderDerived | null>(null);
   const [slAssumptions, setSlAssumptions] = useState<SliderAssumptions | null>(null);
@@ -135,6 +154,59 @@ export default function Page() {
   async function handleLogout() {
     try { await fetch('/api/demo-logout', { method: 'POST' }); } catch {}
     window.location.href = '/demo-access?next=/demo';
+  }
+
+  /* load a completed/ongoing run by id (demo mode) */
+  async function loadDemoRun(theRunId: string) {
+    setError(undefined);
+    setData(null);
+    setSlDerived(null);
+    setSlAssumptions(null);
+    setFilterType('All');
+    setSortKey('total_desc');
+    setMinConfidence(0);
+
+    if (!theRunId) {
+      setStatus('failed');
+      setError('No demo run_id provided.');
+      return;
+    }
+
+    setStatus('queued');
+    setProgress((p) => (p < 6 ? 6 : p));
+
+    runIdRef.current = theRunId;
+    execIdRef.current = null;
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    try {
+      const result: any = await pollUntilDone(theRunId, {
+        intervalMs: 1800,
+        timeoutMs: 0, // never time out on client
+        onTick: (s) => setStatus(s),
+        signal: controller.signal,
+      });
+
+      setStatus('completed');
+      setProgress(100);
+      setData({
+        property_id: result.property_id ?? null,
+        property: result.property ?? null,
+        financials: result.financials ?? null,
+        refurb_estimates: Array.isArray(result.refurb_estimates) ? (result.refurb_estimates as RefurbRoom[]) : [],
+        pdf_url: result.pdf_url ?? null,
+        refurb_debug: result.refurb_debug ?? undefined,
+        run: result.run ?? undefined,
+      });
+      if (result?.refurb_debug) console.log('refurb_debug:', result.refurb_debug);
+    } catch (err: any) {
+      setError(err?.message === 'Polling aborted' ? 'Cancelled.' : err?.message || 'Run failed');
+      setStatus('failed');
+    } finally {
+      abortRef.current = null;
+    }
   }
 
   /* progress bar logic */
@@ -224,6 +296,12 @@ export default function Page() {
       setFilterType('All');
       setSortKey('total_desc');
       setMinConfidence(0);
+
+      // DEMO MODE: skip n8n; just poll a fixed run_id
+      if (useDemo) {
+        await loadDemoRun(demoRunId);
+        return;
+      }
 
       if (usage && usage.remaining === 0) {
         setStatus('failed');
@@ -356,13 +434,6 @@ export default function Page() {
     };
   }, [data?.financials]);
 
-  const elapsedLabel = useMemo(() => {
-    const s = Math.floor(elapsedMs / 1000);
-    const m = Math.floor(s / 60);
-    const rs = s % 60;
-    return m ? `${m}m ${rs}s` : `${rs}s`;
-  }, [elapsedMs]);
-
   return (
     <main className="p-6 max-w-6xl mx-auto space-y-8">
       {/* Protected banner + logout */}
@@ -403,7 +474,7 @@ export default function Page() {
             <StatusBadge status={status} />
             {(status === 'queued' || status === 'processing') && (
               <span className="text-sm text-slate-600" aria-live="polite">
-                Elapsed: {elapsedLabel}
+                Elapsed: {Math.floor(elapsedMs / 1000 / 60)}m {Math.floor((elapsedMs / 1000) % 60)}s
               </span>
             )}
             {running && (
@@ -419,17 +490,6 @@ export default function Page() {
         </div>
       </header>
 
-      {/* Limit banner */}
-      {usage && usage.remaining === 0 && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-          <h3 className="font-semibold text-amber-900">Daily demo limit reached</h3>
-          <p className="text-sm text-amber-900/80 mt-1">
-            You have used {usage.count} of {usage.limit} runs for today. Please try again tomorrow or{' '}
-            <Link href="/contact" className="underline">contact us</Link> for access.
-          </p>
-        </div>
-      )}
-
       {/* URL form */}
       <section className="space-y-3">
         <form onSubmit={handleStart} className="flex gap-2" aria-label="Analyze property URL">
@@ -441,32 +501,67 @@ export default function Page() {
             className="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
             inputMode="url"
-            aria-invalid={!validUrl && url.length > 0}
+            aria-invalid={!!url && !(() => { try { return !!new URL(url); } catch { return false; } })()}
           />
-        <button
+          <button
             type="submit"
-            disabled={running || !validUrl || (usage ? usage.remaining === 0 : false)}
+            disabled={running || !url}
             className="px-4 py-3 bg-blue-600 text-white rounded-lg disabled:opacity-50"
-            title={!validUrl ? 'Enter a valid URL' : 'Analyze'}
+            title={!url ? 'Enter a URL or use demo run' : 'Analyze'}
           >
             {running ? 'Running…' : 'Analyze'}
           </button>
         </form>
 
+        {/* Demo toggle */}
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <label className="inline-flex items-center gap-2">
+            <input
+              type="checkbox"
+              className="accent-blue-600"
+              checked={useDemo}
+              onChange={(e) => setUseDemo(e.target.checked)}
+            />
+            Use demo run
+          </label>
+
+          <input
+            type="text"
+            value={demoRunId}
+            onChange={(e) => setDemoRunId(e.target.value.trim())}
+            placeholder="demo run_id (UUID)"
+            className="min-w-[22rem] flex-1 p-2 border rounded-md disabled:bg-slate-50"
+            disabled={!useDemo}
+          />
+
+          <button
+            type="button"
+            onClick={() => loadDemoRun(demoRunId)}
+            disabled={!useDemo || !demoRunId}
+            className="px-3 py-2 bg-slate-200 rounded-md disabled:opacity-50"
+            title="Load demo data using the run_id"
+          >
+            Load demo
+          </button>
+        </div>
+
         {/* Samples + usage */}
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-slate-500">Try a sample:</span>
-          {sampleUrls.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setUrl(s)}
-              className="text-xs rounded-full border px-3 py-1 hover:bg-slate-50"
-              title={s}
-            >
-              {new URL(s).hostname}
-            </button>
-          ))}
+          <button
+            type="button"
+            onClick={() => setUrl('https://www.rightmove.co.uk/properties/123456789#/')}
+            className="text-xs rounded-full border px-3 py-1 hover:bg-slate-50"
+          >
+            rightmove.co.uk
+          </button>
+          <button
+            type="button"
+            onClick={() => setUrl('https://auctions.savills.co.uk/auctions/19-august-2025-211/9-seedhill-road-11942')}
+            className="text-xs rounded-full border px-3 py-1 hover:bg-slate-50"
+          >
+            auctions.savills.co.uk
+          </button>
           {usage && (
             <span className="ml-auto text-xs text-slate-500">
               Usage today: <strong>{usage.count}</strong> / {usage.limit}
@@ -603,7 +698,7 @@ export default function Page() {
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value)}
                 >
-                  {roomTypes.map((t) => (
+                  {['All', ...new Set((data.refurb_estimates || []).map((r) => (r.detected_room_type || r.room_type || 'Other').toString().replace(/^./, (c) => c.toUpperCase())))].map((t) => (
                     <option key={t} value={t}>{t}</option>
                   ))}
                 </select>
@@ -634,20 +729,35 @@ export default function Page() {
               </div>
             </div>
 
-            {Array.isArray(refinedRefurbs) && refinedRefurbs.length ? (
+            {Array.isArray(data.refurb_estimates) && data.refurb_estimates.length ? (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                  {refinedRefurbs.map((est, idx) => (
-                    <RoomCard
-                      key={est.id ?? `${est.room_type}-${idx}`}
-                      room={est}
-                      runId={runIdRef.current}
-                      propertyId={data.property_id}
-                    />
-                  ))}
+                  {([...data.refurb_estimates]
+                    .filter((r) => {
+                      if (filterType === 'All') return true;
+                      const t = (r.detected_room_type || r.room_type || 'Other').toString();
+                      const norm = t.charAt(0).toUpperCase() + t.slice(1);
+                      return norm === filterType;
+                    })
+                    .filter((r) => (typeof r.confidence === 'number' ? r.confidence * 100 >= minConfidence : true))
+                    .sort((a, b) => {
+                      if (sortKey === 'total_desc') return roomV2Total(b) - roomV2Total(a);
+                      if (sortKey === 'total_asc') return roomV2Total(a) - roomV2Total(b);
+                      const ar = (a.detected_room_type || a.room_type || 'Other').toString().toLowerCase();
+                      const br = (b.detected_room_type || b.room_type || 'Other').toString().toLowerCase();
+                      return ar.localeCompare(br);
+                    }))
+                    .map((est, idx) => (
+                      <RoomCard
+                        key={est.id ?? `${est.room_type}-${idx}`}
+                        room={est}
+                        runId={runIdRef.current}
+                        propertyId={data.property_id}
+                      />
+                    ))}
                 </div>
 
-                {/* Totals table (v2: room totals only) */}
+                {/* Totals table */}
                 <div className="overflow-x-auto">
                   <table className="w-full border text-sm">
                     <thead>
@@ -660,7 +770,7 @@ export default function Page() {
                       </tr>
                     </thead>
                     <tbody>
-                      {refinedRefurbs.map((est, i) => {
+                      {data.refurb_estimates.map((est, i) => {
                         const mat = toInt(est.materials_total_with_vat_gbp ?? est.materials_total_gbp);
                         const lab = toInt(est.labour_total_gbp);
                         const total = roomV2Total(est);
@@ -687,13 +797,13 @@ export default function Page() {
                       <tr className="border-t bg-slate-50">
                         <td className="p-2 text-right font-medium">Totals</td>
                         <td className="p-2 text-right font-medium">
-                          {formatGBP(refinedRefurbs.reduce((a, r) => a + toInt(r.materials_total_with_vat_gbp ?? r.materials_total_gbp), 0))}
+                          {formatGBP(data.refurb_estimates.reduce((a, r) => a + toInt(r.materials_total_with_vat_gbp ?? r.materials_total_gbp), 0))}
                         </td>
                         <td className="p-2 text-right font-medium">
-                          {formatGBP(refinedRefurbs.reduce((a, r) => a + toInt(r.labour_total_gbp), 0))}
+                          {formatGBP(data.refurb_estimates.reduce((a, r) => a + toInt(r.labour_total_gbp), 0))}
                         </td>
                         <td className="p-2 text-right font-semibold">
-                          {formatGBP(refinedRefurbs.reduce((a, r) => a + roomV2Total(r), 0))}
+                          {formatGBP(data.refurb_estimates.reduce((a, r) => a + roomV2Total(r), 0))}
                         </td>
                         <td className="p-2" />
                       </tr>
