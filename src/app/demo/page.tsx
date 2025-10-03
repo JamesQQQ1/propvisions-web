@@ -3,12 +3,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { pollUntilDone, type RunStatus, startAnalyze } from '@/lib/api';
+import { pollUntilDone, type RunStatus, startAnalyze, POLL_BUILD } from '@/lib/api';
+console.debug('[demo-page] POLL_BUILD =', POLL_BUILD);
 import RoomCard, { type RefurbRoom } from '@/components/RoomCard';
 import FeedbackBar from '@/components/FeedbackBar';
 import PDFViewer from '@/components/PDFViewer';
 import FinancialSliders, { type Derived as SliderDerived, type Assumptions as SliderAssumptions } from '@/components/FinancialSliders';
 import MetricsCards from '@/components/MetricsCards';
+
+
 
 /* ---------- branding ---------- */
 const LOGO_SRC = '/propvisions_logo.png';

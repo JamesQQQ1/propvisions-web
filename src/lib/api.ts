@@ -176,6 +176,85 @@ export async function getStatus(run_id: string): Promise<StatusResponse> {
   )
 }
 
+export const POLL_BUILD = 'pv-2025-10-03-B'; // bump when redeploying
+
+export async function pollUntilDone(
+  run_id: string,
+  opts: {
+    intervalMs?: number
+    timeoutMs?: number | 0 | null
+    onTick?: (s: RunStatus) => void
+    signal?: AbortSignal
+  } = {}
+): Promise<StatusResponse> {
+  if (typeof window !== 'undefined' && !(window as any).__pv_poll_init_logged) {
+    console.debug('[poll:init]', { POLL_BUILD, passedTimeout: opts.timeoutMs });
+    (window as any).__pv_poll_init_logged = true;
+  }
+
+  const baseInterval = Math.max(750, opts.intervalMs ?? 3000);
+
+  // ✅ Harden the timeout: 0 or null => disabled, else keep what was passed, else default 1h
+  const timeoutMs =
+    opts.timeoutMs === 0 || opts.timeoutMs === null
+      ? 0
+      : typeof opts.timeoutMs === 'number'
+      ? opts.timeoutMs
+      : 60 * 60 * 1000;
+
+  console.debug('[poll:config]', { POLL_BUILD, timeoutMs });
+
+  const startTs = Date.now();
+  let backoffMs = 0;
+  const backoffMax = 10_000;
+
+  while (true) {
+    if (opts.signal?.aborted) {
+      const e: any = new Error('Polling aborted');
+      e.code = 'ABORTED';
+      throw e;
+    }
+
+    // ⛔ ONLY enforce if nonzero
+    if (timeoutMs !== 0 && Date.now() - startTs > timeoutMs) {
+      throw new Error(`Polling timed out [${POLL_BUILD}]`);
+    }
+
+    try {
+      const statusPayload = await getStatus(run_id);
+      backoffMs = 0;
+
+      const s = statusPayload.status;
+      opts.onTick?.(s);
+
+      if (s === 'completed') return statusPayload;
+      if (s === 'failed') throw new Error(statusPayload.error || 'Run failed');
+
+      await new Promise((r) => setTimeout(r, baseInterval));
+    } catch (e: any) {
+      if (e?.code === 'ABORTED' || e?.name === 'AbortError') throw e;
+
+      if (e?.status === 404) {
+        opts.onTick?.('queued');
+        await new Promise((r) => setTimeout(r, baseInterval));
+        continue;
+      }
+
+      const transient =
+        !e?.status || e.status >= 500 || e.status === 429 || e.status === 408 || e.code === 'NETWORK';
+      if (transient) {
+        backoffMs = backoffMs ? Math.min(backoffMs * 2, backoffMax) : baseInterval;
+        const jitter = Math.floor(Math.random() * 400);
+        await new Promise((r) => setTimeout(r, backoffMs + jitter));
+        continue;
+      }
+
+      throw e;
+    }
+  }
+}
+
+
 export async function stopRun(
   run_id: string,
   execution_id: string
