@@ -1,57 +1,49 @@
-'use client'
+'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import Link from 'next/link'
-import Image from 'next/image'
-import {
-  pollUntilDone,
-  type RunStatus,
-  startAnalyze,
-  POLL_BUILD,
-} from '@/lib/api'
-import RoomCard, { type RefurbRoom } from '@/components/RoomCard'
-import FeedbackBar from '@/components/FeedbackBar'
-import PDFViewer from '@/components/PDFViewer'
-import FinancialSliders, {
-  type Derived as SliderDerived,
-  type Assumptions as SliderAssumptions,
-} from '@/components/FinancialSliders'
-import MetricsCards from '@/components/MetricsCards'
+import { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { pollUntilDone, type RunStatus, startAnalyze, POLL_BUILD } from '@/lib/api';
+import RoomCard, { type RefurbRoom } from '@/components/RoomCard';
+import FeedbackBar from '@/components/FeedbackBar';
+import PDFViewer from '@/components/PDFViewer';
+import FinancialSliders, { type Derived as SliderDerived, type Assumptions as SliderAssumptions } from '@/components/FinancialSliders';
+import MetricsCards from '@/components/MetricsCards';
 
-console.debug('[demo-page] POLL_BUILD =', POLL_BUILD)
+console.debug('[demo-page] POLL_BUILD =', POLL_BUILD);
 
 /* ---------- branding ---------- */
-const LOGO_SRC = '/propvisions_logo.png'
+const LOGO_SRC = '/propvisions_logo.png';
 
 /* ---------- helpers ---------- */
 function formatGBP(n?: number | string | null) {
-  const v = typeof n === 'string' ? Number(n) : n
-  return Number.isFinite(v as number) ? `£${Math.round(v as number).toLocaleString()}` : '—'
+  const v = typeof n === 'string' ? Number(n) : n;
+  return Number.isFinite(v as number) ? `£${Math.round(v as number).toLocaleString()}` : '—';
 }
 function classNames(...xs: (string | false | null | undefined)[]) {
-  return xs.filter(Boolean).join(' ')
+  return xs.filter(Boolean).join(' ');
 }
-const HIDE_FIN_KEYS = new Set(['id', 'property_id', 'created_at', 'updated_at'])
-const isMoneyKey = (k: string) => k.endsWith('_gbp')
-const titleize = (k: string) => k.replace(/_/g, ' ')
+const HIDE_FIN_KEYS = new Set(['id', 'property_id', 'created_at', 'updated_at']);
+const isMoneyKey = (k: string) => k.endsWith('_gbp');
+const titleize = (k: string) => k.replace(/_/g, ' ');
 const fmtValue = (k: string, v: unknown) => {
-  if (v === null || v === undefined || v === '') return '—'
-  if (k === 'roi_percent') return `${Number(v).toFixed(2)}%`
-  if (isMoneyKey(k)) return formatGBP(v as any)
-  if (typeof v === 'number') return v.toLocaleString()
-  const n = Number(v)
-  return Number.isFinite(n) ? n.toLocaleString() : String(v)
-}
+  if (v === null || v === undefined || v === '') return '—';
+  if (k === 'roi_percent') return `${Number(v).toFixed(2)}%`;
+  if (isMoneyKey(k)) return formatGBP(v as any);
+  if (typeof v === 'number') return v.toLocaleString();
+  const n = Number(v);
+  return Number.isFinite(n) ? n.toLocaleString() : String(v);
+};
 const toInt = (n: unknown) => {
-  const v = Math.round(Number(n ?? 0))
-  return Number.isFinite(v) && v > 0 ? v : 0
-}
+  const v = Math.round(Number(n ?? 0));
+  return Number.isFinite(v) && v > 0 ? v : 0;
+};
 const pickPrice = (p: any): number =>
   Number(p?.purchase_price_gbp ?? 0) ||
   Number(p?.guide_price_gbp ?? 0) ||
   Number(p?.asking_price_gbp ?? 0) ||
   Number(p?.display_price_gbp ?? 0) ||
-  0
+  0;
 
 /* ---------- status badge ---------- */
 function StatusBadge({ status }: { status?: RunStatus | 'idle' }) {
@@ -62,12 +54,12 @@ function StatusBadge({ status }: { status?: RunStatus | 'idle' }) {
       ? 'bg-red-100 text-red-800 border-red-200'
       : status === 'queued' || status === 'processing'
       ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      : 'bg-gray-100 text-gray-800 border-gray-200'
+      : 'bg-gray-100 text-gray-800 border-gray-200';
   return (
     <span className={classNames('inline-block px-2 py-0.5 text-xs rounded border', color)}>
       {status || 'idle'}
     </span>
-  )
+  );
 }
 
 /* ---------- tiny progress bar ---------- */
@@ -81,7 +73,7 @@ function ProgressBar({ percent, show }: { percent: number; show: boolean }) {
         />
       </div>
     </div>
-  )
+  );
 }
 
 /* ---------- v2 refurb helpers ---------- */
@@ -89,271 +81,268 @@ function roomV2Total(r: RefurbRoom): number {
   const v2 =
     toInt(r.room_total_with_vat_gbp) ||
     toInt(r.room_total_gbp) ||
-    (toInt(r.materials_total_with_vat_gbp ?? r.materials_total_gbp) + toInt(r.labour_total_gbp))
-  return v2
+    (toInt(r.materials_total_with_vat_gbp ?? r.materials_total_gbp) + toInt(r.labour_total_gbp));
+  return v2;
 }
 function sumV2Totals(rows: RefurbRoom[] | undefined | null): number {
-  if (!Array.isArray(rows)) return 0
-  return rows.reduce((acc, r) => acc + roomV2Total(r), 0)
+  if (!Array.isArray(rows)) return 0;
+  return rows.reduce((acc, r) => acc + roomV2Total(r), 0);
 }
 
 /* ---------- page ---------- */
 export default function Page() {
-  const [url, setUrl] = useState('')
-  const [status, setStatus] = useState<RunStatus | 'idle'>('idle')
-  const [error, setError] = useState<string>()
-  const [elapsedMs, setElapsedMs] = useState(0)
-  const [usage, setUsage] = useState<{ count: number; limit: number; remaining: number } | null>(null)
+  const [url, setUrl] = useState('');
+  const [status, setStatus] = useState<RunStatus | 'idle'>('idle');
+  const [error, setError] = useState<string>();
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [usage, setUsage] = useState<{ count: number; limit: number; remaining: number } | null>(null);
   const [data, setData] = useState<{
-    property_id: string | null
-    property: any
-    financials: Record<string, unknown> | null
-    refurb_estimates: RefurbRoom[]
-    pdf_url?: string | null
-    refurb_debug?: any
-  } | null>(null)
+    property_id: string | null;
+    property: any;
+    financials: Record<string, unknown> | null;
+    refurb_estimates: RefurbRoom[];
+    pdf_url?: string | null;
+    refurb_debug?: any;
+  } | null>(null);
 
   // Sliders
-  const [slDerived, setSlDerived] = useState<SliderDerived | null>(null)
-  const [slAssumptions, setSlAssumptions] = useState<SliderAssumptions | null>(null)
+  const [slDerived, setSlDerived] = useState<SliderDerived | null>(null);
+  const [slAssumptions, setSlAssumptions] = useState<SliderAssumptions | null>(null);
 
   // Filters/sort
-  const [filterType, setFilterType] = useState<string>('All')
-  const [sortKey, setSortKey] = useState<'total_desc' | 'total_asc' | 'room_asc'>('total_desc')
-  const [minConfidence, setMinConfidence] = useState<number>(0)
+  const [filterType, setFilterType] = useState<string>('All');
+  const [sortKey, setSortKey] = useState<'total_desc' | 'total_asc' | 'room_asc'>('total_desc');
+  const [minConfidence, setMinConfidence] = useState<number>(0);
 
   // Run state
-  const runIdRef = useRef<string | null>(null)
-  const execIdRef = useRef<string | null>(null)
+  const runIdRef = useRef<string | null>(null);
+  const execIdRef = useRef<string | null>(null);
 
-  const running = status === 'queued' || status === 'processing'
-  const timerRef = useRef<NodeJS.Timeout | null>(null)
-  const abortRef = useRef<AbortController | null>(null)
-  const startedAtRef = useRef<number | null>(null)
-  const submittingRef = useRef(false)
+  const running = status === 'queued' || status === 'processing';
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const startedAtRef = useRef<number | null>(null);
+  const submittingRef = useRef(false);
 
   /* logout */
   async function handleLogout() {
-    try { await fetch('/api/demo-logout', { method: 'POST' }) } catch {}
-    window.location.href = '/demo-access?next=/demo'
+    try { await fetch('/api/demo-logout', { method: 'POST' }); } catch {}
+    window.location.href = '/demo-access?next=/demo';
   }
 
   /* progress bar logic */
-  const [progress, setProgress] = useState(0)
-  const progressTickRef = useRef<NodeJS.Timeout | null>(null)
-  const RAMP_MS = 100 * 60 * 1000 // slow ramp for long jobs
-  const MAX_DURING_RUN = 97
+  const [progress, setProgress] = useState(0);
+  const progressTickRef = useRef<NodeJS.Timeout | null>(null);
+  const RAMP_MS = 100 * 60 * 1000; // very slow ramp for long jobs
+  const MAX_DURING_RUN = 97;
 
   useEffect(() => {
     if (!running) {
-      if (timerRef.current) clearInterval(timerRef.current)
-      timerRef.current = null
-      return
+      if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = null;
+      return;
     }
-    startedAtRef.current = Date.now()
-    setElapsedMs(0)
+    startedAtRef.current = Date.now();
+    setElapsedMs(0);
     timerRef.current = setInterval(() => {
-      if (startedAtRef.current) setElapsedMs(Date.now() - startedAtRef.current)
-    }, 250)
+      if (startedAtRef.current) setElapsedMs(Date.now() - startedAtRef.current);
+    }, 250);
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
-      timerRef.current = null
-    }
-  }, [running])
+      if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = null;
+    };
+  }, [running]);
 
   useEffect(() => {
     if (!running) {
-      if (progressTickRef.current) clearInterval(progressTickRef.current)
-      progressTickRef.current = null
-      return
+      if (progressTickRef.current) clearInterval(progressTickRef.current);
+      progressTickRef.current = null;
+      return;
     }
-    setProgress((p) => (p < 6 ? 6 : p))
+    setProgress((p) => (p < 6 ? 6 : p));
     progressTickRef.current = setInterval(() => {
-      if (!startedAtRef.current) return
-      const elapsed = Date.now() - startedAtRef.current
-      const target = Math.min(MAX_DURING_RUN, (elapsed / RAMP_MS) * MAX_DURING_RUN)
-      setProgress((p) => (p < target ? p + Math.min(0.8, target - p) : p))
-    }, 300)
+      if (!startedAtRef.current) return;
+      const elapsed = Date.now() - startedAtRef.current;
+      const target = Math.min(MAX_DURING_RUN, (elapsed / RAMP_MS) * MAX_DURING_RUN);
+      setProgress((p) => (p < target ? p + Math.min(0.8, target - p) : p));
+    }, 300);
     return () => {
-      if (progressTickRef.current) clearInterval(progressTickRef.current)
-      progressTickRef.current = null
-    }
-  }, [running])
+      if (progressTickRef.current) clearInterval(progressTickRef.current);
+      progressTickRef.current = null;
+    };
+  }, [running]);
 
   useEffect(() => {
-    if (status === 'completed') setProgress(100)
-    else if ((status === 'failed' || status === 'idle') && !running) setProgress(0)
-  }, [status, running])
+    if (status === 'completed') {
+      setProgress(100);
+    } else if ((status === 'failed' || status === 'idle') && !running) {
+      setProgress(0);
+    }
+  }, [status, running]);
 
   const elapsedLabel = useMemo(() => {
-    const s = Math.floor(elapsedMs / 1000)
-    const m = Math.floor(s / 60)
-    const rs = s % 60
-    return m ? `${m}m ${rs}s` : `${rs}s`
-  }, [elapsedMs])
+    const s = Math.floor(elapsedMs / 1000);
+    const m = Math.floor(s / 60);
+    const rs = s % 60;
+    return m ? `${m}m ${rs}s` : `${rs}s`;
+  }, [elapsedMs]);
 
   const validUrl = useMemo(() => {
     try {
-      if (!url) return false
-      const u = new URL(url)
-      return !!u.protocol && !!u.hostname
+      if (!url) return false;
+      const u = new URL(url);
+      return !!u.protocol && !!u.hostname;
     } catch {
-      return false
+      return false;
     }
-  }, [url])
+  }, [url]);
 
   const sampleUrls = [
     'https://www.rightmove.co.uk/properties/123456789#/',
     'https://auctions.savills.co.uk/auctions/19-august-2025-211/9-seedhill-road-11942',
-  ]
+  ];
 
   /* kickoff */
   async function handleStart(e: React.FormEvent) {
-    e.preventDefault()
-    if (submittingRef.current) return
-    submittingRef.current = true
+    e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
 
     try {
-      setError(undefined)
-      setData(null)
-      setSlDerived(null)
-      setSlAssumptions(null)
+      setError(undefined);
+      setData(null);
+      setSlDerived(null);
+      setSlAssumptions(null);
 
       if (usage && usage.remaining === 0) {
-        setStatus('failed')
-        setError('Daily demo limit reached.')
-        return
+        setStatus('failed');
+        setError('Daily demo limit reached.');
+        return;
       }
 
-      setStatus('queued')
-      setProgress((p) => (p < 6 ? 6 : p))
+      setStatus('queued');
+      setProgress((p) => (p < 6 ? 6 : p));
 
-      let kickoff: { run_id: string; execution_id?: string; usage?: any }
+      let kickoff: { run_id: string; execution_id?: string; usage?: any };
       try {
-        kickoff = await startAnalyze(url)
+        kickoff = await startAnalyze(url);
       } catch (err: any) {
-        setStatus('failed')
-        setError(err?.message || 'Failed to start analysis')
-        if (err?.usage) setUsage(err.usage as any)
-        return
+        setStatus('failed');
+        setError(err?.message || 'Failed to start analysis');
+        if (err?.usage) setUsage(err.usage as any);
+        return;
       }
 
-      if (kickoff.usage) setUsage(kickoff.usage as any)
+      if (kickoff.usage) setUsage(kickoff.usage as any);
 
-      runIdRef.current = kickoff.run_id || null
-      execIdRef.current = kickoff.execution_id ?? null
+      runIdRef.current = kickoff.run_id || null;
+      execIdRef.current = kickoff.execution_id ?? null;
 
-      const controller = new AbortController()
-      abortRef.current = controller
+      const controller = new AbortController();
+      abortRef.current = controller;
 
       try {
         const result: any = await pollUntilDone(kickoff.run_id, {
           intervalMs: 2500,
-          timeoutMs: 0, // ⬅️ disable client-side timeout for the demo
+          timeoutMs: 0, // ⬅️ disable client-side timeout entirely
           onTick: (s) => setStatus(s),
           signal: controller.signal,
-        })
+        });
 
-        setStatus('completed')
-        setProgress(100)
+        setStatus('completed');
+        setProgress(100);
         setData({
           property_id: result.property_id ?? null,
           property: result.property ?? null,
           financials: result.financials ?? null,
-          refurb_estimates: Array.isArray(result.refurb_estimates)
-            ? (result.refurb_estimates as RefurbRoom[])
-            : [],
+          refurb_estimates: Array.isArray(result.refurb_estimates) ? (result.refurb_estimates as RefurbRoom[]) : [],
           pdf_url: result.pdf_url ?? null,
           refurb_debug: result.refurb_debug ?? undefined,
-        })
-        if (result?.refurb_debug) console.log('refurb_debug:', result.refurb_debug)
+        });
+        if (result?.refurb_debug) console.log('refurb_debug:', result.refurb_debug);
       } catch (err: any) {
-        setError(err?.message === 'Polling aborted' ? 'Cancelled.' : err?.message || 'Run failed')
-        setStatus('failed')
+        setError(err?.message === 'Polling aborted' ? 'Cancelled.' : err?.message || 'Run failed');
+        setStatus('failed');
       } finally {
-        abortRef.current = null
+        abortRef.current = null;
       }
     } finally {
       setTimeout(() => {
-        submittingRef.current = false
-      }, 300)
+        submittingRef.current = false;
+      }, 300);
     }
   }
 
   async function handleCancel() {
-    const run_id = runIdRef.current
-    const execution_id = execIdRef.current
+    const run_id = runIdRef.current;
+    const execution_id = execIdRef.current;
     try {
       await fetch('/api/run/cancel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ run_id, execution_id }),
-      })
+      });
     } catch {}
-    abortRef.current?.abort()
-    abortRef.current = null
-    setStatus('failed')
-    setError(execution_id ? 'Stop requested.' : 'Stopped locally (no execution id).')
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setStatus('failed');
+    setError(execution_id ? 'Stop requested.' : 'Stopped locally (no execution id).');
   }
 
   // Build filter chips from v2 room types
   const roomTypes = useMemo(() => {
-    const set = new Set<string>()
-    ;(data?.refurb_estimates || []).forEach((r) => {
-      const t = (r.detected_room_type || r.room_type || 'Other').toString()
-      set.add(t.charAt(0).toUpperCase() + t.slice(1))
-    })
-    return ['All', ...Array.from(set).sort()]
-  }, [data?.refurb_estimates])
+    const set = new Set<string>();
+    (data?.refurb_estimates || []).forEach((r) => {
+      const t = (r.detected_room_type || r.room_type || 'Other').toString();
+      set.add(t.charAt(0).toUpperCase() + t.slice(1));
+    });
+    return ['All', ...Array.from(set).sort()];
+  }, [data?.refurb_estimates]);
 
   const refinedRefurbs = useMemo(() => {
-    let list = (data?.refurb_estimates || []) as RefurbRoom[]
+    let list = (data?.refurb_estimates || []) as RefurbRoom[];
 
     if (filterType !== 'All') {
       list = list.filter((r) => {
-        const t = (r.detected_room_type || r.room_type || 'Other').toString()
-        const norm = t.charAt(0).toUpperCase() + t.slice(1)
-        return norm === filterType
-      })
+        const t = (r.detected_room_type || r.room_type || 'Other').toString();
+        const norm = t.charAt(0).toUpperCase() + t.slice(1);
+        return norm === filterType;
+      });
     }
 
     list = list.filter((r) =>
-      typeof r.confidence === 'number' ? r.confidence * 100 >= minConfidence : true
-    )
+      typeof r.confidence === 'number' ? r.confidence * 100 >= minConfidence : true,
+    );
 
     const byRoom = (r: RefurbRoom) =>
-      (r.detected_room_type || r.room_type || 'Other').toString().toLowerCase()
+      (r.detected_room_type || r.room_type || 'Other').toString().toLowerCase();
 
     list = [...list].sort((a, b) => {
-      if (sortKey === 'total_desc') return roomV2Total(b) - roomV2Total(a)
-      if (sortKey === 'total_asc') return roomV2Total(a) - roomV2Total(b)
-      return byRoom(a).localeCompare(byRoom(b))
-    })
+      if (sortKey === 'total_desc') return roomV2Total(b) - roomV2Total(a);
+      if (sortKey === 'total_asc') return roomV2Total(a) - roomV2Total(b);
+      return byRoom(a).localeCompare(byRoom(b));
+    });
 
-    return list
-  }, [data?.refurb_estimates, filterType, sortKey, minConfidence])
+    return list;
+  }, [data?.refurb_estimates, filterType, sortKey, minConfidence]);
 
-  const basePrice = useMemo(() => pickPrice(data?.property), [data?.property])
-  const baseRent = useMemo(
-    () => Number((data?.financials as any)?.monthly_rent_gbp ?? 0) || 0,
-    [data?.financials]
-  )
-  const baseRefurb = useMemo(() => sumV2Totals(data?.refurb_estimates), [data?.refurb_estimates])
+  // Slider bases
+  const basePrice = useMemo(() => pickPrice(data?.property), [data?.property]);
+  const baseRent = useMemo(() => Number((data?.financials as any)?.monthly_rent_gbp ?? 0) || 0, [data?.financials]);
+  const baseRefurb = useMemo(() => sumV2Totals(data?.refurb_estimates), [data?.refurb_estimates]);
 
   const fallbackForMetrics = useMemo(() => {
-    const F = (data?.financials || {}) as Record<string, any>
-    const maybe = (k: string) => (Number.isFinite(+F[k]) ? +F[k] : undefined)
+    const F = (data?.financials || {}) as Record<string, any>;
+    const maybe = (k: string) => (Number.isFinite(+F[k]) ? +F[k] : undefined);
     return {
       noiAnnual: maybe('annual_net_income_gbp'),
       totalInvestment: maybe('total_investment_gbp'),
       mortgageMonthly: maybe('mortgage_monthly_gbp'),
-      cashflowMonthly:
-        maybe('monthly_cashflow_gbp') ??
-        (maybe('annual_net_income_gbp') ? (maybe('annual_net_income_gbp') as number) / 12 : undefined),
+      cashflowMonthly: maybe('monthly_cashflow_gbp') ?? (maybe('annual_net_income_gbp') ? (maybe('annual_net_income_gbp') as number) / 12 : undefined),
       netYieldPct: maybe('net_yield_percent'),
       roiPctYear1: maybe('roi_percent'),
-    }
-  }, [data?.financials])
+    };
+  }, [data?.financials]);
 
   return (
     <main className="p-6 max-w-6xl mx-auto space-y-8">
@@ -552,9 +541,9 @@ export default function Page() {
                     <strong>Displayed Price:</strong>{' '}
                     {formatGBP(
                       data.property?.purchase_price_gbp ??
-                        data.property?.guide_price_gbp ??
-                        data.property?.asking_price_gbp ??
-                        data.property?.display_price_gbp
+                      data.property?.guide_price_gbp ??
+                      data.property?.asking_price_gbp ??
+                      data.property?.display_price_gbp
                     )}{' '}
                     <span className="text-slate-500">
                       ({data.property?.price_label || 'price'})
@@ -574,7 +563,10 @@ export default function Page() {
           {data?.property_id && (
             <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
               <h3 className="text-xl font-semibold mb-3">User Feedback (last 90 days)</h3>
-              <MetricsCards derived={slDerived ?? undefined} fallback={fallbackForMetrics} />
+              <MetricsCards
+                derived={slDerived ?? undefined}
+                fallback={fallbackForMetrics}
+              />
             </section>
           )}
 
@@ -648,41 +640,33 @@ export default function Page() {
                     </thead>
                     <tbody>
                       {refinedRefurbs.map((est, i) => {
-                        const mat = toInt(est.materials_total_with_vat_gbp ?? est.materials_total_gbp)
-                        const lab = toInt(est.labour_total_gbp)
-                        const total = roomV2Total(est)
-                        const conf =
-                          typeof est.confidence === 'number'
-                            ? Math.round(est.confidence * 100)
-                            : typeof est.room_confidence === 'number'
-                            ? Math.round(Number(est.room_confidence) * 100)
-                            : null
+                        const mat = toInt(est.materials_total_with_vat_gbp ?? est.materials_total_gbp);
+                        const lab = toInt(est.labour_total_gbp);
+                        const total = roomV2Total(est);
+                        const conf = typeof est.confidence === 'number'
+                          ? Math.round(est.confidence * 100)
+                          : (typeof est.room_confidence === 'number'
+                              ? Math.round(Number(est.room_confidence) * 100)
+                              : null);
 
                         return (
                           <tr key={est.id ?? `row-${i}`} className="border-t">
                             <td className="p-2 capitalize">
-                              {(est.detected_room_type || est.room_type || 'room')
-                                .toString()
-                                .replace(/_/g, ' ')}
+                              {(est.detected_room_type || est.room_type || 'room').toString().replace(/_/g, ' ')}
                             </td>
                             <td className="p-2 text-right">{formatGBP(mat)}</td>
                             <td className="p-2 text-right">{formatGBP(lab)}</td>
                             <td className="p-2 text-right font-semibold">{formatGBP(total)}</td>
                             <td className="p-2 text-right">{conf !== null ? `${conf}%` : '—'}</td>
                           </tr>
-                        )
+                        );
                       })}
                     </tbody>
                     <tfoot>
                       <tr className="border-t bg-slate-50">
                         <td className="p-2 text-right font-medium">Totals</td>
                         <td className="p-2 text-right font-medium">
-                          {formatGBP(
-                            refinedRefurbs.reduce(
-                              (a, r) => a + toInt(r.materials_total_with_vat_gbp ?? r.materials_total_gbp),
-                              0
-                            )
-                          )}
+                          {formatGBP(refinedRefurbs.reduce((a, r) => a + toInt(r.materials_total_with_vat_gbp ?? r.materials_total_gbp), 0))}
                         </td>
                         <td className="p-2 text-right font-medium">
                           {formatGBP(refinedRefurbs.reduce((a, r) => a + toInt(r.labour_total_gbp), 0))}
@@ -712,7 +696,11 @@ export default function Page() {
             <p className="text-sm text-slate-600 mb-2">
               Tell us if this looks right based on your market knowledge.
             </p>
-            <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="rent" />
+            <FeedbackBar
+              runId={runIdRef.current}
+              propertyId={data.property_id}
+              module="rent"
+            />
           </section>
 
           {/* EPC – thumbs */}
@@ -726,7 +714,11 @@ export default function Page() {
             <p className="text-sm text-slate-600 mb-2">
               Does the EPC rating + details we show match the official register for this address?
             </p>
-            <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="epc" />
+            <FeedbackBar
+              runId={runIdRef.current}
+              propertyId={data.property_id}
+              module="epc"
+            />
           </section>
 
           {/* Financials + Scenario Modelling */}
@@ -753,10 +745,10 @@ export default function Page() {
                 rentMonthlyGBP={Number((data.financials as any)?.monthly_rent_gbp ?? 0) || 0}
                 defaults={{}}
                 onChange={(a, d) => {
-                  setSlAssumptions(a)
-                  setSlDerived(d)
+                  setSlAssumptions(a);
+                  setSlDerived(d);
                   if (typeof window !== 'undefined') {
-                    window.dispatchEvent(new CustomEvent('metrics:refresh'))
+                    window.dispatchEvent(new CustomEvent('metrics:refresh'));
                   }
                 }}
               />
@@ -794,7 +786,11 @@ export default function Page() {
               <p className="text-slate-600">No financials found for this property yet.</p>
             )}
 
-            <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="financials" />
+            <FeedbackBar
+              runId={runIdRef.current}
+              propertyId={data.property_id}
+              module="financials"
+            />
           </section>
 
           {/* Report Preview */}
@@ -807,5 +803,5 @@ export default function Page() {
         </div>
       )}
     </main>
-  )
+  );
 }

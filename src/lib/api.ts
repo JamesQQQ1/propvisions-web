@@ -1,107 +1,99 @@
 // src/lib/api.ts
-export type RunStatus = 'queued' | 'processing' | 'completed' | 'failed'
-export type Usage = { count: number; limit: number; remaining: number }
+export type RunStatus = 'queued' | 'processing' | 'completed' | 'failed';
+export type Usage = { count: number; limit: number; remaining: number };
 
-/** v2 shapes: categories (materials) + trades (labour) */
 export type MaterialCategory = {
-  item_key: string
-  gross_gbp?: number | string | null
-  net_gbp?: number | string | null
-  vat_gbp?: number | string | null
-  subtotal_gbp?: number | string | null // fallback (gross)
-  lines?: number | null
-}
+  item_key: string;
+  gross_gbp?: number | string | null;
+  net_gbp?: number | string | null;
+  vat_gbp?: number | string | null;
+  subtotal_gbp?: number | string | null; // fallback (gross)
+  lines?: number | null;
+};
 
 export type LabourTrade = {
-  job_line_id?: string | null
-  trade_key?: string | null
-  trade_name?: string | null
-  total_hours?: number | string | null
-  crew_size?: number | string | null
-  hourly_rate_gbp?: number | string | null
-  labour_cost_gbp?: number | string | null
-  ai_confidence?: number | string | null
-  notes?: string | null
-}
+  job_line_id?: string | null;
+  trade_key?: string | null;
+  trade_name?: string | null;
+  total_hours?: number | string | null;
+  crew_size?: number | string | null;
+  hourly_rate_gbp?: number | string | null;
+  labour_cost_gbp?: number | string | null;
+  ai_confidence?: number | string | null;
+  notes?: string | null;
+};
 
-/** Matches what RoomCard v2 (materials+labour aggregates) consumes */
 export type RefurbRoom = {
-  id?: string
-  detected_room_type?: string | null
-  room_type?: string | null
+  id?: string;
+  detected_room_type?: string | null;
+  room_type?: string | null;
 
-  // imagery
-  image_url?: string | null
-  image_id?: string | null
-  image_index?: number | null
+  image_url?: string | null;
+  image_id?: string | null;
+  image_index?: number | null;
 
-  // v2 aggregates (can arrive as JSON string)
-  materials?: MaterialCategory[] | string | null
-  labour?: LabourTrade[] | string | null
+  materials?: MaterialCategory[] | string | null;
+  labour?: LabourTrade[] | string | null;
 
-  // v2 totals (prefer *_with_vat for UI)
-  materials_total_with_vat_gbp?: number | string | null
-  materials_total_gbp?: number | string | null
-  labour_total_gbp?: number | string | null
-  room_total_with_vat_gbp?: number | string | null
-  room_total_gbp?: number | string | null
-  room_confidence?: number | string | null
+  materials_total_with_vat_gbp?: number | string | null;
+  materials_total_gbp?: number | string | null;
+  labour_total_gbp?: number | string | null;
+  room_total_with_vat_gbp?: number | string | null;
+  room_total_gbp?: number | string | null;
+  room_confidence?: number | string | null;
 
-  // legacy fields kept for back-compat (not required by the new UI)
-  wallpaper_or_paint_gbp?: number | string | null
-  flooring_gbp?: number | string | null
-  plumbing_gbp?: number | string | null
-  electrics_gbp?: number | string | null
-  mould_or_damp_gbp?: number | string | null
-  structure_gbp?: number | string | null
+  // legacy/fallbacks
+  wallpaper_or_paint_gbp?: number | string | null;
+  flooring_gbp?: number | string | null;
+  plumbing_gbp?: number | string | null;
+  electrics_gbp?: number | string | null;
+  mould_or_damp_gbp?: number | string | null;
+  structure_gbp?: number | string | null;
   works?: Array<{
-    category: string
-    description?: string
-    unit?: string
-    qty?: number
-    unit_rate_gbp?: number
-    subtotal_gbp?: number
-  }> | string | null
-  estimated_total_gbp?: number | string | null
+    category: string;
+    description?: string;
+    unit?: string;
+    qty?: number;
+    unit_rate_gbp?: number;
+    subtotal_gbp?: number;
+  }> | string | null;
+  estimated_total_gbp?: number | string | null;
 
-  // misc
-  confidence?: number | null
-  assumptions?: Record<string, any> | null
-  risk_flags?: Record<string, boolean> | null
+  confidence?: number | null;
+  assumptions?: Record<string, any> | null;
+  risk_flags?: Record<string, boolean> | null;
 
-  // optional p70s
-  p70_total_low_gbp?: number | string | null
-  p70_total_high_gbp?: number | string | null
+  p70_total_low_gbp?: number | string | null;
+  p70_total_high_gbp?: number | string | null;
   totals?: {
-    p70_total_low_gbp?: number | string | null
-    p70_total_high_gbp?: number | string | null
-    estimated_total_gbp?: number | string | null
-  } | null
-}
+    p70_total_low_gbp?: number | string | null;
+    p70_total_high_gbp?: number | string | null;
+    estimated_total_gbp?: number | string | null;
+  } | null;
+};
 
 type AnalyzeKickoff = {
-  run_id?: string
-  execution_id?: string
-  status?: string
-  usage?: Usage
-}
+  run_id?: string;
+  execution_id?: string;
+  status?: string;
+  usage?: Usage;
+};
 
 export type StatusResponse = {
-  status: RunStatus
-  run?: any
-  error?: string
-  property_id?: string | null
-  property?: any
-  financials?: Record<string, unknown> | null
-  refurb_estimates?: RefurbRoom[]
-  pdf_url?: string | null
-  /** useful for debugging new model payloads */
-  refurb_debug?: any
-}
+  status: RunStatus;
+  run?: any;
+  error?: string;
+  property_id?: string | null;
+  property?: any;
+  financials?: Record<string, unknown> | null;
+  refurb_estimates?: RefurbRoom[];
+  pdf_url?: string | null;
+  refurb_debug?: any;
+};
 
-/* ───────────── fetch helper ───────────── */
+/* ───────── fetch helper ───────── */
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
-  let res: Response
+  let res: Response;
   try {
     res = await fetch(input, {
       cache: init?.cache ?? 'no-store',
@@ -110,59 +102,58 @@ async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> 
         'Content-Type': 'application/json',
         ...(init?.headers || {}),
       },
-    })
+    });
   } catch (err: any) {
     if (err?.name === 'AbortError') {
-      const e: any = new Error('Request aborted')
-      e.code = 'ABORTED'
-      throw e
+      const e: any = new Error('Request aborted');
+      e.code = 'ABORTED';
+      throw e;
     }
-    const e: any = new Error(`Failed to fetch: ${err?.message || 'network error'}`)
-    e.code = 'NETWORK'
-    throw e
+    const e: any = new Error(`Failed to fetch: ${err?.message || 'network error'}`);
+    e.code = 'NETWORK';
+    throw e;
   }
 
-  const text = await res.text()
-  let json: any
+  const text = await res.text();
+  let json: any;
   try {
-    json = text ? JSON.parse(text) : {}
+    json = text ? JSON.parse(text) : {};
   } catch {
     if (!res.ok) {
-      const err: any = new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`)
-      err.status = res.status
-      throw err
+      const err: any = new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+      err.status = res.status;
+      throw err;
     }
-    return text as any
+    return text as any;
   }
 
   if (!res.ok) {
-    const err: any = new Error(json?.error || `HTTP ${res.status}`)
-    err.status = res.status
-    err.body = json
-    if (json?.usage) err.usage = json.usage
-    throw err
+    const err: any = new Error(json?.error || `HTTP ${res.status}`);
+    err.status = res.status;
+    err.body = json;
+    if (json?.usage) err.usage = json.usage;
+    throw err;
   }
-  return json as T
+  return json as T;
 }
 
-/* ───────────── public client functions ───────────── */
-
+/* ───────── analyze + status APIs ───────── */
 export async function startAnalyze(url: string): Promise<{ run_id: string; execution_id: string; usage?: Usage }> {
   const payload = await fetchJson<AnalyzeKickoff>('/api/analyze', {
     method: 'POST',
     body: JSON.stringify({ url }),
-  })
+  });
 
-  const run_id = payload.run_id
-  const execution_id = payload.execution_id
+  const run_id = payload.run_id;
+  const execution_id = payload.execution_id;
 
   if (!run_id || !execution_id) {
-    const err: any = new Error('Workflow did not return a valid run_id/execution_id')
-    err.usage = (payload as any)?.usage
-    throw err
+    const err: any = new Error('Workflow did not return a valid run_id/execution_id');
+    err.usage = (payload as any)?.usage;
+    throw err;
   }
 
-  return { run_id, execution_id, usage: payload.usage }
+  return { run_id, execution_id, usage: payload.usage };
 }
 
 export async function getStatus(run_id: string): Promise<StatusResponse> {
@@ -175,100 +166,96 @@ export async function getStatus(run_id: string): Promise<StatusResponse> {
         'Cache-Control': 'no-store, no-cache, must-revalidate',
         Pragma: 'no-cache',
       },
-    }
-  )
+    },
+  );
 }
 
 export async function stopRun(
   run_id: string,
-  execution_id: string
+  execution_id: string,
 ): Promise<{ ok: boolean; message?: string }> {
-  // Align with client (demo page) which posts to /api/run/cancel
   return await fetchJson<{ ok: boolean; message?: string }>(`/api/run/cancel`, {
     method: 'POST',
     body: JSON.stringify({ run_id, execution_id }),
-  })
+  });
 }
 
-/** Bump this when you redeploy to verify the new bundle is live */
-export const POLL_BUILD = 'pv-2025-10-03-C'
+/** bump this whenever you redeploy so we can see in Console the new bundle loaded */
+export const POLL_BUILD = 'pv-2025-10-03-C';
 
-/**
- * Poll the status endpoint until completed/failed.
- * - `timeoutMs`: number = limit; `0` or `null` = disabled (no client timeout).
- */
+/* ───────── single, canonical poller (NO DUPLICATES) ───────── */
 export async function pollUntilDone(
   run_id: string,
   opts: {
-    intervalMs?: number
-    timeoutMs?: number | 0 | null
-    onTick?: (s: RunStatus) => void
-    signal?: AbortSignal
-  } = {}
+    intervalMs?: number;
+    /** pass 0 or null to disable timeout completely */
+    timeoutMs?: number | 0 | null;
+    onTick?: (s: RunStatus) => void;
+    signal?: AbortSignal;
+  } = {},
 ): Promise<StatusResponse> {
   if (typeof window !== 'undefined' && !(window as any).__pv_poll_init_logged) {
-    console.debug('[poll:init]', { POLL_BUILD, passedTimeout: opts.timeoutMs })
-    ;(window as any).__pv_poll_init_logged = true
+    console.debug('[poll:init]', { POLL_BUILD, passedTimeout: opts.timeoutMs });
+    (window as any).__pv_poll_init_logged = true;
   }
 
-  const baseInterval = Math.max(750, opts.intervalMs ?? 3000)
+  const baseInterval = Math.max(750, opts.intervalMs ?? 3000);
 
-  // ✅ Hardened timeout control
+  // 0/null => disabled, number => that number, otherwise default 1h
   const timeoutMs =
     opts.timeoutMs === 0 || opts.timeoutMs === null
       ? 0
       : typeof opts.timeoutMs === 'number'
       ? opts.timeoutMs
-      : 60 * 60 * 1000
+      : 60 * 60 * 1000;
 
-  console.debug('[poll:config]', { POLL_BUILD, timeoutMs })
+  console.debug('[poll:config]', { POLL_BUILD, timeoutMs });
 
-  const startTs = Date.now()
-  let backoffMs = 0
-  const backoffMax = 10_000
+  const startTs = Date.now();
+  let backoffMs = 0;
+  const backoffMax = 10_000;
 
   while (true) {
     if (opts.signal?.aborted) {
-      const e: any = new Error('Polling aborted')
-      e.code = 'ABORTED'
-      throw e
+      const e: any = new Error('Polling aborted');
+      e.code = 'ABORTED';
+      throw e;
     }
 
     if (timeoutMs !== 0 && Date.now() - startTs > timeoutMs) {
-      throw new Error(`Polling timed out [${POLL_BUILD}]`)
+      throw new Error(`Polling timed out [${POLL_BUILD}]`);
     }
 
     try {
-      const statusPayload = await getStatus(run_id)
-      backoffMs = 0
+      const statusPayload = await getStatus(run_id);
+      backoffMs = 0;
 
-      const s = statusPayload.status
-      opts.onTick?.(s)
+      const s = statusPayload.status;
+      opts.onTick?.(s);
 
-      if (s === 'completed') return statusPayload
-      if (s === 'failed') throw new Error(statusPayload.error || 'Run failed')
+      if (s === 'completed') return statusPayload;
+      if (s === 'failed') throw new Error(statusPayload.error || 'Run failed');
 
-      await new Promise((r) => setTimeout(r, baseInterval))
+      await new Promise((r) => setTimeout(r, baseInterval));
     } catch (e: any) {
-      if (e?.code === 'ABORTED' || e?.name === 'AbortError') throw e
+      if (e?.code === 'ABORTED' || e?.name === 'AbortError') throw e;
 
       if (e?.status === 404) {
-        // treat as "queued" until status row exists
-        opts.onTick?.('queued')
-        await new Promise((r) => setTimeout(r, baseInterval))
-        continue
+        opts.onTick?.('queued');
+        await new Promise((r) => setTimeout(r, baseInterval));
+        continue;
       }
 
       const transient =
-        !e?.status || e.status >= 500 || e.status === 429 || e.status === 408 || e.code === 'NETWORK'
+        !e?.status || e.status >= 500 || e.status === 429 || e.status === 408 || e.code === 'NETWORK';
       if (transient) {
-        backoffMs = backoffMs ? Math.min(backoffMs * 2, backoffMax) : baseInterval
-        const jitter = Math.floor(Math.random() * 400)
-        await new Promise((r) => setTimeout(r, backoffMs + jitter))
-        continue
+        backoffMs = backoffMs ? Math.min(backoffMs * 2, backoffMax) : baseInterval;
+        const jitter = Math.floor(Math.random() * 400);
+        await new Promise((r) => setTimeout(r, backoffMs + jitter));
+        continue;
       }
 
-      throw e
+      throw e;
     }
   }
 }
