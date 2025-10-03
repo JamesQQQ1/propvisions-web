@@ -1,9 +1,30 @@
 // src/lib/api.ts
-
 export type RunStatus = 'queued' | 'processing' | 'completed' | 'failed'
 export type Usage = { count: number; limit: number; remaining: number }
 
-/** Matches what RoomCard v3 (materials + labour) consumes */
+/** v2 shapes: categories (materials) + trades (labour) */
+export type MaterialCategory = {
+  item_key: string
+  gross_gbp?: number | string | null
+  net_gbp?: number | string | null
+  vat_gbp?: number | string | null
+  subtotal_gbp?: number | string | null // fallback (gross)
+  lines?: number | null
+}
+
+export type LabourTrade = {
+  job_line_id?: string | null
+  trade_key?: string | null
+  trade_name?: string | null
+  total_hours?: number | string | null
+  crew_size?: number | string | null
+  hourly_rate_gbp?: number | string | null
+  labour_cost_gbp?: number | string | null
+  ai_confidence?: number | string | null
+  notes?: string | null
+}
+
+/** Matches what RoomCard v2 (materials+labour aggregates) consumes */
 export type RefurbRoom = {
   id?: string
   detected_room_type?: string | null
@@ -14,38 +35,19 @@ export type RefurbRoom = {
   image_id?: string | null
   image_index?: number | null
 
-  // NEW model (v2+) fields
-  materials?: Array<{
-    job_line_id?: string | null
-    item_key?: string
-    unit?: string
-    qty?: number | string | null
-    unit_price_material_gbp?: number | string | null
-    subtotal_gbp?: number | string | null
-    waste_pct?: number | string | null
-    units_to_buy?: number | string | null
-    notes?: string | null
-    assumed_area_m2?: number | string | null
-    confidence?: number | string | null
-  }> | string | null
+  // v2 aggregates (can arrive as JSON string)
+  materials?: MaterialCategory[] | string | null
+  labour?: LabourTrade[] | string | null
 
-  labour?: Array<{
-    job_line_id?: string | null
-    trade_key?: string | null
-    total_hours?: number | string | null
-    crew_size?: number | string | null
-    hourly_rate_gbp?: number | string | null
-    labour_cost_gbp?: number | string | null
-    ai_confidence?: number | string | null
-    notes?: string | null
-  }> | string | null
-
+  // v2 totals (prefer *_with_vat for UI)
+  materials_total_with_vat_gbp?: number | string | null
   materials_total_gbp?: number | string | null
   labour_total_gbp?: number | string | null
+  room_total_with_vat_gbp?: number | string | null
   room_total_gbp?: number | string | null
   room_confidence?: number | string | null
 
-  // legacy category fields (kept for back-compat)
+  // legacy fields kept for back-compat (not required by the new UI)
   wallpaper_or_paint_gbp?: number | string | null
   flooring_gbp?: number | string | null
   plumbing_gbp?: number | string | null
@@ -60,13 +62,14 @@ export type RefurbRoom = {
     unit_rate_gbp?: number
     subtotal_gbp?: number
   }> | string | null
+  estimated_total_gbp?: number | string | null
 
   // misc
   confidence?: number | null
   assumptions?: Record<string, any> | null
   risk_flags?: Record<string, boolean> | null
 
-  // optional p70s (sometimes nested)
+  // optional p70s
   p70_total_low_gbp?: number | string | null
   p70_total_high_gbp?: number | string | null
   totals?: {
@@ -92,6 +95,8 @@ export type StatusResponse = {
   financials?: Record<string, unknown> | null
   refurb_estimates?: RefurbRoom[]
   pdf_url?: string | null
+  /** useful for debugging new model payloads */
+  refurb_debug?: any
 }
 
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
@@ -126,7 +131,6 @@ async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> 
       err.status = res.status
       throw err
     }
-    // OK but not JSON
     return text as any
   }
 
@@ -176,7 +180,8 @@ export async function stopRun(
   run_id: string,
   execution_id: string
 ): Promise<{ ok: boolean; message?: string }> {
-  const resp = await fetchJson<{ ok: boolean; message?: string }>(`/api/stop`, {
+  // Align with client (demo page) which posts to /api/run/cancel
+  const resp = await fetchJson<{ ok: boolean; message?: string }>(`/api/run/cancel`, {
     method: 'POST',
     body: JSON.stringify({ run_id, execution_id }),
   })

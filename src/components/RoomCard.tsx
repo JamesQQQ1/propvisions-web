@@ -1,82 +1,57 @@
-// src/components/RoomCard.tsx
 'use client';
 
 import { useMemo, useState } from 'react';
 import FeedbackBar from './FeedbackBar';
 
 /* =========================
-   Types (v2 + legacy)
+   Types (v2, category/trade)
 ========================= */
-type MaterialLine = {
-  job_line_id?: string | null;
-  item_key?: string;
-  unit?: string;
-  qty?: number | string | null;
-  unit_price_material_gbp?: number | string | null;
-  subtotal_gbp?: number | string | null;
-  waste_pct?: number | string | null;
-  units_to_buy?: number | string | null;
-  notes?: string | null;
-  assumed_area_m2?: number | string | null;
-  confidence?: number | string | null;
+export type MaterialCategory = {
+  // category key, e.g. "cabinetry", "electrics", "tiling"
+  item_key: string;
+  // prefer gross if present; otherwise subtotal_gbp (gross) from API
+  gross_gbp?: number | string | null;
+  net_gbp?: number | string | null;
+  vat_gbp?: number | string | null;
+  subtotal_gbp?: number | string | null; // backwards compat (gross)
+  lines?: number | null;
 };
 
-type LabourLine = {
-  job_line_id?: string | null;
-  trade_key?: string | null;
+export type LabourTrade = {
+  trade_key?: string | null;        // normalized key (optional)
+  trade_name?: string | null;       // descriptive name
   total_hours?: number | string | null;
   crew_size?: number | string | null;
   hourly_rate_gbp?: number | string | null;
-  labour_cost_gbp?: number | string | null;
+  labour_cost_gbp?: number | string | null; // total charge for this trade (for the room)
   ai_confidence?: number | string | null;
   notes?: string | null;
 };
 
-type LegacyWork = {
-  category: string;
-  description?: string;
-  unit?: string;
-  qty?: number;
-  unit_rate_gbp?: number;
-  subtotal_gbp?: number;
-};
-
-export type RefurbRow = {
-  // Common
+export type RefurbRoom = {
   id?: string;
+  // room labels
   detected_room_type?: string | null;
   room_type?: string | null;
 
-  // Image support
+  // imagery
   image_url?: string | null;
   image_id?: string | null;
   image_index?: number | null;
 
-  // NEW model fields
-  materials?: MaterialLine[] | string | null;
-  labour?: LabourLine[] | string | null;
-  materials_total_gbp?: number | string | null;
+  // v2 breakdown (already aggregated)
+  materials?: MaterialCategory[] | string | null;
+  labour?: LabourTrade[] | string | null;
+
+  // v2 totals (prefer *_with_vat for UI)
+  materials_total_with_vat_gbp?: number | string | null;
+  materials_total_gbp?: number | string | null; // legacy name (gross)
   labour_total_gbp?: number | string | null;
-  room_total_gbp?: number | string | null;
+  room_total_with_vat_gbp?: number | string | null;
+  room_total_gbp?: number | string | null;      // legacy name (gross)
   room_confidence?: number | string | null;
 
-  // Legacy totals
-  wallpaper_or_paint_gbp?: number | string | null;
-  flooring_gbp?: number | string | null;
-  plumbing_gbp?: number | string | null;
-  electrics_gbp?: number | string | null;
-  mould_or_damp_gbp?: number | string | null;
-  structure_gbp?: number | string | null;
-
-  // Legacy itemised works
-  works?: LegacyWork[] | string | null;
-
-  // Meta
-  confidence?: number | null;
-  assumptions?: Record<string, any> | null;
-  risk_flags?: Record<string, boolean> | null;
-
-  // Optional p70 fields
+  // optional p70s
   p70_total_low_gbp?: number | string | null;
   p70_total_high_gbp?: number | string | null;
   totals?: {
@@ -85,8 +60,10 @@ export type RefurbRow = {
     estimated_total_gbp?: number | string | null;
   } | null;
 
-  // Legacy estimated total (if provided)
-  estimated_total_gbp?: number | string | null;
+  // misc meta
+  confidence?: number | null;
+  assumptions?: Record<string, any> | null;
+  risk_flags?: Record<string, boolean> | null;
 };
 
 /* =========================
@@ -126,39 +103,8 @@ function parseArray<T = unknown>(x: T[] | string | null | undefined): T[] {
   }
   return [];
 }
-const LABEL_MAP: Record<string, string> = {
-  carpet_m2: 'Carpet',
-  laminate_floor_m2: 'Laminate floor',
-  vinyl_floor_m2: 'Vinyl floor',
-  wood_floor_m2: 'Wood floor',
-  tile_floor_m2: 'Tiled floor',
-  wall_repaint_m2: 'Wall repaint',
-  ceiling_repaint_m2: 'Ceiling repaint',
-  stain_blocker_coat_m2: 'Stain blocker',
-  wall_plaster_repair_m2: 'Wall plaster repair',
-  ceiling_plaster_repair_m2: 'Ceiling plaster repair',
-  pendant_replace_item: 'Pendant light (replace)',
-  downlight_item: 'Downlight',
-  socket_faceplate_replace_item: 'Socket faceplate (replace)',
-  switch_faceplate_replace_item: 'Switch faceplate (replace)',
-  radiator_repaint_item: 'Radiator (repaint)',
-  radiator_replace_item: 'Radiator (replace)',
-  trv_replace_item: 'TRV (replace)',
-  curtain_pole_install_item: 'Curtain pole (install)',
-  blind_install_item: 'Blind (install)',
-  smoke_alarm_install_item: 'Smoke alarm (install)',
-  extractor_fan_install_item: 'Extractor fan (install)',
-  silicone_replace_lm: 'Silicone (replace)',
-  levelling_compound_m2: 'Levelling compound',
-  external_light_fitting_item: 'External light fitting',
-  handrail_item: 'Handrail',
-};
-function labelForItemKey(k?: string) {
-  if (!k) return 'item';
-  const norm = k.toLowerCase().trim();
-  if (LABEL_MAP[norm]) return LABEL_MAP[norm];
-  return norm.replace(/_/g, ' ');
-}
+const titleCase = (s: string) =>
+  s.replace(/[_-]+/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
 
 /* =========================
    Component
@@ -168,63 +114,45 @@ export default function RoomCard({
   runId,
   propertyId,
 }: {
-  room: RefurbRow;
+  room: RefurbRoom;
   runId?: string | null;
   propertyId?: string | null;
 }) {
   const [open, setOpen] = useState(false);
 
-  console.log('RoomCard v3.1 (price-tables) loaded');
-
   // Title & image
-  const title = (room.detected_room_type || room.room_type || 'room').replace(/_/g, ' ');
-  const img =
-    typeof room.image_url === 'string' && room.image_url.trim()
-      ? room.image_url
-      : null;
+  const title = titleCase(String(room.detected_room_type || room.room_type || 'Room'));
+  const img = (room.image_url || '')?.trim() || null;
 
   // Risk flags (truthy only)
   const riskFlags = Object.entries(room.risk_flags || {}).filter(([, v]) => !!v);
 
-  // Parse arrays (robust if backend sent JSON strings)
-  const materials = useMemo<MaterialLine[]>(
-    () => parseArray<MaterialLine>(room.materials),
+  // Parse aggregated arrays
+  const materials = useMemo<MaterialCategory[]>(
+    () => parseArray<MaterialCategory>(room.materials),
     [room.materials]
   );
-  const labour = useMemo<LabourLine[]>(
-    () => parseArray<LabourLine>(room.labour),
+  const labour = useMemo<LabourTrade[]>(
+    () => parseArray<LabourTrade>(room.labour),
     [room.labour]
   );
-  const legacyWorks = useMemo<LegacyWork[]>(
-    () => parseArray<LegacyWork>(room.works),
-    [room.works]
-  );
 
-  // Totals (prefer explicit totals, else compute, else legacy)
-  const v2Mat = toInt(room.materials_total_gbp);
-  const v2Lab = toInt(room.labour_total_gbp);
-  const v2Room = toInt(room.room_total_gbp);
+  // Totals – prefer explicit with_vat; fall back to legacy names or compute
+  const matTotal =
+    toInt(room.materials_total_with_vat_gbp) ||
+    toInt(room.materials_total_gbp) ||
+    materials.reduce(
+      (a, m) => a + (toInt(m.gross_gbp) || toInt(m.subtotal_gbp) || 0),
+      0
+    );
 
-  const computedMat = materials.reduce((a, m) => a + toInt(m.subtotal_gbp), 0);
-  const computedLab = labour.reduce((a, l) => a + toInt(l.labour_cost_gbp), 0);
-  const computedRoom = computedMat + computedLab;
+  const labTotal = toInt(room.labour_total_gbp) ||
+    labour.reduce((a, l) => a + toInt(l.labour_cost_gbp), 0);
 
-  const legacyCats =
-    toInt(room.wallpaper_or_paint_gbp) +
-    toInt(room.flooring_gbp) +
-    toInt(room.plumbing_gbp) +
-    toInt(room.electrics_gbp) +
-    toInt(room.mould_or_damp_gbp) +
-    toInt(room.structure_gbp);
-
-  const legacyWorksSum = legacyWorks.reduce((a, w) => a + toInt(w.subtotal_gbp), 0);
-
-  const materialsTotal = v2Mat || computedMat || 0;
-  const labourTotal = v2Lab || computedLab || 0;
-  const total =
-    v2Room || computedRoom || Math.max(legacyCats, legacyWorksSum, toInt(room.estimated_total_gbp));
-
-  const other = Math.max(0, total - legacyCats);
+  const grandTotal =
+    toInt(room.room_total_with_vat_gbp) ||
+    toInt(room.room_total_gbp) ||
+    (matTotal + labTotal);
 
   const conf =
     room.room_confidence != null
@@ -233,8 +161,8 @@ export default function RoomCard({
       ? clamp01(room.confidence)
       : null;
 
-  const hasAnyLines = materials.length > 0 || labour.length > 0 || legacyWorks.length > 0;
-  const isZero = !total || total <= 0;
+  const hasAnyLines = materials.length > 0 || labour.length > 0;
+  const isZero = !grandTotal || grandTotal <= 0;
 
   // Optional p70 range
   const p70Low =
@@ -275,8 +203,10 @@ export default function RoomCard({
 
         {/* Top-right: total / or "no work" */}
         <div className="absolute top-2 right-2">
-          <span className={`inline-block text-[11px] ${isZero ? 'bg-slate-700' : 'bg-black/70'} text-white px-2 py-1 rounded-full shadow-sm`}>
-            {isZero ? 'No work required' : `Total ${formatGBP(total)}`}
+          <span
+            className={`inline-block text-[11px] ${isZero ? 'bg-slate-700' : 'bg-black/70'} text-white px-2 py-1 rounded-full shadow-sm`}
+          >
+            {isZero ? 'No work required' : `Total ${formatGBP(grandTotal)}`}
           </span>
         </div>
 
@@ -297,29 +227,21 @@ export default function RoomCard({
 
       {/* Body */}
       <div className="p-4 space-y-3">
-        {/* Tags / chips */}
+        {/* Chips */}
         <div className="flex flex-wrap items-center gap-2 text-xs">
           {conf !== null && (
             <span className="px-2 py-0.5 bg-blue-50 text-blue-800 border border-blue-200 rounded-full">
               Confidence {pct(conf)}
             </span>
           )}
-          {!isZero && materialsTotal > 0 && (
+          {!isZero && matTotal > 0 && (
             <span className="px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full">
-              Materials {formatGBP(materialsTotal)}
+              Materials {formatGBP(matTotal)}
             </span>
           )}
-          {!isZero && labourTotal > 0 && (
+          {!isZero && labTotal > 0 && (
             <span className="px-2 py-0.5 bg-purple-50 text-purple-800 border border-purple-200 rounded-full">
-              Labour {formatGBP(labourTotal)}
-            </span>
-          )}
-          {!isZero && other > 0 && (
-            <span
-              className="px-2 py-0.5 bg-amber-50 text-amber-900 border border-amber-200 rounded-full"
-              title="Items outside the six legacy categories"
-            >
-              Other {formatGBP(other)}
+              Labour {formatGBP(labTotal)}
             </span>
           )}
           {riskFlags.map(([k]) => (
@@ -328,25 +250,13 @@ export default function RoomCard({
               className="px-2 py-0.5 bg-red-50 text-red-700 border border-red-200 rounded-full"
               title="Potential risk"
             >
-              {k.replace(/_/g, ' ')}
+              {titleCase(k)}
             </span>
           ))}
           <span className="ml-auto text-[11px] text-slate-500" title="Regional cost basis">
             {room.assumptions?.location_basis || ''}
           </span>
         </div>
-
-        {/* Legacy compact subtotals (only if any > 0) */}
-        {(legacyCats > 0) && (
-          <div className="text-xs text-slate-700 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1">
-            <div>Paint: {formatGBP(room.wallpaper_or_paint_gbp)}</div>
-            <div>Floor: {formatGBP(room.flooring_gbp)}</div>
-            <div>Plumbing: {formatGBP(room.plumbing_gbp)}</div>
-            <div>Electrics: {formatGBP(room.electrics_gbp)}</div>
-            <div>Damp/Mould: {formatGBP(room.mould_or_damp_gbp)}</div>
-            <div>Structure: {formatGBP(room.structure_gbp)}</div>
-          </div>
-        )}
 
         {/* Toggle */}
         <div className="pt-1">
@@ -368,7 +278,7 @@ export default function RoomCard({
             open ? 'opacity-100 max-h-[1200px]' : 'opacity-0 max-h-0'
           }`}
         >
-          <div className="mt-3 border-t pt-3 space-y-4">
+          <div className="mt-3 border-t pt-3 space-y-5">
             {/* Empty note */}
             {isZero && !hasAnyLines && (
               <div className="text-sm text-slate-600">
@@ -376,78 +286,108 @@ export default function RoomCard({
               </div>
             )}
 
-            {/* Materials list */}
+            {/* Materials by category (gross-first) */}
             {materials.length > 0 && (
               <div>
-                <div className="text-xs font-semibold text-slate-700 mb-1">Materials</div>
-                <ul className="text-sm list-disc pl-5 space-y-1">
-                  {materials
-                    .filter((m) => toInt(m.subtotal_gbp) > 0 || toNum(m.qty) > 0)
-                    .map((m, i) => {
-                      const label = labelForItemKey(m.item_key);
-                      const qty = toNum(m.qty);
-                      const unit = (m.unit || '').trim();
-                      const unitRate = toNum(m.unit_price_material_gbp);
-                      const subtotal = toInt(m.subtotal_gbp);
-                      return (
-                        <li key={m.job_line_id || i}>
-                          <span className="capitalize font-medium">{label}</span>
-                          {` • ${formatGBP(subtotal || unitRate * qty)}`}
-                          {qty ? ` (x${qty}${unit ? ` ${unit}` : ''})` : ''}
-                          {m.notes ? ` — ${m.notes}` : ''}
-                        </li>
-                      );
-                    })}
-                </ul>
+                <div className="text-xs font-semibold text-slate-700 mb-1">Materials (by category)</div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="p-2 text-left">Category</th>
+                        <th className="p-2 text-right">Gross</th>
+                        <th className="p-2 text-right">Net</th>
+                        <th className="p-2 text-right">VAT</th>
+                        <th className="p-2 text-right">Lines</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {materials
+                        .map((m, i) => {
+                          const gross = toInt(m.gross_gbp ?? m.subtotal_gbp);
+                          const net = toInt(m.net_gbp);
+                          const vat = toInt(m.vat_gbp);
+                          if (gross <= 0 && net <= 0) return null;
+                          return (
+                            <tr key={(m.item_key || '') + i} className="border-t">
+                              <td className="p-2">{titleCase(m.item_key || 'Category')}</td>
+                              <td className="p-2 text-right">{formatGBP(gross)}</td>
+                              <td className="p-2 text-right">{net ? formatGBP(net) : '—'}</td>
+                              <td className="p-2 text-right">{vat ? formatGBP(vat) : '—'}</td>
+                              <td className="p-2 text-right">{m.lines ?? '—'}</td>
+                            </tr>
+                          );
+                        })
+                        .filter(Boolean)}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t bg-slate-50">
+                        <td className="p-2 font-medium text-right">Materials total</td>
+                        <td className="p-2 font-semibold text-right">{formatGBP(matTotal)}</td>
+                        <td className="p-2" />
+                        <td className="p-2" />
+                        <td className="p-2" />
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
               </div>
             )}
 
-            {/* Labour list */}
+            {/* Labour by trade */}
             {labour.length > 0 && (
               <div>
-                <div className="text-xs font-semibold text-slate-700 mb-1">Labour</div>
-                <ul className="text-sm list-disc pl-5 space-y-1">
-                  {labour
-                    .filter((l) => toInt(l.labour_cost_gbp) > 0 || (toNum(l.total_hours) > 0 && toNum(l.hourly_rate_gbp) > 0))
-                    .map((l, i) => {
-                      const hours = toNum(l.total_hours);
-                      const crew = Math.max(1, toNum(l.crew_size) || 1);
-                      const rate = toNum(l.hourly_rate_gbp);
-                      const cost = toInt(l.labour_cost_gbp || (hours * crew * rate));
-                      const trade = (l.trade_key || 'labour').toLowerCase();
-                      return (
-                        <li key={l.job_line_id || i}>
-                          <span className="capitalize font-medium">{trade}</span>
-                          {` • ${formatGBP(cost)}`}
-                          {hours ? ` (${hours}h x ${crew}${crew > 1 ? ' people' : ' person'})` : ''}
-                          {rate ? ` @ £${rate}/h` : ''}
-                          {l.notes ? ` — ${l.notes}` : ''}
-                        </li>
-                      );
-                    })}
-                </ul>
-              </div>
-            )}
+                <div className="text-xs font-semibold text-slate-700 mb-1">Labour (by trade)</div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="p-2 text-left">Trade</th>
+                        <th className="p-2 text-right">Cost</th>
+                        <th className="p-2 text-right">Hours</th>
+                        <th className="p-2 text-right">Crew</th>
+                        <th className="p-2 text-right">Rate</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {labour
+                        .map((l, i) => {
+                          const cost = toInt(l.labour_cost_gbp);
+                          const hours = toNum(l.total_hours);
+                          const crew = Math.max(1, toNum(l.crew_size) || 1);
+                          const rate = toNum(l.hourly_rate_gbp);
+                          if (cost <= 0 && (hours <= 0 || rate <= 0)) return null;
 
-            {/* Legacy works list */}
-            {legacyWorks.length > 0 && (
-              <div>
-                <div className="text-xs font-semibold text-slate-700 mb-1">Itemised (legacy)</div>
-                <ul className="text-sm list-disc pl-5 space-y-1">
-                  {legacyWorks
-                    .filter((w) => toInt(w.subtotal_gbp) > 0)
-                    .map((w, i) => {
-                      const cat = (w.category || '').toLowerCase();
-                      return (
-                        <li key={i}>
-                          <span className="capitalize font-medium">{cat || 'item'}</span>
-                          {` • ${formatGBP(w.subtotal_gbp)}`}
-                          {w.description ? ` — ${w.description}` : ''}
-                          {w.qty ? ` (x${w.qty}${w.unit ? ` ${w.unit}` : ''})` : ''}
-                        </li>
-                      );
-                    })}
-                </ul>
+                          const trade =
+                            l.trade_name ||
+                            l.trade_key ||
+                            'Labour';
+
+                          return (
+                            <tr key={(l.trade_key || l.trade_name || '') + i} className="border-t">
+                              <td className="p-2">{titleCase(trade)}</td>
+                              <td className="p-2 text-right">{formatGBP(cost || (hours * crew * rate))}</td>
+                              <td className="p-2 text-right">{hours ? hours.toLocaleString() : '—'}</td>
+                              <td className="p-2 text-right">{crew || '—'}</td>
+                              <td className="p-2 text-right">
+                                {rate ? `£${rate.toLocaleString()}/h` : '—'}
+                              </td>
+                            </tr>
+                          );
+                        })
+                        .filter(Boolean)}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t bg-slate-50">
+                        <td className="p-2 font-medium text-right">Labour total</td>
+                        <td className="p-2 font-semibold text-right">{formatGBP(labTotal)}</td>
+                        <td className="p-2" />
+                        <td className="p-2" />
+                        <td className="p-2" />
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
               </div>
             )}
 
@@ -480,6 +420,20 @@ export default function RoomCard({
             />
           </div>
         </div>
+      </div>
+
+      {/* Grand total footer */}
+      <div className="px-4 pb-4">
+        {!isZero && (
+          <div className="text-xs text-slate-700 flex items-center justify-between border-t pt-2">
+            <div>
+              <span className="font-medium">Room total:</span> {formatGBP(grandTotal)}
+            </div>
+            <div className="text-slate-500">
+              Materials {formatGBP(matTotal)} · Labour {formatGBP(labTotal)}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
