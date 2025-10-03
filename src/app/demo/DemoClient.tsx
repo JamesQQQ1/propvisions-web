@@ -213,7 +213,7 @@ export default function Page() {
       try {
         const result: any = await pollUntilDone(kickoff.run_id, {
           intervalMs: 2500,
-          timeoutMs: 10 * 60 * 1000,
+          timeoutMs: 1000 * 60 * 1000,
           onTick: (s) => setStatus(s),
           signal: controller.signal,
         })
