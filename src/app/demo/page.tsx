@@ -242,7 +242,7 @@ export default function Page() {
       try {
         const result: any = await pollUntilDone(kickoff.run_id, {
           intervalMs: 2500,
-          timeoutMs: 100 * 60 * 1000,
+          timeoutMs: 0,            // ⬅️ disable client-side timeout for the demo
           onTick: (s) => setStatus(s),
           signal: controller.signal,
         });
