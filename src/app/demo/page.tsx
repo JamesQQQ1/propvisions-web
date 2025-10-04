@@ -2,8 +2,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import Image from 'next/image';
+import Link from 'next/link';
 
 import { pollUntilDone, type RunStatus, startAnalyze, POLL_BUILD } from '@/lib/api';
 import RoomCard, { type RefurbRoom } from '@/components/RoomCard';
@@ -23,27 +23,27 @@ console.debug('[demo-page] POLL_BUILD =', POLL_BUILD);
 const LOGO_SRC = '/propvisions_logo.png';
 
 /* ---------- tiny helpers ---------- */
-const gbp0 = new Intl.NumberFormat('en-GB', {
+const nfGBP0 = new Intl.NumberFormat('en-GB', {
   style: 'currency',
   currency: 'GBP',
   maximumFractionDigits: 0,
 });
-const gbp2 = new Intl.NumberFormat('en-GB', {
+const nfGBP2 = new Intl.NumberFormat('en-GB', {
   style: 'currency',
   currency: 'GBP',
+  minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
-const pct1 = new Intl.NumberFormat('en-GB', { style: 'percent', maximumFractionDigits: 1 });
+const nfPct1 = new Intl.NumberFormat('en-GB', { style: 'percent', maximumFractionDigits: 1 });
 
 const isFiniteNum = (n: unknown) => Number.isFinite(Number(n));
 const n = (x: unknown) => (isFiniteNum(x) ? Number(x) : undefined);
 const nz = (x: unknown) => (isFiniteNum(x) ? Number(x) : 0);
-const gbp0 = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 });
-const gbp2 = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', minimumFractionDigits: 2, maximumFractionDigits: 2 });
-export const money0 = (x?: unknown) => (x == null || x === '' ? '—' : gbp0.format(Number(x)));
-export const money2 = (x?: unknown) => (x == null || x === '' ? '—' : gbp2.format(Number(x)));
+
+export const money0 = (x?: unknown) => (x == null || x === '' ? '—' : nfGBP0.format(Number(x)));
+export const money2 = (x?: unknown) => (x == null || x === '' ? '—' : nfGBP2.format(Number(x)));
 const pc = (x?: unknown) => (x == null || x === '' ? '—' : `${Number(x) * 100 % 1 ? Number(x).toFixed(2) : Number(x)}%`);
-const pc1 = (x?: unknown) => (x == null || x === '' ? '—' : pct1.format(Number(x)));
+const pc1 = (x?: unknown) => (x == null || x === '' ? '—' : nfPct1.format(Number(x)));
 
 const classNames = (...xs: (string | false | null | undefined)[]) => xs.filter(Boolean).join(' ');
 
@@ -65,10 +65,10 @@ function toInt(v: unknown) {
   return Number.isFinite(x) && x > 0 ? x : 0;
 }
 function roomV2Total(r: RefurbRoom): number {
-  const direct = toInt(r.room_total_with_vat_gbp) || toInt(r.room_total_gbp);
+  const direct = toInt((r as any).room_total_with_vat_gbp) || toInt((r as any).room_total_gbp);
   if (direct) return direct;
-  const mat = toInt(r.materials_total_with_vat_gbp ?? r.materials_total_gbp);
-  const lab = toInt(r.labour_total_gbp);
+  const mat = toInt((r as any).materials_total_with_vat_gbp ?? (r as any).materials_total_gbp);
+  const lab = toInt((r as any).labour_total_gbp);
   return mat + lab;
 }
 function sumV2Totals(rows?: RefurbRoom[] | null) {
@@ -90,16 +90,33 @@ function computeRefurbRollup(property: any, refurb_estimates: RefurbRoom[] | und
   const rooms = byType('rooms_totals');
   const propertySum = rows.find((r: any) => 'property_total_with_vat' in r || 'property_total_without_vat' in r);
 
-  const result = {
+  const result: {
+    rooms_total_with_vat?: number;
+    rooms_total_without_vat?: number;
+    epc_total_with_vat?: number;
+    epc_total_without_vat?: number;
+    overheads_with_vat?: number;
+    overheads_without_vat?: number;
+    property_total_with_vat?: number;
+    property_total_without_vat?: number;
+    v2_total_with_vat_fallback?: number;
+  } = {
     rooms_total_with_vat: n(rooms?.rooms_total_with_vat) ?? undefined,
     rooms_total_without_vat: n(rooms?.rooms_total_without_vat) ?? undefined,
     epc_total_with_vat: n(epc?.epc_total_with_vat) ?? undefined,
     epc_total_without_vat: n(epc?.epc_total_without_vat) ?? undefined,
     overheads_with_vat: n(findOH?.total_with_vat) ?? undefined,
     overheads_without_vat: n(findOH?.total_without_vat) ?? undefined,
-    property_total_with_vat: n(propertySum?.property_total_with_vat) ?? n(property?.property_total_with_vat) ?? n(property?.refurb_total_with_vat_gbp) ?? undefined,
+    property_total_with_vat:
+      n(propertySum?.property_total_with_vat) ??
+      n(property?.property_total_with_vat) ??
+      n(property?.refurb_total_with_vat_gbp) ??
+      undefined,
     property_total_without_vat:
-      n(propertySum?.property_total_without_vat) ?? n(property?.property_total_without_vat) ?? n(property?.refurb_total_without_vat_gbp) ?? undefined,
+      n(propertySum?.property_total_without_vat) ??
+      n(property?.property_total_without_vat) ??
+      n(property?.refurb_total_without_vat_gbp) ??
+      undefined,
     // fallbacks from v2 per-room if needed
     v2_total_with_vat_fallback: sumV2Totals(refurb_estimates),
   };
@@ -524,7 +541,7 @@ export default function Page() {
 
   const roomTypes = useMemo(() => {
     const set = new Set<string>();
-    (data?.refurb_estimates || []).forEach((r) => {
+    (data?.refurb_estimates || []).forEach((r: any) => {
       const t = (r.detected_room_type || r.room_type || 'Other').toString();
       set.add(t.charAt(0).toUpperCase() + t.slice(1));
     });
@@ -534,17 +551,17 @@ export default function Page() {
   const refinedRefurbs = useMemo(() => {
     let list = (data?.refurb_estimates || []) as RefurbRoom[];
     if (filterType !== 'All') {
-      list = list.filter((r) => {
+      list = list.filter((r: any) => {
         const t = (r.detected_room_type || r.room_type || 'Other').toString();
         const norm = t.charAt(0).toUpperCase() + t.slice(1);
         return norm === filterType;
       });
     }
-    list = list.filter((r) => (typeof (r as any).confidence === 'number' ? (r as any).confidence * 100 >= minConfidence : true));
-    const byRoom = (r: RefurbRoom) => (r.detected_room_type || r.room_type || 'Other').toString().toLowerCase();
-    list = [...list].sort((a, b) => {
-      if (sortKey === 'total_desc') return roomV2Total(b) - roomV2Total(a);
-      if (sortKey === 'total_asc') return roomV2Total(a) - roomV2Total(b);
+    list = list.filter((r: any) => (typeof (r as any).confidence === 'number' ? (r as any).confidence * 100 >= minConfidence : true));
+    const byRoom = (r: any) => (r.detected_room_type || r.room_type || 'Other').toString().toLowerCase();
+    list = [...list].sort((a: any, b: any) => {
+      if (sortKey === 'total_desc') return roomV2Total(b as any) - roomV2Total(a as any);
+      if (sortKey === 'total_asc') return roomV2Total(a as any) - roomV2Total(b as any);
       return byRoom(a).localeCompare(byRoom(b));
     });
     return list;
@@ -592,7 +609,6 @@ export default function Page() {
       },
     ];
   }, [data?.property]);
-  
 
   return (
     <main className="p-6 max-w-6xl mx-auto space-y-8">
@@ -713,49 +729,8 @@ export default function Page() {
                   <span><strong>Area:</strong> {dims?.floorplan_total_area_sqm ?? data.property?.floorplan_total_area_sqm ?? '—'} m²</span>
                 </div>
 
-                <div className="text-sm mt-3 flex items-center gap-3 flex-wrap">
-                  {data.property?.listing_url ? (
-                    <a className="text-blue-600 underline" href={data.property.listing_url} target="_blank" rel="noreferrer">
-                      View listing
-                    </a>
-                  ) : (
-                    <span className="text-slate-500">No listing URL</span>
-                  )}
-
-                  {data.property?.preview_url_investor_pack && (
-                    <a
-                      href={data.property.preview_url_investor_pack}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center rounded-lg bg-blue-600 text-white px-3 py-1.5 hover:bg-blue-700"
-                    >
-                      Investor Pack
-                    </a>
-                  )}
-                  {data.property?.preview_url_builders_quote && (
-                    <a
-                      href={data.property.preview_url_builders_quote}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center rounded-lg border px-3 py-1.5 hover:bg-slate-50"
-                    >
-                      Builder’s Quote
-                    </a>
-                  )}
-                  {data.property?.brochure_urls?.[0] && (
-                    <a
-                      href={data.property.brochure_urls[0]}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center rounded-lg border px-3 py-1.5 hover:bg-slate-50"
-                    >
-                      Brochure (agent)
-                    </a>
-                  )}
-                </div>
-
                 <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {kpis.map((k) => (
+                  {tops.map((k) => (
                     <KPI key={k.label} label={k.label} value={k.value} subtitle={k.subtitle} />
                   ))}
                 </div>
@@ -775,22 +750,19 @@ export default function Page() {
 
                 <div className="mt-3 text-sm space-y-1">
                   <div>
-                  <strong>Displayed Price:</strong>{' '}
-                  <strong>Displayed Price:</strong>{' '}
-                    {formatGBP(
+                    <strong>Displayed Price:</strong>{' '}
+                    {money0(
                       data.property?.purchase_price_gbp ??
                         data.property?.guide_price_gbp ??
                         data.property?.asking_price_gbp ??
                         data.property?.display_price_gbp
                     )}{' '}
                     <span className="text-slate-500">({data.property?.price_label || 'price'})</span>
-
-
                   </div>
                   <div className="text-slate-600">
-                    <span className="mr-3">Guide: {£0(data.property?.guide_price_gbp)}</span>
-                    <span className="mr-3">Purchase: {£0(data.property?.purchase_price_gbp)}</span>
-                    <span>Asking: {£0(data.property?.asking_price_gbp)}</span>
+                    <span className="mr-3">Guide: {money0(data.property?.guide_price_gbp)}</span>
+                    <span className="mr-3">Purchase: {money0(data.property?.purchase_price_gbp)}</span>
+                    <span>Asking: {money0(data.property?.asking_price_gbp)}</span>
                   </div>
                 </div>
               </div>
@@ -810,22 +782,26 @@ export default function Page() {
                 subtitle="At stabilised reference"
               />
               <KPI label="DSCR (Month-1)" value={exitRefi?.dscr_month1 != null ? exitRefi.dscr_month1.toFixed(2) : '—'} />
-              <KPI label="Sell: Net profit" value={exitSell?.net_profit_gbp != null ? £0(exitSell.net_profit_gbp) : '—'} />
+              <KPI label="Sell: Net profit" value={exitSell?.net_profit_gbp != null ? money0(exitSell.net_profit_gbp) : '—'} />
               <KPI label="Sell: ROI" value={exitSell?.roi_percent != null ? `${Number(exitSell.roi_percent).toFixed(2)}%` : '—'} />
-              <KPI label="Refi: Cash left in" value={exitRefi?.net_cash_left_in_after_refi_gbp != null ? £0(exitRefi.net_cash_left_in_after_refi_gbp) : '—'} />
+              <KPI label="Refi: Cash left in" value={exitRefi?.net_cash_left_in_after_refi_gbp != null ? money0(exitRefi.net_cash_left_in_after_refi_gbp) : '—'} />
             </div>
 
             <div className="mt-4 flex flex-wrap items-center gap-6">
               <DSCRGauge value={n(exitRefi?.dscr_month1)} />
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <KPI label="Rent (modelled/mo)" value={£0((data.financials as any)?.monthly_rent_gbp)} big={false} />
-                <KPI label="Stabilised NOI (annual)" value={period?.rent_collected_gbp != null ? £0(period.rent_collected_gbp) : '—'} big={false} />
-                <KPI label="Total cash in (period)" value={period?.total_cash_in_gbp != null ? £0(period.total_cash_in_gbp) : '—'} big={false} />
-                <KPI label="ROI (period / annualised)" value={
-                  period?.roi_period_percent != null
-                    ? `${Number(period.roi_period_percent).toFixed(1)}% / ${Number(period.roi_annualised_percent ?? 0).toFixed(1)}%`
-                    : '—'
-                } big={false} />
+                <KPI label="Rent (modelled/mo)" value={money0((data.financials as any)?.monthly_rent_gbp)} big={false} />
+                <KPI label="Stabilised NOI (annual)" value={period?.rent_collected_gbp != null ? money0(period.rent_collected_gbp) : '—'} big={false} />
+                <KPI label="Total cash in (period)" value={period?.total_cash_in_gbp != null ? money0(period.total_cash_in_gbp) : '—'} big={false} />
+                <KPI
+                  label="ROI (period / annualised)"
+                  value={
+                    period?.roi_period_percent != null
+                      ? `${Number(period.roi_period_percent).toFixed(1)}% / ${Number(period.roi_annualised_percent ?? 0).toFixed(1)}%`
+                      : '—'
+                  }
+                  big={false}
+                />
               </div>
             </div>
           </Section>
@@ -870,7 +846,7 @@ export default function Page() {
               <>
                 {/* Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                  {refinedRefurbs.map((est, idx) => (
+                  {refinedRefurbs.map((est: any, idx: number) => (
                     <RoomCard key={est.id ?? `${est.room_type}-${idx}`} room={est} runId={runIdRef.current} propertyId={data.property_id} />
                   ))}
                 </div>
@@ -879,35 +855,35 @@ export default function Page() {
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
                   <KPI
                     label="Rooms total (incl. VAT)"
-                    value={£0(rollup.rooms_total_with_vat)}
-                    subtitle={rollup.rooms_total_without_vat ? `ex-VAT ${£0(rollup.rooms_total_without_vat)}` : undefined}
+                    value={money0(rollup.rooms_total_with_vat)}
+                    subtitle={rollup.rooms_total_without_vat ? `ex-VAT ${money0(rollup.rooms_total_without_vat)}` : undefined}
                   />
                   <KPI
                     label="Whole-house overheads"
-                    value={rollup.overheads_with_vat != null ? £0(rollup.overheads_with_vat) : '—'}
-                    subtitle={rollup.overheads_without_vat != null ? `ex-VAT ${£0(rollup.overheads_without_vat)}` : undefined}
+                    value={rollup.overheads_with_vat != null ? money0(rollup.overheads_with_vat) : '—'}
+                    subtitle={rollup.overheads_without_vat != null ? `ex-VAT ${money0(rollup.overheads_without_vat)}` : undefined}
                   />
                   <KPI
                     label="EPC works"
-                    value={rollup.epc_total_with_vat != null ? £0(rollup.epc_total_with_vat) : '—'}
-                    subtitle={rollup.epc_total_without_vat != null ? `ex-VAT ${£0(rollup.epc_total_without_vat)}` : undefined}
+                    value={rollup.epc_total_with_vat != null ? money0(rollup.epc_total_with_vat) : '—'}
+                    subtitle={rollup.epc_total_without_vat != null ? `ex-VAT ${money0(rollup.epc_total_without_vat)}` : undefined}
                   />
                   <KPI
                     label="Grand refurb (incl. VAT)"
                     value={
                       rollup.property_total_with_vat != null
-                        ? £0(rollup.property_total_with_vat)
-                        : £0(rollup.rooms_total_with_vat! + nz(rollup.overheads_with_vat) + nz(rollup.epc_total_with_vat))
+                        ? money0(rollup.property_total_with_vat)
+                        : money0((rollup.rooms_total_with_vat ?? 0) + nz(rollup.overheads_with_vat) + nz(rollup.epc_total_with_vat))
                     }
                     subtitle={
                       rollup.property_total_without_vat != null
-                        ? `ex-VAT ${£0(rollup.property_total_without_vat)}`
+                        ? `ex-VAT ${money0(rollup.property_total_without_vat)}`
                         : undefined
                     }
                   />
                   <KPI
                     label="V2 fallback (incl. VAT)"
-                    value={rollup.v2_total_with_vat_fallback ? £0(rollup.v2_total_with_vat_fallback) : '—'}
+                    value={rollup.v2_total_with_vat_fallback ? money0(rollup.v2_total_with_vat_fallback) : '—'}
                     subtitle="if no rollups present"
                   />
                 </div>
@@ -925,24 +901,24 @@ export default function Page() {
                       </tr>
                     </thead>
                     <tbody>
-                      {data.refurb_estimates.map((est, i) => {
+                      {data.refurb_estimates.map((est: any, i: number) => {
                         const mat = toInt(est.materials_total_with_vat_gbp ?? est.materials_total_gbp);
                         const lab = toInt(est.labour_total_gbp);
                         const total = roomV2Total(est);
                         const conf =
-                          typeof (est as any).confidence === 'number'
-                            ? Math.round(((est as any).confidence as number) * 100)
-                            : typeof (est as any).room_confidence === 'number'
-                            ? Math.round(Number((est as any).room_confidence) * 100)
+                          typeof est.confidence === 'number'
+                            ? Math.round((est.confidence as number) * 100)
+                            : typeof est.room_confidence === 'number'
+                            ? Math.round(Number(est.room_confidence) * 100)
                             : null;
                         return (
                           <tr key={est.id ?? `row-${i}`} className="border-t">
                             <td className="p-2 capitalize">
                               {(est.detected_room_type || est.room_type || 'room').toString().replace(/_/g, ' ')}
                             </td>
-                            <td className="p-2 text-right">{£0(mat)}</td>
-                            <td className="p-2 text-right">{£0(lab)}</td>
-                            <td className="p-2 text-right font-semibold">{£0(total)}</td>
+                            <td className="p-2 text-right">{money0(mat)}</td>
+                            <td className="p-2 text-right">{money0(lab)}</td>
+                            <td className="p-2 text-right font-semibold">{money0(total)}</td>
                             <td className="p-2 text-right">{conf != null ? `${conf}%` : '—'}</td>
                           </tr>
                         );
@@ -957,7 +933,7 @@ export default function Page() {
                               <td className="p-2">Whole-House Overheads</td>
                               <td className="p-2 text-right">—</td>
                               <td className="p-2 text-right">—</td>
-                              <td className="p-2 text-right font-semibold">{£0(r.total_with_vat)}</td>
+                              <td className="p-2 text-right font-semibold">{money0(r.total_with_vat)}</td>
                               <td className="p-2 text-right">—</td>
                             </tr>
                           ))}
@@ -969,7 +945,7 @@ export default function Page() {
                               <td className="p-2">EPC Works</td>
                               <td className="p-2 text-right">—</td>
                               <td className="p-2 text-right">—</td>
-                              <td className="p-2 text-right font-semibold">{£0(r.epc_total_with_vat)}</td>
+                              <td className="p-2 text-right font-semibold">{money0(r.epc_total_with_vat)}</td>
                               <td className="p-2 text-right">—</td>
                             </tr>
                           ))}
@@ -978,18 +954,18 @@ export default function Page() {
                       <tr className="border-t bg-slate-50">
                         <td className="p-2 text-right font-medium">Totals</td>
                         <td className="p-2 text-right font-medium">
-                          {£0(
+                          {money0(
                             data.refurb_estimates.reduce(
-                              (a, r) => a + toInt(r.materials_total_with_vat_gbp ?? r.materials_total_gbp),
+                              (a: number, r: any) => a + toInt(r.materials_total_with_vat_gbp ?? r.materials_total_gbp),
                               0,
                             ),
                           )}
                         </td>
                         <td className="p-2 text-right font-medium">
-                          {£0(data.refurb_estimates.reduce((a, r) => a + toInt(r.labour_total_gbp), 0))}
+                          {money0(data.refurb_estimates.reduce((a: number, r: any) => a + toInt(r.labour_total_gbp), 0))}
                         </td>
                         <td className="p-2 text-right font-semibold">
-                          {£0(data.refurb_estimates.reduce((a, r) => a + roomV2Total(r), 0))}
+                          {money0(data.refurb_estimates.reduce((a: number, r: any) => a + roomV2Total(r), 0))}
                         </td>
                         <td className="p-2" />
                       </tr>
@@ -1012,7 +988,7 @@ export default function Page() {
           {/* Rent estimate feedback */}
           <Section
             title="Rent Estimate"
-            right={<span className="text-sm text-slate-600">Modelled: <strong>{£0((data.financials as any)?.monthly_rent_gbp)}</strong> / month</span>}
+            right={<span className="text-sm text-slate-600">Modelled: <strong>{money0((data.financials as any)?.monthly_rent_gbp)}</strong> / month</span>}
           >
             <p className="text-sm text-slate-600 mb-2">Tell us if this looks right based on your market knowledge.</p>
             <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="rent" />
@@ -1106,11 +1082,11 @@ export default function Page() {
                   <dt className="text-slate-600">Months: refurb / rented / bridge</dt>
                   <dd className="text-right">{period ? `${period.months_refurb} / ${period.months_rented} / ${period.months_on_bridge}` : '—'}</dd>
                   <dt className="text-slate-600">Total cash in</dt>
-                  <dd className="text-right">{period ? £0(period.total_cash_in_gbp) : '—'}</dd>
+                  <dd className="text-right">{period ? money0(period.total_cash_in_gbp) : '—'}</dd>
                   <dt className="text-slate-600">Rent collected</dt>
-                  <dd className="text-right">{period ? £0(period.rent_collected_gbp) : '—'}</dd>
+                  <dd className="text-right">{period ? money0(period.rent_collected_gbp) : '—'}</dd>
                   <dt className="text-slate-600">Cashflow (period)</dt>
-                  <dd className="text-right">{period ? £0(period.period_cashflow_gbp) : '—'}</dd>
+                  <dd className="text-right">{period ? money0(period.period_cashflow_gbp) : '—'}</dd>
                   <dt className="text-slate-600">Yield on cost</dt>
                   <dd className="text-right">{period?.yield_on_cost_percent != null ? `${Number(period.yield_on_cost_percent).toFixed(2)}%` : '—'}</dd>
                   <dt className="text-slate-600">ROI (period / annualised)</dt>
@@ -1127,13 +1103,13 @@ export default function Page() {
                 <h4 className="font-semibold mb-2">Exit: Sell</h4>
                 <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
                   <dt className="text-slate-600">Sale price</dt>
-                  <dd className="text-right">{exitSell ? £0(exitSell.sale_price_gbp) : '—'}</dd>
+                  <dd className="text-right">{exitSell ? money0(exitSell.sale_price_gbp) : '—'}</dd>
                   <dt className="text-slate-600">Selling costs</dt>
-                  <dd className="text-right">{exitSell ? £0(exitSell.selling_costs_gbp) : '—'}</dd>
+                  <dd className="text-right">{exitSell ? money0(exitSell.selling_costs_gbp) : '—'}</dd>
                   <dt className="text-slate-600">Repay bridge</dt>
-                  <dd className="text-right">{exitSell ? £0(exitSell.repay_bridge_gbp) : '—'}</dd>
+                  <dd className="text-right">{exitSell ? money0(exitSell.repay_bridge_gbp) : '—'}</dd>
                   <dt className="text-slate-600">Net profit</dt>
-                  <dd className="text-right">{exitSell ? £0(exitSell.net_profit_gbp) : '—'}</dd>
+                  <dd className="text-right">{exitSell ? money0(exitSell.net_profit_gbp) : '—'}</dd>
                   <dt className="text-slate-600">ROI</dt>
                   <dd className="text-right">{exitSell?.roi_percent != null ? `${Number(exitSell.roi_percent).toFixed(2)}%` : '—'}</dd>
                 </dl>
@@ -1144,15 +1120,15 @@ export default function Page() {
                 <h4 className="font-semibold mb-2">Exit: Refi (24m)</h4>
                 <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
                   <dt className="text-slate-600">Refi value</dt>
-                  <dd className="text-right">{exitRefi ? £0(exitRefi.refi_value_gbp) : '—'}</dd>
+                  <dd className="text-right">{exitRefi ? money0(exitRefi.refi_value_gbp) : '—'}</dd>
                   <dt className="text-slate-600">Final BTL loan</dt>
-                  <dd className="text-right">{exitRefi ? £0(exitRefi.final_btl_loan_gbp) : '—'}</dd>
+                  <dd className="text-right">{exitRefi ? money0(exitRefi.final_btl_loan_gbp) : '—'}</dd>
                   <dt className="text-slate-600">Cash from refi after repay</dt>
-                  <dd className="text-right">{exitRefi ? £0(exitRefi.cash_from_refi_after_repay_gbp) : '—'}</dd>
+                  <dd className="text-right">{exitRefi ? money0(exitRefi.cash_from_refi_after_repay_gbp) : '—'}</dd>
                   <dt className="text-slate-600">Net cash left in</dt>
-                  <dd className="text-right">{exitRefi ? £0(exitRefi.net_cash_left_in_after_refi_gbp) : '—'}</dd>
+                  <dd className="text-right">{exitRefi ? money0(exitRefi.net_cash_left_in_after_refi_gbp) : '—'}</dd>
                   <dt className="text-slate-600">Tot. 24m net cashflow</dt>
-                  <dd className="text-right">{exitRefi ? £0(exitRefi.net_cashflow_24m_gbp) : '—'}</dd>
+                  <dd className="text-right">{exitRefi ? money0(exitRefi.net_cashflow_24m_gbp) : '—'}</dd>
                   <dt className="text-slate-600">ROI (cash-on-cash 24m)</dt>
                   <dd className="text-right">
                     {exitRefi?.roi_cash_on_cash_percent_24m != null ? `${Number(exitRefi.roi_cash_on_cash_percent_24m).toFixed(2)}%` : '—'}
@@ -1172,7 +1148,7 @@ export default function Page() {
                     <div key={k} className="flex justify-between border-b py-1 text-sm">
                       <dt className="capitalize text-slate-600">{titleize(k)}</dt>
                       <dd className="font-medium text-right">
-                        {String(k).endsWith('_gbp') ? £0(v) : typeof v === 'number' ? v.toLocaleString() : String(v)}
+                        {String(k).endsWith('_gbp') ? money0(v) : typeof v === 'number' ? v.toLocaleString() : String(v)}
                       </dd>
                     </div>
                   ))}
@@ -1295,7 +1271,7 @@ function FragmentKV({ k, v }: { k: string; v: any }) {
       : typeof v === 'object'
       ? JSON.stringify(v)
       : isMoney
-      ? gbp0.format(Number(v))
+      ? money0(v)
       : isPct
       ? `${(Number(v) * (String(v).includes('%') ? 1 : 100)).toFixed(2)}%`.replace('NaN%', '—')
       : Number.isFinite(Number(v))
