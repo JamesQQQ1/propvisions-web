@@ -561,6 +561,23 @@ export default function Page() {
     return <div className="text-xs font-mono text-slate-700 break-all">{String(safe)}</div>;
   };
 
+  /* ---------- helpers for media ---------- */
+  const floorplans: string[] = useMemo(() => {
+    const p = data?.property || {};
+    const arr = p.floorplan_images || p.floorplan_image_urls || p.floorplans || [];
+    return Array.isArray(arr) ? arr.filter(Boolean) : [];
+  }, [data?.property]);
+
+  const epcImageUrl: string | null = useMemo(() => {
+    const p = data?.property || {};
+    return (
+      p.epc_image_url ||
+      p.epc_certificate_image ||
+      p.epc?.image_url ||
+      null
+    );
+  }, [data?.property]);
+
   /* ---------- UI ---------- */
   return (
     <main className="p-6 max-w-6xl mx-auto space-y-8">
@@ -614,7 +631,7 @@ export default function Page() {
             required
             inputMode="url"
           />
-        <button
+          <button
             type="submit"
             disabled={running || !url}
             className="px-4 py-3 bg-blue-600 text-white rounded-lg disabled:opacity-50"
@@ -658,9 +675,10 @@ export default function Page() {
       {status === 'completed' && data && (
         <div className="grid grid-cols-1 gap-6">
           {/* Property header */}
-          <Section title="Property Overview" desc="Core listing facts and quick KPIs.">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-2 space-y-2">
+          <Section title="Property Overview" desc="Core listing facts and quick KPIs. Links and key documents are provided on the right.">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left: facts */}
+              <div className="lg:col-span-2 space-y-2">
                 <h2 className="text-2xl font-semibold tracking-tight">{data.property?.property_title || 'Untitled property'}</h2>
                 <p className="text-slate-700">
                   {data.property?.address}{data.property?.postcode ? `, ${data.property.postcode}` : ''}
@@ -680,19 +698,35 @@ export default function Page() {
                   {tops.map((k) => (<KPI key={k.label} label={k.label} value={k.value} subtitle={k.subtitle} />))}
                 </div>
 
+                {/* Floorplan gallery */}
+                {floorplans.length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="text-sm font-medium text-slate-700 mb-2">Floorplans</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {floorplans.slice(0, 6).map((src, i) => (
+                        <div key={i} className="rounded-lg border overflow-hidden bg-white">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={src} alt={`Floorplan ${i + 1}`} className="w-full h-44 object-contain bg-white" loading="lazy" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="mt-2">
                   <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="financials" />
                 </div>
               </div>
 
-              <div>
+              {/* Right: media + links */}
+              <div className="space-y-4">
                 <div className="rounded-lg overflow-hidden border">
                   {data.property?.listing_images?.[0]
                     ? (<img src={data.property.listing_images[0]} alt="Property" className="w-full h-48 object-cover" loading="lazy" />)
                     : (<div className="w-full h-48 flex items-center justify-center text-slate-500">No image</div>)}
                 </div>
 
-                <div className="mt-3 text-sm space-y-1">
+                <div className="text-sm space-y-1">
                   <div>
                     <strong>Displayed Price:</strong>{' '}
                     {money0(
@@ -709,12 +743,34 @@ export default function Page() {
                     <span>Asking: {money0(data.property?.asking_price_gbp)}</span>
                   </div>
                 </div>
+
+                {/* Links & documents */}
+                <div className="rounded-lg border p-3">
+                  <h4 className="text-sm font-medium mb-2 text-slate-700">Links & Documents</h4>
+                  <div className="flex flex-col gap-2">
+                    {data.property?.listing_url ? (
+                      <a className="inline-flex items-center rounded-md border px-3 py-1.5 hover:bg-slate-50" href={data.property.listing_url} target="_blank" rel="noreferrer">View Listing</a>
+                    ) : <span className="text-slate-500">No listing URL</span>}
+                    {data.property?.preview_url_investor_pack && (
+                      <a className="inline-flex items-center rounded-md bg-blue-600 text-white px-3 py-1.5 hover:bg-blue-700" href={data.property.preview_url_investor_pack} target="_blank" rel="noopener noreferrer">Investor Pack (PDF)</a>
+                    )}
+                    {data.property?.preview_url_builders_quote && (
+                      <a className="inline-flex items-center rounded-md border px-3 py-1.5 hover:bg-slate-50" href={data.property.preview_url_builders_quote} target="_blank" rel="noopener noreferrer">Builder’s Quote (PDF)</a>
+                    )}
+                    {data.property?.brochure_urls?.[0] && (
+                      <a className="inline-flex items-center rounded-md border px-3 py-1.5 hover:bg-slate-50" href={data.property.brochure_urls[0]} target="_blank" rel="noopener noreferrer">Agent Brochure</a>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </Section>
 
           {/* Investor metrics headline */}
-          <Section title="Investor Metrics" desc="Backend-calculated metrics are authoritative. Sliders model sensitivities only.">
+          <Section
+            title="Investor Metrics"
+            desc="Backend-calculated metrics are authoritative. Sliders model sensitivities only. Yield on Cost uses stabilised rent and all-in project costs. DSCR shows month-one headroom post-refi."
+          >
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <KPI label="Yield on cost" value={period?.yield_on_cost_percent != null ? `${Number(period.yield_on_cost_percent).toFixed(2)}%` : '—'} subtitle="At stabilised reference" />
               <KPI label="DSCR (Month-1)" value={exitRefi?.dscr_month1 != null ? exitRefi.dscr_month1.toFixed(2) : '—'} />
@@ -742,10 +798,10 @@ export default function Page() {
             </div>
           </Section>
 
-          {/* Refurbishment — with rollups incl. Overheads + EPC */}
+          {/* Refurbishment */}
           <Section
             title="Refurbishment Estimates"
-            desc="Per-room AI scope, whole-house overheads, and EPC works. Totals include VAT unless stated."
+            desc="Per-room AI scope, whole-house overheads, and EPC works. Totals include VAT unless stated. “V2 Fallback” sums per-room estimates when the backend didn’t provide a single project rollup yet."
             right={
               <div className="flex flex-wrap items-center gap-2 ml-auto">
                 <label className="text-xs text-slate-600">Filter:</label>
@@ -766,6 +822,12 @@ export default function Page() {
               </div>
             }
           >
+            {/* Refurb timing explainer */}
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 mb-3">
+              <strong>Programme note:</strong> Works duration is tracked in Scenarios → <em>Period Snapshot</em>.
+              {period?.months_refurb != null ? <> Current assumption: <strong>{Number(period.months_refurb)} months</strong> on site before letting or exit.</> : ' If not shown, the backend hasn’t provided a refurb duration for this run.'}
+            </div>
+
             {Array.isArray(data.refurb_estimates) && data.refurb_estimates.length ? (
               <>
                 {/* Cards */}
@@ -785,7 +847,7 @@ export default function Page() {
                     value={rollup.property_total_with_vat != null ? money0(rollup.property_total_with_vat) : money0((rollup.rooms_total_with_vat ?? 0) + nz(rollup.overheads_with_vat) + nz(rollup.epc_total_with_vat))}
                     subtitle={rollup.property_total_without_vat != null ? `ex-VAT ${money0(rollup.property_total_without_vat)}` : undefined}
                   />
-                  <KPI label="V2 fallback (incl. VAT)" value={rollup.v2_total_with_vat_fallback ? money0(rollup.v2_total_with_vat_fallback) : '—'} subtitle="If no rollups present" />
+                  <KPI label="V2 fallback (incl. VAT)" value={rollup.v2_total_with_vat_fallback ? money0(rollup.v2_total_with_vat_fallback) : '—'} subtitle="Displayed when project rollup is missing" />
                 </div>
 
                 {/* Totals table */}
@@ -860,7 +922,7 @@ export default function Page() {
           </Section>
 
           {/* Rent estimate feedback */}
-          <Section title="Rent Estimate" desc="Modelled view based on local comps and normalised assumptions.">
+          <Section title="Rent Estimate" desc="Modelled view based on local comps and normalised assumptions. Use feedback to correct the model if this looks off.">
             <div className="flex items-center justify-between">
               <div className="text-sm text-slate-600">Modelled rent: <strong>{money0((data.financials as any)?.monthly_rent_gbp)}</strong> / month</div>
               <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="rent" />
@@ -871,7 +933,16 @@ export default function Page() {
           </Section>
 
           {/* EPC + fabric and services */}
-          <Section title="EPC & Fabric" desc="Fabric & systems snapshot from EPC and listing cues. EPC budget sits in Refurb rollup.">
+          <Section
+            title="EPC & Fabric"
+            desc="Fabric & systems snapshot from EPC and listing cues. EPC budget sits in Refurb rollup."
+            right={epcImageUrl ? (
+              <div className="hidden md:block rounded-md overflow-hidden border ml-4">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={epcImageUrl} alt="EPC certificate" className="w-36 h-24 object-contain bg-white" />
+              </div>
+            ) : null}
+          >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <div className="text-sm text-slate-600">Windows: <strong>{data.property?.windows ?? '—'}</strong></div>
@@ -891,6 +962,13 @@ export default function Page() {
               </div>
               <div className="flex items-center md:justify-end">
                 <div className="text-sm">
+                  {epcImageUrl && (
+                    <div className="mb-3 md:hidden">
+                      {/* Mobile EPC image */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={epcImageUrl} alt="EPC certificate" className="w-40 h-28 object-contain border rounded bg-white" />
+                    </div>
+                  )}
                   {epc?.score_current != null && epc?.score_potential != null ? (
                     <>
                       <div className="font-medium mb-1">Score: {epc.score_current} → {epc.score_potential}</div>
@@ -939,6 +1017,9 @@ export default function Page() {
               {/* Period snapshot */}
               <div className="rounded-lg border p-4">
                 <h4 className="font-semibold mb-2">Period Snapshot</h4>
+                <p className="text-xs text-slate-600 mb-2">
+                  Captures the project set-up phase: cash in, rent collected during bridge, and resulting yield/ROI.
+                </p>
                 <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
                   <dt className="text-slate-600">Months: refurb / rented / bridge</dt>
                   <dd className="text-right">{period ? `${period.months_refurb} / ${period.months_rented} / ${period.months_on_bridge}` : '—'}</dd>
@@ -958,6 +1039,9 @@ export default function Page() {
               {/* Exit — Sell */}
               <div className="rounded-lg border p-4">
                 <h4 className="font-semibold mb-2">Exit: Sell</h4>
+                <p className="text-xs text-slate-600 mb-2">
+                  Assumes sale at stabilisation. ROI reflects cash invested vs net sale proceeds after costs.
+                </p>
                 <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
                   <dt className="text-slate-600">Sale price</dt>
                   <dd className="text-right">{exitSell ? money0(exitSell.sale_price_gbp) : '—'}</dd>
@@ -982,6 +1066,9 @@ export default function Page() {
                     </Badge>
                   )}
                 </div>
+                <p className="text-xs text-slate-600 mb-2">
+                  Shows leverage and cash left in after refinance. DSCR month-one gauges headroom against interest + opex at the new mortgage.
+                </p>
                 <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
                   <dt className="text-slate-600">Refi value</dt>
                   <dd className="text-right">{exitRefi ? money0(exitRefi.refi_value_gbp) : '—'}</dd>
@@ -1023,7 +1110,13 @@ export default function Page() {
 
           {/* Scenarios (backend) — PRO console */}
           {(scenarios?.inputs || scenarios?.exit_sell || scenarios?.exit_refi_24m || scenarios?.period_no_refi) && (
-            <Section title="Scenarios (backend)" desc="Raw backend assumptions and outcomes, rendered cleanly. Objects are parsed and expanded.">
+            <Section
+              title="Scenarios (backend)"
+              desc="Inputs feed two exit paths: a sale at stabilisation or a 24-month refinance. Each value is parsed from backend output. Click “Details” to expand embedded objects (e.g., fee breakdowns)."
+            >
+              <div className="rounded-md border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900 mb-3">
+                <strong>How to read this:</strong> <em>Inputs</em> are the starting assumptions (price, rent, opex). <em>Exit: Sell</em> shows a disposal case—use Net Profit and ROI to compare flips. <em>Exit: Refi</em> emphasises <strong>Net Cash Left In</strong> and <strong>DSCR</strong> for long-term holds. <em>Period (no refi)</em> shows bridge-phase cashflows when you don’t refinance.
+              </div>
               <ScenariosTabs scenarios={scenarios} ScenarioKV={ScenarioKV} />
             </Section>
           )}
@@ -1139,25 +1232,25 @@ function ScenariosTabs({ scenarios, ScenarioKV }: { scenarios: any; ScenarioKV: 
       <div className="rounded-lg border p-4 bg-white">
         {tab === 'inputs' && (
           <>
-            <p className="text-sm text-slate-600 mb-3">Assumptions used to drive the scenarios below.</p>
+            <p className="text-sm text-slate-600 mb-3">Assumptions used to drive the scenarios below. Adjust in sliders to test sensitivities.</p>
             <ScenarioKV obj={inputs} />
           </>
         )}
         {tab === 'sell' && (
           <>
-            <p className="text-sm text-slate-600 mb-3">Disposal economics assuming sale at stabilisation.</p>
+            <p className="text-sm text-slate-600 mb-3">Disposal economics assuming sale at stabilisation. Useful for flip comparisons.</p>
             <ScenarioKV obj={sell} />
           </>
         )}
         {tab === 'refi' && (
           <>
-            <p className="text-sm text-slate-600 mb-3">Refinance outcome after circa 24 months of operations.</p>
+            <p className="text-sm text-slate-600 mb-3">Refinance outcome after ~24 months of operations. Key: DSCR, loan size, and cash left in.</p>
             <ScenarioKV obj={refi} />
           </>
         )}
         {tab === 'period' && (
           <>
-            <p className="text-sm text-slate-600 mb-3">If no refinance occurs, period cashflows and bridge details.</p>
+            <p className="text-sm text-slate-600 mb-3">If no refinance occurs, this shows bridge facility, works phase, and operations during bridge.</p>
             {isPlainObject(period) ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
