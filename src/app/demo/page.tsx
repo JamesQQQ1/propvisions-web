@@ -14,7 +14,7 @@ import FinancialSliders, {
 } from '@/components/FinancialSliders';
 
 /* ---------- demo mode config (REQUIRED) ---------- */
-const DEFAULT_DEMO_RUN_ID = '51767b89-2793-49ac-b578-da8063d59b2f';
+const DEFAULT_DEMO_RUN_ID = 'cb58fc95-6901-4463-8daf-984f45f680a7';
 console.debug('[demo-page] POLL_BUILD =', POLL_BUILD);
 
 /* ---------- branding ---------- */
