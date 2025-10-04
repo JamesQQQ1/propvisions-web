@@ -1,5 +1,12 @@
 // src/lib/utils.ts
-export function cn(...classes: Array<string | false | null | undefined>) {
-    return classes.filter(Boolean).join(" ");
-  }
-  
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+/**
+ * Utility to merge Tailwind class names conditionally.
+ * - clsx handles conditional arrays/objects
+ * - twMerge ensures conflicting Tailwind classes are de-duped
+ */
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
