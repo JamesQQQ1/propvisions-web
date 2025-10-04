@@ -7,9 +7,7 @@ import FeedbackBar from './FeedbackBar';
    Types (v2, category/trade)
 ========================= */
 export type MaterialCategory = {
-  // category key, e.g. "cabinetry", "electrics", "tiling"
   item_key: string;
-  // prefer gross if present; otherwise subtotal_gbp (gross) from API
   gross_gbp?: number | string | null;
   net_gbp?: number | string | null;
   vat_gbp?: number | string | null;
@@ -18,24 +16,27 @@ export type MaterialCategory = {
 };
 
 export type LabourTrade = {
-  trade_key?: string | null;        // normalized key (optional)
-  trade_name?: string | null;       // descriptive name
+  trade_key?: string | null;
+  trade_name?: string | null;
   total_hours?: number | string | null;
   crew_size?: number | string | null;
   hourly_rate_gbp?: number | string | null;
-  labour_cost_gbp?: number | string | null; // total charge for this trade (for the room)
+  labour_cost_gbp?: number | string | null;
   ai_confidence?: number | string | null;
   notes?: string | null;
 };
 
 export type RefurbRoom = {
   id?: string;
+
   // room labels
+  room_label?: string | null;       // e.g. "Bedroom 2" (preferred for display)
   detected_room_type?: string | null;
   room_type?: string | null;
 
   // imagery
-  image_url?: string | null;
+  image_url?: string | null;        // primary image (if provided)
+  image_urls?: string[] | null;     // optional gallery (deduped upstream)
   image_id?: string | null;
   image_index?: number | null;
 
@@ -69,6 +70,16 @@ export type RefurbRoom = {
 /* =========================
    Helpers
 ========================= */
+const NO_IMAGE_PLACEHOLDER =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420">
+    <rect width="100%" height="100%" fill="#f8fafc"/>
+    <g fill="#94a3b8" font-family="Verdana" font-size="18">
+      <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">Image unavailable</text>
+    </g>
+    <rect x="2" y="2" width="636" height="416" fill="none" stroke="#cbd5e1" stroke-width="4"/>
+  </svg>`);
+
 function toNum(n: unknown): number {
   const v = Number(n);
   return Number.isFinite(v) ? v : 0;
@@ -120,9 +131,19 @@ export default function RoomCard({
 }) {
   const [open, setOpen] = useState(false);
 
-  // Title & image
-  const title = titleCase(String(room.detected_room_type || room.room_type || 'Room'));
-  const img = (room.image_url || '')?.trim() || null;
+  // Title & images (prefer explicit label, then type)
+  const title = titleCase(String(room.room_label || room.detected_room_type || room.room_type || 'Room'));
+
+  const gallery = useMemo<string[]>(() => {
+    const xs: string[] = [];
+    if (room.image_url) xs.push(room.image_url);
+    if (Array.isArray(room.image_urls)) xs.push(...room.image_urls.filter(Boolean));
+    const deduped = Array.from(new Set(xs.filter(Boolean)));
+    return deduped.length ? deduped : [NO_IMAGE_PLACEHOLDER];
+  }, [room.image_url, room.image_urls]);
+
+  const img = gallery[0] || NO_IMAGE_PLACEHOLDER;
+  const thumbs = gallery.slice(1, 6);
 
   // Risk flags (truthy only)
   const riskFlags = Object.entries(room.risk_flags || {}).filter(([, v]) => !!v);
@@ -146,7 +167,8 @@ export default function RoomCard({
       0
     );
 
-  const labTotal = toInt(room.labour_total_gbp) ||
+  const labTotal =
+    toInt(room.labour_total_gbp) ||
     labour.reduce((a, l) => a + toInt(l.labour_cost_gbp), 0);
 
   const grandTotal =
@@ -180,19 +202,13 @@ export default function RoomCard({
     <div className="group rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow">
       {/* Image */}
       <div className="relative w-full aspect-[16/9] bg-slate-100 overflow-hidden">
-        {img ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={img}
-            alt={title}
-            loading="lazy"
-            className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-slate-400">
-            No image
-          </div>
-        )}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={img}
+          alt={title}
+          loading="lazy"
+          className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+        />
 
         {/* Top-left: room name */}
         <div className="absolute top-2 left-2">
@@ -224,6 +240,20 @@ export default function RoomCard({
           </div>
         )}
       </div>
+
+      {/* Small thumb gallery under hero (if extra images) */}
+      {thumbs.length > 0 && (
+        <div className="px-2 pt-2">
+          <div className="grid grid-cols-5 gap-1">
+            {thumbs.map((src, i) => (
+              <div key={i} className="h-12 rounded overflow-hidden border bg-white">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={src} alt={`${title} ${i + 2}`} className="w-full h-12 object-cover" loading="lazy" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Body */}
       <div className="p-4 space-y-3">
@@ -393,7 +423,7 @@ export default function RoomCard({
 
             {/* Footer actions / info */}
             <div className="pt-1 flex flex-wrap items-center gap-2">
-              {img && (
+              {img && img !== NO_IMAGE_PLACEHOLDER && (
                 <a
                   href={img}
                   target="_blank"
