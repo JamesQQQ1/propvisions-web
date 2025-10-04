@@ -13,19 +13,21 @@ import FinancialSliders, { type Derived as SliderDerived, type Assumptions as Sl
 import MetricsCards from '@/components/MetricsCards';
 
 /* ---------- demo mode config (REQUIRED) ---------- */
-// Using the provided run_id for demo mode:
 const DEFAULT_DEMO_RUN_ID = '51767b89-2793-49ac-b578-da8063d59b2f';
 console.debug('[demo-page] POLL_BUILD =', POLL_BUILD);
 
 /* ---------- branding ---------- */
 const LOGO_SRC = '/propvisions_logo.png';
 
-/* ---------- helpers ---------- */
-const gbpFmt = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 });
-function formatGBP(n?: number | string | null) {
+/* ---------- simple helpers (logic preserved) ---------- */
+const gbp0 = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 });
+const gbp2 = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 2 });
+
+function formatGBP(n?: number | string | null, dp: 0 | 2 = 0) {
   if (n === null || n === undefined || n === '') return '—';
   const v = typeof n === 'string' ? Number(n) : n;
-  return Number.isFinite(v as number) ? gbpFmt.format(v as number) : '—';
+  if (!Number.isFinite(v)) return '—';
+  return dp === 2 ? gbp2.format(v as number) : gbp0.format(v as number);
 }
 function classNames(...xs: (string | false | null | undefined)[]) {
   return xs.filter(Boolean).join(' ');
@@ -36,7 +38,7 @@ const titleize = (k: string) => k.replace(/_/g, ' ');
 const fmtValue = (k: string, v: unknown) => {
   if (v === null || v === undefined || v === '') return '—';
   if (k === 'roi_percent') return `${Number(v).toFixed(2)}%`;
-  if (isMoneyKey(k)) return formatGBP(v as any);
+  if (isMoneyKey(k)) return formatGBP(v as any, 0);
   if (typeof v === 'number') return v.toLocaleString();
   const n = Number(v);
   return Number.isFinite(n) ? n.toLocaleString() : String(v);
@@ -52,7 +54,7 @@ const pickPrice = (p: any): number =>
   Number(p?.display_price_gbp ?? 0) ||
   0;
 
-/* ---------- totals helpers ---------- */
+/* ---------- totals helpers (unchanged logic) ---------- */
 function roomV2Total(r: RefurbRoom): number {
   const direct = toInt(r.room_total_with_vat_gbp) || toInt(r.room_total_gbp);
   if (direct) return direct;
@@ -65,7 +67,7 @@ function sumV2Totals(rows: RefurbRoom[] | undefined | null): number {
   return rows.reduce((acc, r) => acc + roomV2Total(r), 0);
 }
 
-/* ---------- status badge ---------- */
+/* ---------- tiny UI atoms (in-file only, no new libs) ---------- */
 function StatusBadge({ status }: { status?: RunStatus | 'idle' }) {
   const color =
     status === 'completed'
@@ -74,25 +76,69 @@ function StatusBadge({ status }: { status?: RunStatus | 'idle' }) {
       ? 'bg-red-100 text-red-800 border-red-200'
       : status === 'queued' || status === 'processing'
       ? 'bg-amber-100 text-amber-900 border-amber-200'
-      : 'bg-gray-100 text-gray-800 border-gray-200';
+      : 'bg-slate-100 text-slate-800 border-slate-200';
+
+  const dot =
+    status === 'completed'
+      ? 'bg-green-500'
+      : status === 'failed'
+      ? 'bg-red-500'
+      : status === 'queued' || status === 'processing'
+      ? 'bg-amber-500'
+      : 'bg-slate-400';
 
   return (
-    <span className={classNames('inline-block px-2 py-0.5 text-xs rounded border', color)}>
+    <span className={classNames('inline-flex items-center gap-2 rounded-lg border px-2 py-0.5 text-xs', color)}>
+      <span className={classNames('inline-block h-2 w-2 rounded-full', dot)} />
       {status || 'idle'}
     </span>
   );
 }
-
-/* ---------- tiny progress bar ---------- */
 function ProgressBar({ percent, show }: { percent: number; show: boolean }) {
   return (
     <div className={classNames('mt-3 w-full', !show && 'hidden')} aria-hidden={!show}>
-      <div className="h-2 w-full bg-slate-200/70 rounded overflow-hidden">
+      <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200/70">
         <div
-          className="h-2 bg-blue-600 transition-[width] duration-300 ease-out will-change-[width]"
+          className="h-2 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-[width] duration-500 ease-out will-change-[width]"
           style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
         />
       </div>
+    </div>
+  );
+}
+function KeyStat({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: React.ReactNode;
+  hint?: string;
+}) {
+  return (
+    <div className="rounded-2xl border bg-white p-4 shadow-sm">
+      <div className="text-xs uppercase tracking-wider text-slate-500">{label}</div>
+      <div className="mt-1 text-2xl font-bold">{value}</div>
+      {hint && <div className="mt-1 text-xs text-slate-500">{hint}</div>}
+    </div>
+  );
+}
+function SectionHeader({
+  title,
+  subtitle,
+  right,
+}: {
+  title: string;
+  subtitle?: string;
+  right?: React.ReactNode;
+}) {
+  return (
+    <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <h3 className="text-xl font-semibold tracking-tight">{title}</h3>
+        {subtitle && <p className="text-sm text-slate-600">{subtitle}</p>}
+      </div>
+      {right}
     </div>
   );
 }
@@ -115,11 +161,11 @@ export default function Page() {
     run?: any;
   } | null>(null);
 
-  // DEMO toggle state (pre-filled from DEFAULT_DEMO_RUN_ID)
+  // Demo controls — use run_id only (your flow)
   const [useDemo, setUseDemo] = useState<boolean>(!!DEFAULT_DEMO_RUN_ID);
   const [demoRunId, setDemoRunId] = useState<string>(DEFAULT_DEMO_RUN_ID);
 
-  // Allow overriding by URL: ?run=<uuid> turns demo mode on and sets the run
+  // Respect ?run=<uuid>
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const usp = new URLSearchParams(window.location.search);
@@ -130,16 +176,16 @@ export default function Page() {
     }
   }, []);
 
-  // Sliders
+  // Scenario sliders (display only)
   const [slDerived, setSlDerived] = useState<SliderDerived | null>(null);
   const [slAssumptions, setSlAssumptions] = useState<SliderAssumptions | null>(null);
 
-  // Filters/sort
+  // Room filters/sort
   const [filterType, setFilterType] = useState<string>('All');
   const [sortKey, setSortKey] = useState<'total_desc' | 'total_asc' | 'room_asc'>('total_desc');
   const [minConfidence, setMinConfidence] = useState<number>(0);
 
-  // Run state
+  // Run tracking
   const runIdRef = useRef<string | null>(null);
   const execIdRef = useRef<string | null>(null);
   const running = status === 'queued' || status === 'processing';
@@ -156,9 +202,9 @@ export default function Page() {
     window.location.href = '/demo-access?next=/demo';
   }
 
-  /* load a completed/ongoing run by id (demo mode) */
+  /* load a completed/ongoing run by id (demo mode only) */
   async function loadDemoRun(theRunIdRaw: string) {
-    if (submittingRef.current) return; // prevent double triggers
+    if (submittingRef.current) return;
     submittingRef.current = true;
     try {
       const theRunId = (theRunIdRaw || '').trim();
@@ -177,9 +223,7 @@ export default function Page() {
         return;
       }
 
-      // Cancel any previous polling
       abortRef.current?.abort();
-
       setStatus('queued');
       setProgress((p) => (p < 6 ? 6 : p));
       runIdRef.current = theRunId;
@@ -187,11 +231,10 @@ export default function Page() {
 
       const controller = new AbortController();
       abortRef.current = controller;
-      console.debug('[demo] polling run_id:', theRunId);
 
       const result: any = await pollUntilDone(theRunId, {
         intervalMs: 1500,
-        timeoutMs: 0, // never time out on client for demo
+        timeoutMs: 0,
         onTick: (s) => setStatus(s),
         signal: controller.signal,
       });
@@ -220,10 +263,10 @@ export default function Page() {
     }
   }
 
-  /* progress bar logic */
+  /* progress bar + elapsed */
   const [progress, setProgress] = useState(0);
   const progressTickRef = useRef<NodeJS.Timeout | null>(null);
-  const RAMP_MS = 100 * 60 * 1000; // very slow ramp for long jobs
+  const RAMP_MS = 100 * 60 * 1000; // long ramp
   const MAX_DURING_RUN = 97;
 
   useEffect(() => {
@@ -263,11 +306,8 @@ export default function Page() {
   }, [running]);
 
   useEffect(() => {
-    if (status === 'completed') {
-      setProgress(100);
-    } else if ((status === 'failed' || status === 'idle') && !running) {
-      setProgress(0);
-    }
+    if (status === 'completed') setProgress(100);
+    else if ((status === 'failed' || status === 'idle') && !running) setProgress(0);
   }, [status, running]);
 
   const elapsedLabel = useMemo(() => {
@@ -276,21 +316,6 @@ export default function Page() {
     const rs = s % 60;
     return m ? `${m}m ${rs}s` : `${rs}s`;
   }, [elapsedMs]);
-
-  const validUrl = useMemo(() => {
-    try {
-      if (!url) return false;
-      const u = new URL(url);
-      return !!u.protocol && !!u.hostname;
-    } catch {
-      return false;
-    }
-  }, [url]);
-
-  const sampleUrls = [
-    'https://www.rightmove.co.uk/properties/123456789#/',
-    'https://auctions.savills.co.uk/auctions/19-august-2025-211/9-seedhill-road-11942',
-  ];
 
   /* kickoff */
   async function handleStart(e: React.FormEvent) {
@@ -308,7 +333,6 @@ export default function Page() {
       setSortKey('total_desc');
       setMinConfidence(0);
 
-      // DEMO MODE: skip n8n; just poll a fixed run_id
       if (useDemo) {
         await loadDemoRun(demoRunId);
         return;
@@ -343,7 +367,7 @@ export default function Page() {
       try {
         const result: any = await pollUntilDone(kickoff.run_id, {
           intervalMs: 2500,
-          timeoutMs: 0, // disable client-side timeout entirely
+          timeoutMs: 0,
           onTick: (s) => setStatus(s),
           signal: controller.signal,
         });
@@ -389,7 +413,7 @@ export default function Page() {
     setError(execution_id ? 'Stop requested.' : 'Stopped locally (no execution id).');
   }
 
-  // Build filter chips from v2 room types
+  /* room filters */
   const roomTypes = useMemo(() => {
     const set = new Set<string>();
     (data?.refurb_estimates || []).forEach((r) => {
@@ -421,7 +445,7 @@ export default function Page() {
     return list;
   }, [data?.refurb_estimates, filterType, sortKey, minConfidence]);
 
-  // Slider bases
+  // Slider bases (no logic change)
   const basePrice = useMemo(() => pickPrice(data?.property), [data?.property]);
   const baseRent = useMemo(
     () => Number((data?.financials as any)?.monthly_rent_gbp ?? 0) || 0,
@@ -429,6 +453,7 @@ export default function Page() {
   );
   const baseRefurb = useMemo(() => sumV2Totals(data?.refurb_estimates), [data?.refurb_estimates]);
 
+  // Fallback metrics from backend if sliders aren’t used
   const fallbackForMetrics = useMemo(() => {
     const F = (data?.financials || {}) as Record<string, any>;
     const maybe = (k: string) => (Number.isFinite(+F[k]) ? +F[k] : undefined);
@@ -444,12 +469,13 @@ export default function Page() {
     };
   }, [data?.financials]);
 
+  /* ---------- UI ---------- */
   return (
-    <main className="p-6 max-w-6xl mx-auto space-y-8">
-      {/* Protected banner + logout */}
-      <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-2">
+    <main className="mx-auto max-w-6xl p-6 space-y-8">
+      {/* Access bar */}
+      <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-2">
         <p className="text-sm text-slate-700">
-          <span className="font-medium">Protected demo.</span> You’re seeing this page because you’ve unlocked it.
+          <span className="font-medium">Protected demo.</span> Use your run_id to preview a completed analysis.
         </p>
         <button
           onClick={handleLogout}
@@ -460,16 +486,16 @@ export default function Page() {
         </button>
       </div>
 
-      {/* Sticky header with status */}
-      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b border-slate-200 pb-3 pt-4 -mt-4">
-        <div className="flex items-start md:items-center justify-between gap-4 max-w-6xl mx-auto">
+      {/* Header */}
+      <header className="sticky top-0 z-10 -mt-4 border-b border-slate-200 bg-white/80 pb-3 pt-4 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+        <div className="mx-auto flex max-w-6xl items-start justify-between gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-3">
               <Image src={LOGO_SRC} alt="PropVisions" width={120} height={32} priority className="h-9 w-auto md:h-10" />
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight">PropVisions Demo</h1>
             </div>
-            <p className="text-slate-600 mt-1">
-              Paste a listing URL to generate valuations, refurb breakdown, and financials.
+            <p className="mt-1 text-slate-600">
+              Paste a listing URL to start a new run, or toggle demo to load an existing <code className="rounded bg-slate-100 px-1">run_id</code>.
             </p>
             <ProgressBar percent={progress} show={status === 'queued' || status === 'processing'} />
           </div>
@@ -478,14 +504,14 @@ export default function Page() {
             <StatusBadge status={status} />
             {(status === 'queued' || status === 'processing') && (
               <span className="text-sm text-slate-600" aria-live="polite">
-                Elapsed: {Math.floor(elapsedMs / 1000 / 60)}m {Math.floor((elapsedMs / 1000) % 60)}s
+                Elapsed: {elapsedLabel}
               </span>
             )}
             {running && (
               <button
                 type="button"
                 onClick={handleCancel}
-                className="px-3 py-1.5 bg-slate-200 text-slate-800 rounded-lg hover:bg-slate-300"
+                className="rounded-lg bg-slate-200 px-3 py-1.5 text-slate-800 hover:bg-slate-300"
               >
                 Stop
               </button>
@@ -494,7 +520,7 @@ export default function Page() {
         </div>
       </header>
 
-      {/* URL form */}
+      {/* Start / Demo controls */}
       <section className="space-y-3">
         <form onSubmit={handleStart} className="flex gap-2" aria-label="Analyze property URL">
           <input
@@ -502,7 +528,7 @@ export default function Page() {
             placeholder="https://… listing or auction URL"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            className="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
             inputMode="url"
             aria-invalid={
@@ -519,14 +545,14 @@ export default function Page() {
           <button
             type="submit"
             disabled={running || !url}
-            className="px-4 py-3 bg-blue-600 text-white rounded-lg disabled:opacity-50"
+            className="rounded-lg bg-blue-600 px-4 py-3 text-white disabled:opacity-50"
             title={!url ? 'Enter a URL or use demo run' : 'Analyze'}
           >
             {running ? 'Running…' : 'Analyze'}
           </button>
         </form>
 
-        {/* Demo toggle */}
+        {/* Demo selector */}
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <label className="inline-flex items-center gap-2">
             <input
@@ -543,7 +569,7 @@ export default function Page() {
             value={demoRunId}
             onChange={(e) => setDemoRunId(e.target.value.trim())}
             placeholder="demo run_id (UUID)"
-            className="min-w-[22rem] flex-1 p-2 border rounded-md disabled:bg-slate-50"
+            className="min-w-[22rem] flex-1 rounded-md border p-2 disabled:bg-slate-50"
             disabled={!useDemo}
           />
 
@@ -555,44 +581,24 @@ export default function Page() {
               loadDemoRun((demoRunId || '').trim());
             }}
             disabled={!useDemo || !(demoRunId || '').trim()}
-            className="px-3 py-2 bg-slate-200 rounded-md disabled:opacity-50"
+            className="rounded-md border px-3 py-2 hover:bg-slate-50 disabled:opacity-50"
             title="Load demo data using the run_id"
           >
             Load demo
           </button>
-        </div>
-
-        {/* Samples + usage */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-slate-500">Try a sample:</span>
-          <button
-            type="button"
-            onClick={() => setUrl('https://www.rightmove.co.uk/properties/123456789#/')}
-            className="text-xs rounded-full border px-3 py-1 hover:bg-slate-50"
-          >
-            rightmove.co.uk
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              setUrl('https://auctions.savills.co.uk/auctions/19-august-2025-211/9-seedhill-road-11942')
-            }
-            className="text-xs rounded-full border px-3 py-1 hover:bg-slate-50"
-          >
-            auctions.savills.co.uk
-          </button>
 
           {usage && (
             <span className="ml-auto text-xs text-slate-500">
-              Usage today: <strong>{usage.count}</strong> / {usage.limit} {usage.remaining > 0 ? `(${usage.remaining} left)` : ''}
+              Usage today: <strong>{usage.count}</strong> / {usage.limit}{' '}
+              {usage.remaining > 0 ? `(${usage.remaining} left)` : ''}
             </span>
           )}
         </div>
       </section>
 
-      {/* Errors */}
+      {/* Error */}
       {error && (
-        <div role="alert" className="border border-red-200 bg-red-50 text-red-800 rounded-lg p-3">
+        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-red-800">
           {error}
         </div>
       )}
@@ -600,19 +606,22 @@ export default function Page() {
       {/* Results */}
       {status === 'completed' && data && (
         <div className="grid grid-cols-1 gap-6">
-          {/* Property Card */}
-          <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-2 space-y-2">
-                <h2 className="text-2xl font-semibold tracking-tight">
-                  {data.property?.property_title || 'Untitled property'}
-                </h2>
+          {/* Property Overview */}
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              <div className="space-y-2 md:col-span-2">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-2xl font-semibold tracking-tight">
+                    {data.property?.property_title || 'Untitled property'}
+                  </h2>
+                  <StatusBadge status="completed" />
+                </div>
                 <p className="text-slate-700">
                   {data.property?.address}
                   {data.property?.postcode ? `, ${data.property.postcode}` : ''}
                 </p>
 
-                <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-700 mt-1">
+                <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-700">
                   <span><strong>Type:</strong> {data.property?.property_type || '—'}</span>
                   <span><strong>Tenure:</strong> {data.property?.tenure || '—'}</span>
                   <span><strong>Beds:</strong> {data.property?.bedrooms ?? '—'}</span>
@@ -622,102 +631,123 @@ export default function Page() {
                   <span><strong>Area:</strong> {data.property?.floorplan_total_area_sqm ?? data.property?.floor_area_sqm ?? '—'} m²</span>
                 </div>
 
-                <div className="text-sm mt-3 flex items-center gap-3">
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
                   {data.property?.listing_url ? (
                     <a
-                      className="text-blue-600 underline"
+                      className="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 hover:bg-slate-50"
                       href={data.property.listing_url}
                       target="_blank"
                       rel="noreferrer"
                     >
-                      View listing
+                      <span>View listing</span>
+                      <span aria-hidden>↗</span>
                     </a>
                   ) : (
                     <span className="text-slate-500">No listing URL</span>
                   )}
-
                   {data.pdf_url && (
-                    <>
-                      <a
-                        href={`/api/pdf-proxy?url=${encodeURIComponent(data.pdf_url)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center rounded-lg bg-blue-600 text-white px-3 py-1.5 hover:bg-blue-700"
-                      >
-                        Download PDF
-                      </a>
-                      <span className="ml-2 text-xs text-slate-500 break-all">{data.pdf_url}</span>
-                    </>
+                    <a
+                      href={`/api/pdf-proxy?url=${encodeURIComponent(data.pdf_url)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-1.5 text-white hover:bg-blue-700"
+                    >
+                      <span>Download report</span>
+                    </a>
                   )}
                 </div>
 
-                <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="financials" />
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <KeyStat
+                    label="Displayed Price"
+                    value={
+                      <>
+                        {
+                          formatGBP(
+                            data.property?.purchase_price_gbp ??
+                              data.property?.guide_price_gbp ??
+                              data.property?.asking_price_gbp ??
+                              data.property?.display_price_gbp, 0
+                          )
+                        }
+                      </>
+                    }
+                    hint={data.property?.price_label || 'price'}
+                  />
+                  <KeyStat label="Guide price" value={formatGBP(data.property?.guide_price_gbp, 0)} />
+                  <KeyStat label="Purchase price" value={formatGBP(data.property?.purchase_price_gbp, 0)} />
+                  <KeyStat label="EPC Potential" value={data.property?.epc_rating_potential || '—'} />
+                </div>
+
+                <div className="mt-3">
+                  <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="financials" />
+                </div>
               </div>
 
               <div>
-                <div className="rounded-lg overflow-hidden border">
+                <div className="overflow-hidden rounded-xl border">
                   {data.property?.listing_images?.[0] ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={data.property.listing_images[0]}
                       alt="Property"
-                      className="w-full h-48 object-cover"
+                      className="h-56 w-full object-cover"
                       loading="lazy"
                     />
                   ) : (
-                    <div className="w-full h-48 flex items-center justify-center text-slate-500">No image</div>
+                    <div className="flex h-56 w-full items-center justify-center text-slate-500">No image</div>
                   )}
                 </div>
-
-                <div className="mt-3 text-sm space-y-1">
-                  <div>
-                    <strong>Displayed Price:</strong>{' '}
-                    {formatGBP(
-                      data.property?.purchase_price_gbp ??
-                        data.property?.guide_price_gbp ??
-                        data.property?.asking_price_gbp ??
-                        data.property?.display_price_gbp,
-                    )}{' '}
-                    <span className="text-slate-500">({data.property?.price_label || 'price'})</span>
-                  </div>
-                  <div className="text-slate-600">
-                    <span className="mr-3">Purchase: {formatGBP(data.property?.purchase_price_gbp)}</span>
-                    <span className="mr-3">Guide: {formatGBP(data.property?.guide_price_gbp)}</span>
-                    <span>Asking: {formatGBP(data.property?.asking_price_gbp)}</span>
+                <div className="mt-3 text-sm text-slate-600">
+                  <div className="flex flex-wrap gap-3">
+                    <span>Guide: <strong>{formatGBP(data.property?.guide_price_gbp, 0)}</strong></span>
+                    <span>Purchase: <strong>{formatGBP(data.property?.purchase_price_gbp, 0)}</strong></span>
+                    <span>Asking: <strong>{formatGBP(data.property?.asking_price_gbp, 0)}</strong></span>
                   </div>
                 </div>
               </div>
             </div>
           </section>
 
-          {/* User feedback overview */}
+          {/* Investor Metrics */}
           {data?.property_id && (
-            <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-              <h3 className="text-xl font-semibold mb-3">User Feedback (last 90 days)</h3>
+            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <SectionHeader
+                title="Investor Metrics"
+                subtitle="Backend-calculated metrics are authoritative. Sliders below are for visual scenarios."
+              />
               <MetricsCards derived={slDerived ?? undefined} fallback={fallbackForMetrics} />
             </section>
           )}
 
           {/* Refurbishment */}
-          <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <h3 className="text-xl font-semibold">Refurbishment Estimates</h3>
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-xl font-semibold">Refurbishment Estimates</h3>
+                <p className="text-sm text-slate-600">
+                  AI room detection and line items grouped per room. Totals include materials + labour where available.
+                </p>
+              </div>
 
-              <div className="flex flex-wrap items-center gap-2 ml-auto">
+              {/* Filters */}
+              <div className="ml-auto flex flex-wrap items-center gap-2">
                 <label className="text-xs text-slate-600">Filter:</label>
                 <select
-                  className="text-sm border rounded-md px-2 py-1"
+                  className="rounded-md border px-2 py-1 text-sm"
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value)}
                 >
-                  {['All', ...new Set((data.refurb_estimates || []).map((r) => (r.detected_room_type || r.room_type || 'Other').toString().replace(/^./, (c) => c.toUpperCase())))].map((t) => (
-                    <option key={t} value={t}>{t}</option>
+                  {roomTypes.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
                   ))}
                 </select>
 
-                <label className="text-xs text-slate-600 ml-2">Sort:</label>
+                <label className="ml-2 text-xs text-slate-600">Sort:</label>
                 <select
-                  className="text-sm border rounded-md px-2 py-1"
+                  className="rounded-md border px-2 py-1 text-sm"
                   value={sortKey}
                   onChange={(e) => setSortKey(e.target.value as any)}
                 >
@@ -726,7 +756,7 @@ export default function Page() {
                   <option value="room_asc">Room (A → Z)</option>
                 </select>
 
-                <label className="text-xs text-slate-600 ml-2">Min confidence:</label>
+                <label className="ml-2 text-xs text-slate-600">Min confidence:</label>
                 <input
                   type="range"
                   min={0}
@@ -737,31 +767,22 @@ export default function Page() {
                   className="w-28"
                   title={`${minConfidence}%`}
                 />
-                <span className="text-xs text-slate-600 w-10 text-right">{minConfidence}%</span>
+                <span className="w-10 text-right text-xs text-slate-600">{minConfidence}%</span>
               </div>
             </div>
 
-            {Array.isArray(data.refurb_estimates) && data.refurb_estimates.length ? (
+            {/* Cards */}
+            {Array.isArray(refinedRefurbs) && refinedRefurbs.length ? (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                  {([...data.refurb_estimates]
-                    .filter((r) => {
-                      if (filterType === 'All') return true;
-                      const t = (r.detected_room_type || r.room_type || 'Other').toString();
-                      const norm = t.charAt(0).toUpperCase() + t.slice(1);
-                      return norm === filterType;
-                    })
-                    .filter((r) => (typeof r.confidence === 'number' ? r.confidence * 100 >= minConfidence : true))
-                    .sort((a, b) => {
-                      if (sortKey === 'total_desc') return roomV2Total(b) - roomV2Total(a);
-                      if (sortKey === 'total_asc') return roomV2Total(a) - roomV2Total(b);
-                      const ar = (a.detected_room_type || a.room_type || 'Other').toString().toLowerCase();
-                      const br = (b.detected_room_type || b.room_type || 'Other').toString().toLowerCase();
-                      return ar.localeCompare(br);
-                    }))
-                    .map((est, idx) => (
-                      <RoomCard key={est.id ?? `${est.room_type}-${idx}`} room={est} runId={runIdRef.current} propertyId={data.property_id} />
-                    ))}
+                <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {refinedRefurbs.map((est, idx) => (
+                    <RoomCard
+                      key={est.id ?? `${est.room_type}-${idx}`}
+                      room={est}
+                      runId={runIdRef.current}
+                      propertyId={data.property_id}
+                    />
+                  ))}
                 </div>
 
                 {/* Totals table */}
@@ -773,11 +794,11 @@ export default function Page() {
                         <th className="p-2 text-right">Materials (gross)</th>
                         <th className="p-2 text-right">Labour</th>
                         <th className="p-2 text-right">Room Total</th>
-                        <th className="p-2 text-right">Conf.</th>
+                        <th className="p-2 text-right">Confidence</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {data.refurb_estimates.map((est, i) => {
+                      {refinedRefurbs.map((est, i) => {
                         const mat = toInt(est.materials_total_with_vat_gbp ?? est.materials_total_gbp);
                         const lab = toInt(est.labour_total_gbp);
                         const total = roomV2Total(est);
@@ -792,9 +813,9 @@ export default function Page() {
                             <td className="p-2 capitalize">
                               {(est.detected_room_type || est.room_type || 'room').toString().replace(/_/g, ' ')}
                             </td>
-                            <td className="p-2 text-right">{formatGBP(mat)}</td>
-                            <td className="p-2 text-right">{formatGBP(lab)}</td>
-                            <td className="p-2 text-right font-semibold">{formatGBP(total)}</td>
+                            <td className="p-2 text-right">{formatGBP(mat, 0)}</td>
+                            <td className="p-2 text-right">{formatGBP(lab, 0)}</td>
+                            <td className="p-2 text-right font-semibold">{formatGBP(total, 0)}</td>
                             <td className="p-2 text-right">{conf !== null ? `${conf}%` : '—'}</td>
                           </tr>
                         );
@@ -805,17 +826,18 @@ export default function Page() {
                         <td className="p-2 text-right font-medium">Totals</td>
                         <td className="p-2 text-right font-medium">
                           {formatGBP(
-                            data.refurb_estimates.reduce(
+                            refinedRefurbs.reduce(
                               (a, r) => a + toInt(r.materials_total_with_vat_gbp ?? r.materials_total_gbp),
                               0,
                             ),
+                            0,
                           )}
                         </td>
                         <td className="p-2 text-right font-medium">
-                          {formatGBP(data.refurb_estimates.reduce((a, r) => a + toInt(r.labour_total_gbp), 0))}
+                          {formatGBP(refinedRefurbs.reduce((a, r) => a + toInt(r.labour_total_gbp), 0), 0)}
                         </td>
                         <td className="p-2 text-right font-semibold">
-                          {formatGBP(data.refurb_estimates.reduce((a, r) => a + roomV2Total(r), 0))}
+                          {formatGBP(refinedRefurbs.reduce((a, r) => a + roomV2Total(r), 0), 0)}
                         </td>
                         <td className="p-2" />
                       </tr>
@@ -827,61 +849,63 @@ export default function Page() {
               <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-slate-700">
                 <p className="font-medium">No refurbishment rows were saved for this property.</p>
                 {data?.refurb_debug && (
-                  <p className="text-sm mt-1">
+                  <p className="mt-1 text-sm">
                     Materials rows: <strong>{data.refurb_debug.materials_count ?? 0}</strong> · Labour rows:{' '}
                     <strong>{data.refurb_debug.labour_count ?? 0}</strong>
                   </p>
                 )}
-                <p className="text-sm mt-1">
+                <p className="mt-1 text-sm">
                   If the listing had very few photos or room types couldn’t be detected, this can happen.
                 </p>
               </div>
             )}
           </section>
 
-          {/* Rent estimate – thumbs */}
-          <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between mb-2">
+          {/* Rent feedback */}
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="mb-2 flex items-center justify-between">
               <h3 className="text-xl font-semibold">Rent Estimate</h3>
               <span className="text-sm text-slate-600">
-                Modelled: <strong>{formatGBP((data.financials as any)?.monthly_rent_gbp)}</strong> / month
+                Modelled: <strong>{formatGBP((data.financials as any)?.monthly_rent_gbp, 0)}</strong> / month
               </span>
             </div>
-            <p className="text-sm text-slate-600 mb-2">Tell us if this looks right based on your market knowledge.</p>
+            <p className="mb-2 text-sm text-slate-600">
+              Tell us if this looks right based on your market knowledge.
+            </p>
             <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="rent" />
           </section>
 
-          {/* EPC – thumbs */}
-          <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between mb-2">
+          {/* EPC feedback */}
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="mb-2 flex items-center justify-between">
               <h3 className="text-xl font-semibold">EPC Data</h3>
               <span className="text-sm text-slate-600">
                 Rating: <strong>{data.property?.epc_rating_current ?? data.property?.epc_rating ?? '—'}</strong>
               </span>
             </div>
-            <p className="text-sm text-slate-600 mb-2">
+            <p className="mb-2 text-sm text-slate-600">
               Does the EPC rating + details we show match the official register for this address?
             </p>
             <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="epc" />
           </section>
 
-          {/* Financials + Scenario Modelling */}
-          <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between mb-3">
+          {/* Financials + Scenario (display only, logic unchanged) */}
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="mb-3 flex items-center justify-between">
               <h3 className="text-xl font-semibold">Financial Summary</h3>
               {data.pdf_url && (
                 <a
                   href={`/api/pdf-proxy?url=${encodeURIComponent(data.pdf_url)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm inline-flex items-center rounded-md border px-3 py-1.5 hover:bg-slate-50"
+                  className="inline-flex items-center rounded-md border px-3 py-1.5 text-sm hover:bg-slate-50"
                 >
                   Download PDF
                 </a>
               )}
             </div>
 
-            {/* Live assumptions sliders */}
+            {/* Sliders (visual scenario only) */}
             <div className="mb-4">
               <FinancialSliders
                 priceGBP={basePrice}
@@ -891,26 +915,36 @@ export default function Page() {
                 onChange={(a, d) => {
                   setSlAssumptions(a);
                   setSlDerived(d);
-                  if (typeof window !== 'undefined') {
-                    window.dispatchEvent(new CustomEvent('metrics:refresh'));
-                  }
+                  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('metrics:refresh'));
                 }}
               />
               <div className="mt-2 flex items-center gap-3">
-                <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="financials" targetKey="assumptions" compact />
-                <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="financials" targetKey="outputs" compact />
+                <FeedbackBar
+                  runId={runIdRef.current}
+                  propertyId={data.property_id}
+                  module="financials"
+                  targetKey="assumptions"
+                  compact
+                />
+                <FeedbackBar
+                  runId={runIdRef.current}
+                  propertyId={data.property_id}
+                  module="financials"
+                  targetKey="outputs"
+                  compact
+                />
               </div>
             </div>
 
-            {/* Backend-calculated financials table */}
+            {/* Backend financials table (authoritative) */}
             {data.financials ? (
-              <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
+              <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
                 {Object.entries(data.financials)
                   .filter(([k]) => !HIDE_FIN_KEYS.has(k))
                   .map(([k, v]) => (
                     <div key={k} className="flex justify-between border-b py-1">
                       <dt className="capitalize text-slate-600">{titleize(k)}</dt>
-                      <dd className="font-medium text-right">{fmtValue(k, v)}</dd>
+                      <dd className="text-right font-medium">{fmtValue(k, v)}</dd>
                     </div>
                   ))}
               </dl>
@@ -918,31 +952,39 @@ export default function Page() {
               <p className="text-slate-600">No financials found for this property yet.</p>
             )}
 
-            <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="financials" />
+            <div className="mt-3">
+              <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="financials" />
+            </div>
           </section>
 
           {/* Report Preview */}
           {data.pdf_url && (
-            <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-              <h3 className="text-xl font-semibold mb-3">Report Preview</h3>
+            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h3 className="mb-3 text-xl font-semibold">Report Preview</h3>
               <PDFViewer pdfUrl={`/api/pdf-proxy?url=${encodeURIComponent(data.pdf_url)}`} />
             </section>
           )}
 
-          {/* Debug drawer */}
-          <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-4">
+          {/* Debug */}
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <button
-              className="text-sm rounded-md border px-3 py-1.5 hover:bg-slate-50"
+              className="rounded-md border px-3 py-1.5 text-sm hover:bg-slate-50"
               onClick={() => setShowDebug((s) => !s)}
             >
               {showDebug ? 'Hide Debug' : 'Show Debug'}
             </button>
 
             {showDebug && (
-              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                <pre className="bg-slate-50 p-3 rounded border overflow-auto"><code>{JSON.stringify({ status, run: data?.run }, null, 2)}</code></pre>
-                <pre className="bg-slate-50 p-3 rounded border overflow-auto"><code>{JSON.stringify({ property: data?.property, financials: data?.financials }, null, 2)}</code></pre>
-                <pre className="bg-slate-50 p-3 rounded border overflow-auto md:col-span-2"><code>{JSON.stringify({ refurb_estimates: data?.refurb_estimates }, null, 2)}</code></pre>
+              <div className="mt-3 grid grid-cols-1 gap-4 text-xs md:grid-cols-2">
+                <pre className="max-h-[420px] overflow-auto rounded border bg-slate-50 p-3">
+                  <code>{JSON.stringify({ status, run: data?.run }, null, 2)}</code>
+                </pre>
+                <pre className="max-h-[420px] overflow-auto rounded border bg-slate-50 p-3">
+                  <code>{JSON.stringify({ property: data?.property, financials: data?.financials }, null, 2)}</code>
+                </pre>
+                <pre className="max-h-[460px] overflow-auto rounded border bg-slate-50 p-3 md:col-span-2">
+                  <code>{JSON.stringify({ refurb_estimates: data?.refurb_estimates }, null, 2)}</code>
+                </pre>
               </div>
             )}
           </section>
