@@ -3,16 +3,20 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 
 /**
- * STATUS ENDPOINT (runs-table canonical)
- * Accepts ?run_id=... OR ?property_id=...
- * - Normal path: run_id -> runs.property_id -> properties/materials/labour
- * - Demo fallback: if no runs row and run_id looks like a UUID that matches a properties row,
- *   treat run_id as property_id directly so demo data renders without the runs table.
+ * STATUS ENDPOINT (runs-table canonical, STRICT by default)
+ * - Normal path: run_id -> runs.property_id -> (when runs.status === 'completed') fetch properties/materials/labour
+ * - Optional demo fallback (disabled by default): if enabled AND no runs row yet,
+ *   treat run_id as property_id so demos can render.
  */
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const RUNS_TABLE = process.env.RUNS_TABLE || 'runs';
+
+// Strict gating waits for runs.status === 'completed' before returning any property data
+const STRICT_RUN_GATING = (process.env.STRICT_RUN_GATING ?? 'true') !== 'false';
+// Allow legacy/demo fallback (run_id as property_id) only if explicitly enabled OR ?demo=1
+const ALLOW_DEMO_FALLBACK = (process.env.ALLOW_DEMO_FALLBACK ?? 'false') === 'true';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
@@ -26,8 +30,7 @@ const LABOUR_PRICES_INCLUDE_VAT = true;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const toStr = (q: string | string[] | undefined) => (Array.isArray(q) ? q[0] : (q ?? ''));
 const N = (x: any) => (Number.isFinite(+x) ? +x : 0);
-const obj = <T = Record<string, unknown>>(x: any, fallback: T): T =>
-  x && typeof x === 'object' ? (x as T) : fallback;
+const obj = <T = Record<string, unknown>>(x: any, fallback: T): T => (x && typeof x === 'object' ? (x as T) : fallback);
 
 /* ────────── table shapes ────────── */
 type PropertiesRow = {
@@ -70,7 +73,7 @@ type PropertiesRow = {
   agent_phone?: string | null;
   agent_email?: string | null;
 
-  property_pdf?: string | null; // if you store a direct URL
+  property_pdf?: string | null;
 };
 
 type RoomMaterialsRow = {
@@ -80,10 +83,7 @@ type RoomMaterialsRow = {
   room_type: string | null;
   subtotals: {
     all?: { net?: number; vat?: number; gross?: number } | null;
-    by_category?: Record<
-      string,
-      { net?: number; vat?: number; gross?: number; lines?: number | null }
-    > | null;
+    by_category?: Record<string, { net?: number; vat?: number; gross?: number; lines?: number | null }> | null;
   } | null;
 };
 
@@ -111,47 +111,23 @@ type RunsRow = {
 };
 
 /* ────────── normaliser: build RefurbRoom[] ────────── */
-function buildRooms(
-  mats: RoomMaterialsRow[],
-  labs: RoomLabourRow[],
-  property: PropertiesRow | null
-) {
+function buildRooms(mats: RoomMaterialsRow[], labs: RoomLabourRow[], property: PropertiesRow | null) {
   const index = new Map<
     string,
-    {
-      image_id: string | null;
-      room_type: string | null;
-      materials_rows: RoomMaterialsRow[];
-      labour_rows: RoomLabourRow[];
-    }
+    { image_id: string | null; room_type: string | null; materials_rows: RoomMaterialsRow[]; labour_rows: RoomLabourRow[] }
   >();
 
-  const keyOf = (image_id?: string | null, room_type?: string | null) =>
-    `${image_id ?? '-'}|${(room_type ?? '').toLowerCase()}`;
+  const keyOf = (image_id?: string | null, room_type?: string | null) => `${image_id ?? '-'}|${(room_type ?? '').toLowerCase()}`;
 
   for (const r of mats) {
     const k = keyOf(r.image_id, r.room_type);
-    if (!index.has(k)) {
-      index.set(k, {
-        image_id: r.image_id ?? null,
-        room_type: r.room_type ?? null,
-        materials_rows: [],
-        labour_rows: [],
-      });
-    }
+    if (!index.has(k)) index.set(k, { image_id: r.image_id ?? null, room_type: r.room_type ?? null, materials_rows: [], labour_rows: [] });
     index.get(k)!.materials_rows.push(r);
   }
 
   for (const r of labs) {
     const k = keyOf(r.image_id, r.room_type);
-    if (!index.has(k)) {
-      index.set(k, {
-        image_id: r.image_id ?? null,
-        room_type: r.room_type ?? null,
-        materials_rows: [],
-        labour_rows: [],
-      });
-    }
+    if (!index.has(k)) index.set(k, { image_id: r.image_id ?? null, room_type: r.room_type ?? null, materials_rows: [], labour_rows: [] });
     index.get(k)!.labour_rows.push(r);
   }
 
@@ -159,7 +135,6 @@ function buildRooms(
     if (!image_id) return null;
     const mapped = property?.images_map?.[image_id];
     if (mapped) return mapped;
-    // heuristic: supports ids like "..._3" to index into listing_images
     const m = image_id.match(/_(\d+)$/);
     const idx = m ? Number(m[1]) : NaN;
     const arr = property?.listing_images || [];
@@ -170,11 +145,8 @@ function buildRooms(
   const out: any[] = [];
 
   Array.from(index.values()).forEach((group, idx) => {
-    // Materials
     const materials: any[] = [];
-    let materials_net = 0;
-    let materials_vat = 0;
-    let materials_gross = 0;
+    let materials_net = 0, materials_vat = 0, materials_gross = 0;
 
     for (const m of group.materials_rows) {
       const st = obj(m.subtotals, {});
@@ -183,10 +155,7 @@ function buildRooms(
       materials_vat += N(all.vat);
       materials_gross += N(all.gross);
 
-      const cats = obj(
-        st.by_category,
-        {} as NonNullable<RoomMaterialsRow['subtotals']>['by_category']
-      );
+      const cats = obj(st.by_category, {} as NonNullable<RoomMaterialsRow['subtotals']>['by_category']);
       for (const [catKey, vals] of Object.entries(cats)) {
         const v = obj(vals, {});
         materials.push({
@@ -200,7 +169,6 @@ function buildRooms(
       }
     }
 
-    // Labour
     const labour: any[] = [];
     let labour_total = 0;
     for (const l of group.labour_rows) {
@@ -220,14 +188,10 @@ function buildRooms(
     }
 
     const labour_inc_vat = LABOUR_PRICES_INCLUDE_VAT ? labour_total : labour_total * 1.2;
-    const room_total_ex_vat =
-      materials_net + (LABOUR_PRICES_INCLUDE_VAT ? labour_total / 1.2 : labour_total);
+    const room_total_ex_vat = materials_net + (LABOUR_PRICES_INCLUDE_VAT ? labour_total / 1.2 : labour_total);
     const room_total_inc_vat = materials_gross + labour_inc_vat;
 
-    const prettyRoomType =
-      (group.room_type || '')
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, (m) => m.toUpperCase()) || null;
+    const prettyRoomType = (group.room_type || '').replace(/_/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase()) || null;
 
     out.push({
       id: `room-${idx}`,
@@ -245,7 +209,6 @@ function buildRooms(
     });
   });
 
-  // Nice ordering
   const order = ['kitchen', 'bathroom', 'living', 'sitting', 'reception', 'bedroom', 'hall', 'landing'];
   out.sort((a, b) => {
     const ia = order.findIndex((k) => (a.room_type || '').toLowerCase().includes(k));
@@ -259,6 +222,7 @@ function buildRooms(
 /* ────────── handler ────────── */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
     return res.status(405).json({ error: 'Method not allowed' });
@@ -269,24 +233,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const run_id = toStr(req.query.run_id);
   let property_id = toStr(req.query.property_id);
+  const demoParam = toStr(req.query.demo);
+  const allowDemo = demoParam === '1' || demoParam === 'true' || ALLOW_DEMO_FALLBACK;
 
   try {
-    // --- Fallback 0: If there's no property_id and the run_id looks like a UUID,
-    // try using run_id as a property_id (useful for demo data with no runs row).
-    if (!property_id && run_id && UUID_RE.test(run_id)) {
-      const probe = await supabase
-        .from<{ property_id: string }>('properties')
-        .select('property_id')
-        .eq('property_id', run_id)
-        .maybeSingle();
-      if (probe.data?.property_id) {
-        property_id = probe.data.property_id;
-      }
-    }
-
-    // Resolve via runs when run_id is provided and we still don't have property_id
     let run: RunsRow | null = null;
-    if (!property_id && run_id) {
+
+    // ── Resolve/gate by RUN row first (STRICT by default) ─────────────────────
+    if (run_id) {
+      // (Optional) demo fallback: interpret run_id as property_id ONLY if demo allowed and it's a UUID
+      if (!property_id && allowDemo && UUID_RE.test(run_id)) {
+        const probe = await supabase.from<{ property_id: string }>('properties')
+          .select('property_id').eq('property_id', run_id).maybeSingle();
+        if (probe.data?.property_id) property_id = probe.data.property_id;
+      }
+
+      // Fetch the run row
       const r = await supabase
         .from<RunsRow>(RUNS_TABLE)
         .select('run_id,property_id,status,error')
@@ -294,54 +256,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .maybeSingle();
       run = r.data || null;
 
-      if (!run) {
-        // No runs row yet: keep client polling but include the run_id back
-        return res.status(200).json({ status: 'queued' as const, run: { run_id } });
+      // If STRICT gating: do not proceed to property fetch until status === 'completed'
+      if (STRICT_RUN_GATING) {
+        if (!run) {
+          return res.status(200).json({ status: 'queued' as const, run: { run_id } });
+        }
+        if (run.status === 'failed') {
+          return res.status(200).json({ status: 'failed' as const, error: run.error || 'Run failed', run });
+        }
+        if (run.status !== 'completed') {
+          return res.status(200).json({ status: (run.status as any) || 'processing', run });
+        }
+        // Completed: ensure property_id is known
+        property_id = property_id || run.property_id || '';
+      } else {
+        // Non-strict mode: if we have a run but it's not completed, still gate unless demo fallback
+        if (run && run.status === 'failed') {
+          return res.status(200).json({ status: 'failed' as const, error: run.error || 'Run failed', run });
+        }
+        if (!allowDemo && run && run.status !== 'completed') {
+          return res.status(200).json({ status: (run.status as any) || 'processing', run });
+        }
+        property_id = property_id || run?.property_id || property_id; // pass through in demo
       }
-      if (run.status === 'failed') {
-        return res
-          .status(200)
-          .json({ status: 'failed' as const, error: run.error || 'Run failed', run });
-      }
-      if (!run.property_id || !UUID_RE.test(run.property_id)) {
-        return res.status(200).json({ status: (run.status as any) || 'processing', run });
-      }
-      property_id = run.property_id;
     }
 
+    // Must have a valid property_id by here to fetch data
     if (!property_id || !UUID_RE.test(property_id)) {
-      return res
-        .status(400)
-        .json({ error: 'Provide a valid property_id (UUID) or a run_id that resolves to one' });
+      // If we got here with a run row in strict mode, return its status; otherwise generic message
+      return res.status(400).json({ error: 'Provide a valid property_id (UUID) or a run_id that resolves to one' });
     }
 
-    // If we still don't have a run row, try to find a recent one by property_id (optional)
-    if (!run) {
-      const r = await supabase
-        .from<RunsRow>(RUNS_TABLE)
-        .select('run_id,property_id,status,error')
-        .eq('property_id', property_id)
-        .order('run_id', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      run = r.data || null;
-    }
-
-    // ---- Fetch core objects ----
+    // ── Now (and only now) fetch the heavy tables ─────────────────────────────
     const [propResp, matsResp, labsResp] = await Promise.all([
-      supabase
-        .from<PropertiesRow>('properties')
-        .select('*')
-        .eq('property_id', property_id)
-        .maybeSingle(),
-      supabase
-        .from<RoomMaterialsRow>('property_room_materials')
-        .select('*')
-        .eq('property_id', property_id),
-      supabase
-        .from<RoomLabourRow>('property_room_labour')
-        .select('*')
-        .eq('property_id', property_id),
+      supabase.from<PropertiesRow>('properties').select('*').eq('property_id', property_id).maybeSingle(),
+      supabase.from<RoomMaterialsRow>('property_room_materials').select('*').eq('property_id', property_id),
+      supabase.from<RoomLabourRow>('property_room_labour').select('*').eq('property_id', property_id),
     ]);
 
     if (propResp.error) {
@@ -350,9 +300,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     if (matsResp.error) {
       console.error('materials error', matsResp.error);
-      return res
-        .status(500)
-        .json({ status: 'failed', error: 'Failed to fetch room materials', run });
+      return res.status(500).json({ status: 'failed', error: 'Failed to fetch room materials', run });
     }
     if (labsResp.error) {
       console.error('labour error', labsResp.error);
@@ -363,11 +311,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const mats = Array.isArray(matsResp.data) ? matsResp.data : [];
     const labs = Array.isArray(labsResp.data) ? labsResp.data : [];
 
-    // If property row not yet present, keep polling
+    // In rare cases a completed run row might precede the property upsert by milliseconds
     if (!property) {
-      return res
-        .status(200)
-        .json({ status: (run?.status as any) || 'processing', run, property_id });
+      // keep polling client-side
+      return res.status(200).json({ status: (run?.status as any) || 'processing', run, property_id });
     }
 
     const refurb_estimates = buildRooms(mats, labs, property);
@@ -386,20 +333,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const pdf_url = property.property_pdf ?? null;
 
-    // Deterministic/stable status for demo:
-    // - If run says failed/completed, trust it.
-    // - Otherwise, once the property row exists, mark completed so the UI renders (even if no rooms).
-    let effectiveStatus: 'queued' | 'processing' | 'completed' | 'failed' =
-      (run?.status as any) || 'processing';
-    if (run?.status === 'failed') {
-      effectiveStatus = 'failed';
-    } else if (run?.status === 'completed') {
-      effectiveStatus = 'completed';
-    } else if (property) {
-      effectiveStatus = 'completed';
-    }
-
-    // Include a synthetic run object when there's no actual runs row (stops UI flicker)
+    // With strict gating, reaching this point implies completion.
+    const effectiveStatus: 'completed' = 'completed';
     const runForResponse = run ?? (run_id ? { run_id, property_id, status: effectiveStatus } : undefined);
 
     return res.status(200).json({
