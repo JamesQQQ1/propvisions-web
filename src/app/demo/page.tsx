@@ -19,17 +19,124 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 
-// --- shadcn/ui --- //
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Slider } from '@/components/ui/slider';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+/* ========= Inline UI primitives (no external shadcn imports) ========= */
+// Card
+const Card = ({ className = '', children }: any) => (
+  <div className={`rounded-xl border bg-white shadow-sm ${className}`}>{children}</div>
+);
+const CardHeader = ({ className = '', children }: any) => (
+  <div className={`px-4 md:px-6 pt-4 md:pt-6 ${className}`}>{children}</div>
+);
+const CardTitle = ({ className = '', children }: any) => (
+  <h3 className={`text-lg font-semibold ${className}`}>{children}</h3>
+);
+const CardContent = ({ className = '', children }: any) => (
+  <div className={`px-4 md:px-6 pb-4 md:pb-6 ${className}`}>{children}</div>
+);
+
+// Button
+function Button({ asChild, className = '', variant = 'default', size = 'default', ...props }: any) {
+  const base = 'inline-flex items-center justify-center rounded-lg border transition disabled:opacity-50 disabled:pointer-events-none';
+  const variants: Record<string, string> = {
+    default: 'bg-slate-900 text-white border-slate-900 hover:brightness-110',
+    secondary: 'bg-white text-slate-900 border-slate-200 hover:bg-slate-50',
+  };
+  const sizes: Record<string, string> = {
+    default: 'h-10 px-4 text-sm',
+    sm: 'h-8 px-3 text-xs',
+  };
+  const cls = `${base} ${variants[variant] ?? variants.default} ${sizes[size] ?? sizes.default} ${className}`;
+  if (asChild) return <span className={cls} {...props} />;
+  return <button className={cls} {...props} />;
+}
+
+// Badge
+const Badge = ({ children, className = '', variant = 'secondary' }: any) => {
+  const variants: Record<string, string> = {
+    secondary: 'bg-slate-100 text-slate-800 border-slate-200',
+  };
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${variants[variant]} ${className}`}>
+      {children}
+    </span>
+  );
+};
+
+// Separator
+const Separator = ({ className = '' }: any) => <div className={`w-full h-px bg-slate-200 ${className}`} />;
+
+// Input / Label
+const Input = ({ className = '', ...props }: any) => (
+  <input
+    className={`h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-blue-600 ${className}`}
+    {...props}
+  />
+);
+const Label = ({ className = '', children, ...props }: any) => (
+  <label className={`text-xs text-slate-700 ${className}`} {...props}>{children}</label>
+);
+
+// Tooltip (very light – just shows content on hover)
+const TooltipProvider = ({ children }: any) => children;
+const Tooltip = ({ children }: any) => <span className="relative group">{children}</span>;
+const TooltipTrigger = ({ asChild, children }: any) => (asChild ? children : <span>{children}</span>);
+const TooltipContent = ({ children }: any) => (
+  <span className="pointer-events-none absolute left-1/2 top-full z-20 hidden -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-1 text-[11px] text-white group-hover:block">
+    {children}
+  </span>
+);
+
+// Tabs
+function Tabs({ defaultValue, children, className = '' }: any) {
+  const [val, setVal] = useState(defaultValue);
+  return <div className={className}>{React.Children.map(children, (c: any) => React.cloneElement(c, { __tabs: { val, setVal } }))}</div>;
+}
+const TabsList = ({ children, __tabs }: any) => <div className="inline-flex rounded-lg border bg-slate-100 p-1">{React.Children.map(children, (c: any) => React.cloneElement(c, { __tabs }))}</div>;
+const TabsTrigger = ({ value, children, __tabs }: any) => {
+  const active = __tabs?.val === value;
+  return (
+    <button
+      onClick={() => __tabs.setVal(value)}
+      className={`px-3 py-1.5 text-sm rounded-md ${active ? 'bg-white shadow border' : 'text-slate-700 hover:bg-white/60'}`}
+    >
+      {children}
+    </button>
+  );
+};
+const TabsContent = ({ value, children, className = '', __tabs }: any) =>
+  __tabs?.val === value ? <div className={className}>{children}</div> : null;
+
+// Slider → input[type=range]
+const Slider = ({ value, onValueChange, min = 0, max = 100, step = 1, className = '' }: any) => (
+  <input
+    type="range"
+    min={min}
+    max={max}
+    step={step}
+    value={Array.isArray(value) ? value[0] : value}
+    onChange={(e) => onValueChange([Number(e.target.value)])}
+    className={`w-full accent-blue-600 ${className}`}
+  />
+);
+
+// Dialog (simple controlled modal)
+function Dialog({ children }: any) {
+  const [open, setOpen] = useState(false);
+  return React.Children.map(children, (c: any) => React.cloneElement(c, { __dialog: { open, setOpen } }));
+}
+const DialogTrigger = ({ asChild, children, __dialog }: any) =>
+  asChild ? React.cloneElement(children, { onClick: () => __dialog.setOpen(true) }) :
+    <button onClick={() => __dialog.setOpen(true)}>{children}</button>;
+const DialogContent = ({ children, className = '', __dialog }: any) =>
+  __dialog?.open ? (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="fixed inset-0 bg-black/40" onClick={() => __dialog.setOpen(false)} />
+      <div className={`relative z-10 w-[92vw] max-w-2xl rounded-xl border bg-white p-4 shadow-xl ${className}`}>{children}</div>
+    </div>
+  ) : null;
+const DialogHeader = ({ children }: any) => <div className="mb-2">{children}</div>;
+const DialogTitle = ({ children }: any) => <div className="text-base font-semibold">{children}</div>;
+/* ========= end inline UI primitives ========= */
 
 // Icons (lucide-react)
 import { Download, FileText, BarChart3, Home, Building2, PoundSterling, Ruler, Fuel, Settings2, Info, ExternalLink, Construction, LineChart, Gauge, Building, TrendingUp, ShieldCheck, Banknote, BadgeInfo } from 'lucide-react';
