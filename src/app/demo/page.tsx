@@ -38,13 +38,10 @@ const pct1 = new Intl.NumberFormat('en-GB', { style: 'percent', maximumFractionD
 const isFiniteNum = (n: unknown) => Number.isFinite(Number(n));
 const n = (x: unknown) => (isFiniteNum(x) ? Number(x) : undefined);
 const nz = (x: unknown) => (isFiniteNum(x) ? Number(x) : 0);
-// replace these 2 lines
-// const £0 = (x?: unknown) => (x == null || x === '' ? '—' : gbp0.format(Number(x)));
-// const £2 = (x?: unknown) => (x == null || x === '' ? '—' : gbp2.format(Number(x)));
-
-// with:
-const money0 = (x?: unknown) => (x == null || x === '' ? '—' : gbp0.format(Number(x)));
-const money2 = (x?: unknown) => (x == null || x === '' ? '—' : gbp2.format(Number(x)));
+const gbp0 = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 });
+const gbp2 = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export const money0 = (x?: unknown) => (x == null || x === '' ? '—' : gbp0.format(Number(x)));
+export const money2 = (x?: unknown) => (x == null || x === '' ? '—' : gbp2.format(Number(x)));
 const pc = (x?: unknown) => (x == null || x === '' ? '—' : `${Number(x) * 100 % 1 ? Number(x).toFixed(2) : Number(x)}%`);
 const pc1 = (x?: unknown) => (x == null || x === '' ? '—' : pct1.format(Number(x)));
 
@@ -778,14 +775,17 @@ export default function Page() {
 
                 <div className="mt-3 text-sm space-y-1">
                   <div>
-                    <strong>Displayed Price:</strong>{' '}
-                    {£0(
+                  <strong>Displayed Price:</strong>{' '}
+                  <strong>Displayed Price:</strong>{' '}
+                    {formatGBP(
                       data.property?.purchase_price_gbp ??
                         data.property?.guide_price_gbp ??
                         data.property?.asking_price_gbp ??
-                        data.property?.display_price_gbp,
+                        data.property?.display_price_gbp
                     )}{' '}
-                    <span className="text-slate-500">(price)</span>
+                    <span className="text-slate-500">({data.property?.price_label || 'price'})</span>
+
+
                   </div>
                   <div className="text-slate-600">
                     <span className="mr-3">Guide: {£0(data.property?.guide_price_gbp)}</span>
