@@ -76,7 +76,7 @@ export async function POST(req: Request) {
     }
 
     // 2) Upload to Storage
-    const basePath = `${row.property_id}/${encodeURIComponent(row.room_key)}/${row.id}`;
+    const basePath = `${row.property_id}/${row.room_key}/${row.id}`;
     const publicUrls: string[] = [];
     const storagePaths: string[] = [];
 
