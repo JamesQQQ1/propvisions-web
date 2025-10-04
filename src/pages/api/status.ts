@@ -5,6 +5,9 @@ import { createClient } from '@supabase/supabase-js';
 /**
  * STATUS ENDPOINT (runs-table canonical)
  * Accepts ?run_id=... OR ?property_id=...
+ * - Normal path: run_id -> runs.property_id -> properties/materials/labour
+ * - Demo fallback: if no runs row and run_id looks like a UUID that matches a properties row,
+ *   treat run_id as property_id directly so demo data renders without the runs table.
  */
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -15,14 +18,18 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 });
 
-// ---- config: set this true if labour costs in DB are VAT-inclusive charge-out rates
+// If your labour figures are VAT-inclusive charge-out rates, set true.
+// If they are ex-VAT and you want to show inc-VAT totals, set false (adds 20%).
 const LABOUR_PRICES_INCLUDE_VAT = true;
 
+/* ────────── helpers ────────── */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const toStr = (q: string | string[] | undefined) => (Array.isArray(q) ? q[0] : (q ?? ''));
 const N = (x: any) => (Number.isFinite(+x) ? +x : 0);
-const obj = <T = Record<string, unknown>>(x: any, fallback: T): T => (x && typeof x === 'object' ? (x as T) : fallback);
+const obj = <T = Record<string, unknown>>(x: any, fallback: T): T =>
+  x && typeof x === 'object' ? (x as T) : fallback;
 
+/* ────────── table shapes ────────── */
 type PropertiesRow = {
   property_id: string;
   property_title?: string | null;
@@ -103,7 +110,7 @@ type RunsRow = {
   error?: string | null;
 };
 
-/* build per-room payload matching RefurbRoom + MaterialCategory + LabourTrade */
+/* ────────── normaliser: build RefurbRoom[] ────────── */
 function buildRooms(
   mats: RoomMaterialsRow[],
   labs: RoomLabourRow[],
@@ -111,7 +118,12 @@ function buildRooms(
 ) {
   const index = new Map<
     string,
-    { image_id: string | null; room_type: string | null; materials_rows: RoomMaterialsRow[]; labour_rows: RoomLabourRow[] }
+    {
+      image_id: string | null;
+      room_type: string | null;
+      materials_rows: RoomMaterialsRow[];
+      labour_rows: RoomLabourRow[];
+    }
   >();
 
   const keyOf = (image_id?: string | null, room_type?: string | null) =>
@@ -119,14 +131,27 @@ function buildRooms(
 
   for (const r of mats) {
     const k = keyOf(r.image_id, r.room_type);
-    if (!index.has(k))
-      index.set(k, { image_id: r.image_id ?? null, room_type: r.room_type ?? null, materials_rows: [], labour_rows: [] });
+    if (!index.has(k)) {
+      index.set(k, {
+        image_id: r.image_id ?? null,
+        room_type: r.room_type ?? null,
+        materials_rows: [],
+        labour_rows: [],
+      });
+    }
     index.get(k)!.materials_rows.push(r);
   }
+
   for (const r of labs) {
     const k = keyOf(r.image_id, r.room_type);
-    if (!index.has(k))
-      index.set(k, { image_id: r.image_id ?? null, room_type: r.room_type ?? null, materials_rows: [], labour_rows: [] });
+    if (!index.has(k)) {
+      index.set(k, {
+        image_id: r.image_id ?? null,
+        room_type: r.room_type ?? null,
+        materials_rows: [],
+        labour_rows: [],
+      });
+    }
     index.get(k)!.labour_rows.push(r);
   }
 
@@ -134,6 +159,7 @@ function buildRooms(
     if (!image_id) return null;
     const mapped = property?.images_map?.[image_id];
     if (mapped) return mapped;
+    // heuristic: supports ids like "..._3" to index into listing_images
     const m = image_id.match(/_(\d+)$/);
     const idx = m ? Number(m[1]) : NaN;
     const arr = property?.listing_images || [];
@@ -142,8 +168,9 @@ function buildRooms(
   };
 
   const out: any[] = [];
+
   Array.from(index.values()).forEach((group, idx) => {
-    // Materials → MaterialCategory[]
+    // Materials
     const materials: any[] = [];
     let materials_net = 0;
     let materials_vat = 0;
@@ -156,25 +183,24 @@ function buildRooms(
       materials_vat += N(all.vat);
       materials_gross += N(all.gross);
 
-      const cats = obj(st.by_category, {} as NonNullable<RoomMaterialsRow['subtotals']>['by_category']);
+      const cats = obj(
+        st.by_category,
+        {} as NonNullable<RoomMaterialsRow['subtotals']>['by_category']
+      );
       for (const [catKey, vals] of Object.entries(cats)) {
         const v = obj(vals, {});
-        const net = N(v.net);
-        const vat = N(v.vat);
-        const gross = N(v.gross);
-        const lines = (v as any)?.lines ?? null;
         materials.push({
           item_key: catKey,
-          net_gbp: net || null,
-          vat_gbp: vat || null,
-          gross_gbp: gross || null,
-          subtotal_gbp: gross || net || null,
-          lines: lines ?? null,
+          net_gbp: N(v.net) || null,
+          vat_gbp: N(v.vat) || null,
+          gross_gbp: N(v.gross) || null,
+          subtotal_gbp: N(v.gross) || N(v.net) || null,
+          lines: (v as any)?.lines ?? null,
         });
       }
     }
 
-    // Labour → LabourTrade[]
+    // Labour
     const labour: any[] = [];
     let labour_total = 0;
     for (const l of group.labour_rows) {
@@ -193,10 +219,10 @@ function buildRooms(
       });
     }
 
-    const labour_with_vat = LABOUR_PRICES_INCLUDE_VAT ? labour_total : labour_total * 1.2;
-
-    const room_total_ex_vat = materials_net + (LABOUR_PRICES_INCLUDE_VAT ? labour_total / 1.2 : labour_total);
-    const room_total_inc_vat = materials_gross + labour_with_vat;
+    const labour_inc_vat = LABOUR_PRICES_INCLUDE_VAT ? labour_total : labour_total * 1.2;
+    const room_total_ex_vat =
+      materials_net + (LABOUR_PRICES_INCLUDE_VAT ? labour_total / 1.2 : labour_total);
+    const room_total_inc_vat = materials_gross + labour_inc_vat;
 
     const prettyRoomType =
       (group.room_type || '')
@@ -219,6 +245,7 @@ function buildRooms(
     });
   });
 
+  // Nice ordering
   const order = ['kitchen', 'bathroom', 'living', 'sitting', 'reception', 'bedroom', 'hall', 'landing'];
   out.sort((a, b) => {
     const ia = order.findIndex((k) => (a.room_type || '').toLowerCase().includes(k));
@@ -229,6 +256,7 @@ function buildRooms(
   return out;
 }
 
+/* ────────── handler ────────── */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   if (req.method !== 'GET') {
@@ -243,7 +271,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let property_id = toStr(req.query.property_id);
 
   try {
-    // Resolve via runs when run_id is provided
+    // --- Fallback 0: If there's no property_id and the run_id looks like a UUID,
+    // try using run_id as a property_id (useful for demo data with no runs row).
+    if (!property_id && run_id && UUID_RE.test(run_id)) {
+      const probe = await supabase
+        .from<{ property_id: string }>('properties')
+        .select('property_id')
+        .eq('property_id', run_id)
+        .maybeSingle();
+      if (probe.data?.property_id) {
+        property_id = probe.data.property_id;
+      }
+    }
+
+    // Resolve via runs when run_id is provided and we still don't have property_id
     let run: RunsRow | null = null;
     if (!property_id && run_id) {
       const r = await supabase
@@ -254,10 +295,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       run = r.data || null;
 
       if (!run) {
+        // No runs row yet: keep client polling but include the run_id back
         return res.status(200).json({ status: 'queued' as const, run: { run_id } });
       }
       if (run.status === 'failed') {
-        return res.status(200).json({ status: 'failed' as const, error: run.error || 'Run failed', run });
+        return res
+          .status(200)
+          .json({ status: 'failed' as const, error: run.error || 'Run failed', run });
       }
       if (!run.property_id || !UUID_RE.test(run.property_id)) {
         return res.status(200).json({ status: (run.status as any) || 'processing', run });
@@ -266,9 +310,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (!property_id || !UUID_RE.test(property_id)) {
-      return res.status(400).json({ error: 'Provide a valid property_id (UUID) or a run_id that resolves to one' });
+      return res
+        .status(400)
+        .json({ error: 'Provide a valid property_id (UUID) or a run_id that resolves to one' });
     }
 
+    // If we still don't have a run row, try to find a recent one by property_id (optional)
     if (!run) {
       const r = await supabase
         .from<RunsRow>(RUNS_TABLE)
@@ -280,11 +327,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       run = r.data || null;
     }
 
-    // Fetch core objects
+    // ---- Fetch core objects ----
     const [propResp, matsResp, labsResp] = await Promise.all([
-      supabase.from<PropertiesRow>('properties').select('*').eq('property_id', property_id).maybeSingle(),
-      supabase.from<RoomMaterialsRow>('property_room_materials').select('*').eq('property_id', property_id),
-      supabase.from<RoomLabourRow>('property_room_labour').select('*').eq('property_id', property_id),
+      supabase
+        .from<PropertiesRow>('properties')
+        .select('*')
+        .eq('property_id', property_id)
+        .maybeSingle(),
+      supabase
+        .from<RoomMaterialsRow>('property_room_materials')
+        .select('*')
+        .eq('property_id', property_id),
+      supabase
+        .from<RoomLabourRow>('property_room_labour')
+        .select('*')
+        .eq('property_id', property_id),
     ]);
 
     if (propResp.error) {
@@ -293,7 +350,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     if (matsResp.error) {
       console.error('materials error', matsResp.error);
-      return res.status(500).json({ status: 'failed', error: 'Failed to fetch room materials', run });
+      return res
+        .status(500)
+        .json({ status: 'failed', error: 'Failed to fetch room materials', run });
     }
     if (labsResp.error) {
       console.error('labour error', labsResp.error);
@@ -304,8 +363,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const mats = Array.isArray(matsResp.data) ? matsResp.data : [];
     const labs = Array.isArray(labsResp.data) ? labsResp.data : [];
 
+    // If property row not yet present, keep polling
     if (!property) {
-      return res.status(200).json({ status: (run?.status as any) || 'processing', run, property_id });
+      return res
+        .status(200)
+        .json({ status: (run?.status as any) || 'processing', run, property_id });
     }
 
     const refurb_estimates = buildRooms(mats, labs, property);
@@ -324,13 +386,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const pdf_url = property.property_pdf ?? null;
 
-    const effectiveStatus =
-      (run?.status as any) ||
-      (refurb_estimates.length > 0 ? ('completed' as const) : ('processing' as const));
+    // Deterministic/stable status for demo:
+    // - If run says failed/completed, trust it.
+    // - Otherwise, once the property row exists, mark completed so the UI renders (even if no rooms).
+    let effectiveStatus: 'queued' | 'processing' | 'completed' | 'failed' =
+      (run?.status as any) || 'processing';
+    if (run?.status === 'failed') {
+      effectiveStatus = 'failed';
+    } else if (run?.status === 'completed') {
+      effectiveStatus = 'completed';
+    } else if (property) {
+      effectiveStatus = 'completed';
+    }
+
+    // Include a synthetic run object when there's no actual runs row (stops UI flicker)
+    const runForResponse = run ?? (run_id ? { run_id, property_id, status: effectiveStatus } : undefined);
 
     return res.status(200).json({
       status: effectiveStatus,
-      run: run ?? undefined,
+      run: runForResponse,
       property_id,
       property,
       financials,
