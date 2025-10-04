@@ -34,8 +34,44 @@ import { Label } from '@/components/ui/label';
 // Icons (lucide-react)
 import { Download, FileText, BarChart3, Home, Building2, PoundSterling, Ruler, Fuel, Settings2, Info, ExternalLink, Construction, LineChart, Gauge, Building, TrendingUp, ShieldCheck, Banknote, BadgeInfo } from 'lucide-react';
 
-// --- existing API helpers (unchanged) --- //
-import { pollUntilDone, type RunStatus, startAnalyze, POLL_BUILD } from '@/lib/api';
+// local “status” type + build label
+type RunStatus = 'queued' | 'processing' | 'completed' | 'failed';
+const POLL_BUILD = 'demo';
+
+// local poller that hits our own Next.js API (same-origin, no CORS)
+async function pollStatus(
+  runId: string,
+  {
+    intervalMs = 1500,
+    timeoutMs = 0,
+    onTick,
+    signal,
+  }: {
+    intervalMs?: number;
+    timeoutMs?: number; // 0 = no timeout
+    onTick?: (s: RunStatus) => void;
+    signal?: AbortSignal;
+  } = {}
+) {
+  const start = Date.now();
+  while (true) {
+    if (timeoutMs && Date.now() - start > timeoutMs) throw new Error('Polling timed out');
+    if (signal?.aborted) throw new Error('Aborted');
+
+    const res = await fetch(`/api/status?run_id=${encodeURIComponent(runId)}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`Status fetch failed: ${res.status} ${res.statusText}`);
+    const json = await res.json();
+
+    const status = (json?.status ?? 'processing') as RunStatus;
+    onTick?.(status);
+
+    if (status === 'completed') return json;
+    if (status === 'failed') throw new Error(json?.error ?? 'Run failed');
+
+    await new Promise(r => setTimeout(r, intervalMs));
+  }
+}
+
 
 /* ---------- demo mode config (REQUIRED) ---------- */
 const DEFAULT_DEMO_RUN_ID = '51767b89-2793-49ac-b578-da8063d59b2f';
@@ -230,12 +266,14 @@ export default function Page() {
       const controller = new AbortController();
       abortRef.current = controller;
 
-      const result: any = await pollUntilDone(theRunId, {
+      // inside loadDemoRun(...)
+      const result: any = await pollStatus(theRunId, {
         intervalMs: 1500,
         timeoutMs: 0,
         onTick: (s) => setStatus(s),
         signal: controller.signal,
       });
+
 
       setStatus('completed');
       setData({
