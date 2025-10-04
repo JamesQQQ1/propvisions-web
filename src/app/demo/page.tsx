@@ -38,8 +38,13 @@ const pct1 = new Intl.NumberFormat('en-GB', { style: 'percent', maximumFractionD
 const isFiniteNum = (n: unknown) => Number.isFinite(Number(n));
 const n = (x: unknown) => (isFiniteNum(x) ? Number(x) : undefined);
 const nz = (x: unknown) => (isFiniteNum(x) ? Number(x) : 0);
-const £0 = (x?: unknown) => (x == null || x === '' ? '—' : gbp0.format(Number(x)));
-const £2 = (x?: unknown) => (x == null || x === '' ? '—' : gbp2.format(Number(x)));
+// replace these 2 lines
+// const £0 = (x?: unknown) => (x == null || x === '' ? '—' : gbp0.format(Number(x)));
+// const £2 = (x?: unknown) => (x == null || x === '' ? '—' : gbp2.format(Number(x)));
+
+// with:
+const money0 = (x?: unknown) => (x == null || x === '' ? '—' : gbp0.format(Number(x)));
+const money2 = (x?: unknown) => (x == null || x === '' ? '—' : gbp2.format(Number(x)));
 const pc = (x?: unknown) => (x == null || x === '' ? '—' : `${Number(x) * 100 % 1 ? Number(x).toFixed(2) : Number(x)}%`);
 const pc1 = (x?: unknown) => (x == null || x === '' ? '—' : pct1.format(Number(x)));
 
