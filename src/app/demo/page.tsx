@@ -568,34 +568,34 @@ export default function Page() {
     };
   }, [data?.financials]);
 
-  const kpis = useMemo(() => {
+  const tops = useMemo(() => {
     const p = data?.property || {};
     return [
       {
         label: 'Displayed Price',
-        value: £0(
+        value: money0(
           p.purchase_price_gbp ??
             p.guide_price_gbp ??
             p.asking_price_gbp ??
-            p.display_price_gbp ??
-            basePrice,
+            p.display_price_gbp
         ),
         subtitle: 'price',
       },
       {
         label: 'Guide Price',
-        value: £0(p.guide_price_gbp),
+        value: money0(p.guide_price_gbp),
       },
       {
         label: 'Purchase Price',
-        value: £0(p.purchase_price_gbp),
+        value: money0(p.purchase_price_gbp),
       },
       {
         label: 'EPC Potential',
-        value: epc?.potential ?? '—',
+        value: String(p.epc_potential ?? p.epc_rating_potential ?? '—'),
       },
     ];
-  }, [data?.property, basePrice, epc?.potential]);
+  }, [data?.property]);
+  
 
   return (
     <main className="p-6 max-w-6xl mx-auto space-y-8">
