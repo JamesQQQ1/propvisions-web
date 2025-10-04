@@ -157,7 +157,13 @@ export default function Page() {
   }
 
   /* load a completed/ongoing run by id (demo mode) */
-  async function loadDemoRun(theRunId: string) {
+async function loadDemoRun(theRunIdRaw: string) {
+  if (submittingRef.current) return; // prevent double triggers
+  submittingRef.current = true;
+
+  try {
+    const theRunId = (theRunIdRaw || '').trim();
+    setShowDebug(false);
     setError(undefined);
     setData(null);
     setSlDerived(null);
@@ -172,6 +178,9 @@ export default function Page() {
       return;
     }
 
+    // Cancel any previous polling
+    abortRef.current?.abort();
+
     setStatus('queued');
     setProgress((p) => (p < 6 ? 6 : p));
 
@@ -181,33 +190,36 @@ export default function Page() {
     const controller = new AbortController();
     abortRef.current = controller;
 
-    try {
-      const result: any = await pollUntilDone(theRunId, {
-        intervalMs: 1800,
-        timeoutMs: 0, // never time out on client
-        onTick: (s) => setStatus(s),
-        signal: controller.signal,
-      });
+    console.debug('[demo] polling run_id:', theRunId);
+    const result: any = await pollUntilDone(theRunId, {
+      intervalMs: 1500,
+      timeoutMs: 0, // never time out on client for demo
+      onTick: (s) => setStatus(s),
+      signal: controller.signal,
+    });
 
-      setStatus('completed');
-      setProgress(100);
-      setData({
-        property_id: result.property_id ?? null,
-        property: result.property ?? null,
-        financials: result.financials ?? null,
-        refurb_estimates: Array.isArray(result.refurb_estimates) ? (result.refurb_estimates as RefurbRoom[]) : [],
-        pdf_url: result.pdf_url ?? null,
-        refurb_debug: result.refurb_debug ?? undefined,
-        run: result.run ?? undefined,
-      });
-      if (result?.refurb_debug) console.log('refurb_debug:', result.refurb_debug);
-    } catch (err: any) {
-      setError(err?.message === 'Polling aborted' ? 'Cancelled.' : err?.message || 'Run failed');
-      setStatus('failed');
-    } finally {
-      abortRef.current = null;
-    }
+    setStatus('completed');
+    setProgress(100);
+    setData({
+      property_id: result.property_id ?? null,
+      property: result.property ?? null,
+      financials: result.financials ?? null,
+      refurb_estimates: Array.isArray(result.refurb_estimates) ? (result.refurb_estimates as RefurbRoom[]) : [],
+      pdf_url: result.pdf_url ?? null,
+      refurb_debug: result.refurb_debug ?? undefined,
+      run: result.run ?? undefined,
+    });
+    if (result?.refurb_debug) console.debug('refurb_debug:', result.refurb_debug);
+  } catch (err: any) {
+    console.error('[demo] loadDemoRun error:', err);
+    setError(err?.message === 'Polling aborted' ? 'Cancelled.' : err?.message || 'Run failed');
+    setStatus('failed');
+  } finally {
+    abortRef.current = null;
+    setTimeout(() => { submittingRef.current = false; }, 300);
   }
+}
+
 
   /* progress bar logic */
   const [progress, setProgress] = useState(0);
@@ -534,15 +546,20 @@ export default function Page() {
             disabled={!useDemo}
           />
 
-          <button
-            type="button"
-            onClick={() => loadDemoRun(demoRunId)}
-            disabled={!useDemo || !demoRunId}
-            className="px-3 py-2 bg-slate-200 rounded-md disabled:opacity-50"
-            title="Load demo data using the run_id"
-          >
-            Load demo
-          </button>
+<button
+  type="button"
+  onClick={(e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    loadDemoRun((demoRunId || '').trim());
+  }}
+  disabled={!useDemo || !(demoRunId || '').trim()}
+  className="px-3 py-2 bg-slate-200 rounded-md disabled:opacity-50"
+  title="Load demo data using the run_id"
+>
+  Load demo
+</button>
+
         </div>
 
         {/* Samples + usage */}
