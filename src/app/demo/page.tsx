@@ -13,7 +13,7 @@ import MetricsCards from '@/components/MetricsCards';
 
 /* ---------- demo mode config (REQUIRED) ---------- */
 // Using the provided run_id for demo mode:
-const DEFAULT_DEMO_RUN_ID = '72e42cef-fb24-4fb1-a310-e964c46a7395';
+const DEFAULT_DEMO_RUN_ID = '51767b89-2793-49ac-b578-da8063d59b2f';
 
 console.debug('[demo-page] POLL_BUILD =', POLL_BUILD);
 
