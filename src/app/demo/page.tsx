@@ -1,5 +1,17 @@
-// src/app/demo/page.tsx
 'use client';
+
+/*
+  PropVisions — Demo Page (PDF-parity room merge)
+  ------------------------------------------------------------
+  Key changes in this version
+  - Rooms list on the front end now follows the SAME logic as the PDF payload:
+    * Source of truth = property.room_totals (preferred)
+    * Only keep type === "room" and drop any "unmapped" rooms
+    * Image stitching: images_map -> image_urls_by_room -> not_in_floorplan
+    * De-dupe by room name so labour/material lines never double-count a room
+  - If room_totals is missing, we fall back to refurb_estimates (v2 grouper)
+  - Everything else (KPI/Scenarios/EPC/Sliders/PDF viewer) stays intact
+*/
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
@@ -267,7 +279,7 @@ export default function Page() {
   const [slDerived, setSlDerived] = useState<SliderDerived | null>(null);
   const [slAssumptions, setSlAssumptions] = useState<SliderAssumptions | null>(null);
 
-  // Filters
+  // Filters (for the room cards & table)
   const [filterType, setFilterType] = useState<string>('All');
   const [sortKey, setSortKey] = useState<'total_desc' | 'total_asc' | 'room_asc'>('total_desc');
   const [minConfidence, setMinConfidence] = useState<number>(0);
@@ -469,13 +481,12 @@ export default function Page() {
   }, [data?.property]);
 
   /* ---------- FEEDBACK: restrict to relevant places ---------- */
-  const showFinancialsFeedback = true; // one bar only, no duplicates
   const showRentFeedback = true;
   const showEpcFeedback  = true;
 
-  /* ---------- ROOM GROUPING & GALLERY ---------- */
+  /* ---------- ROOM LIST (PDF-parity) ---------- */
 
-  // Minimal embedded placeholder for rooms with no images
+  // Placeholder image for rooms with no pictures
   const NO_IMAGE_PLACEHOLDER =
     'data:image/svg+xml;utf8,' +
     encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420">
@@ -486,217 +497,199 @@ export default function Page() {
       <rect x="2" y="2" width="636" height="416" fill="none" stroke="#cbd5e1" stroke-width="4"/>
     </svg>`);
 
-  type GroupedRoom = {
-    key: string;
-    room_type: string;
-    room_label?: string | null;
-    // merged numbers
-    materials_total_with_vat_gbp?: number;
-    materials_total_gbp?: number;
-    labour_total_gbp?: number;
-    room_total_with_vat_gbp?: number;
-    room_total_gbp?: number;
-    confidence?: number | null;
-    // images
-    images: string[];
+  type DisplayRoom = {
+    key: string;            // stable id
+    name: string;           // e.g. "Bedroom 2"
+    room_type?: string | null;
+    materials_total_with_vat_gbp?: number | null;
+    materials_total_gbp?: number | null;
+    labour_total_gbp?: number | null;
+    total_with_vat?: number | null;
+    total_without_vat?: number | null;
+    image_urls: string[];
     primaryImage: string;
-    // representative row (for RoomCard consumption)
-    rep: RefurbRoom;
-    // count of merged source rows
-    mergedCount: number;
+    confidence?: number | null;
+    rep?: any;
   };
 
-  function normaliseType(x?: string | null) {
-    if (!x) return 'Other';
-    const t = x.toString().trim().toLowerCase().replace(/\s+/g, '_');
-    if (t.includes('exterior') || t.includes('facade') || t.includes('front') || t.includes('garden')) return 'facade';
-    return t;
-  }
-  function extractLabel(est: any): string | null {
-    // prefer explicit floorplan labels (e.g., "Bedroom 2")
-    return (
-      est.floorplan_room_label ||
-      est.room_label ||
-      est.room_name ||
-      null
-    );
-  }
-  function makeKey(est: any) {
-    const t = normaliseType(est.detected_room_type || est.room_type || 'other'); // e.g., "bedroom"
-    const label = (extractLabel(est) || '').toString().trim().toLowerCase();     // e.g., "bedroom 2"
-    // If label aligns with type (e.g., "bedroom 2"), use it; else just type.
-    if (label && label.startsWith(t)) return `${t}::${label}`;
-    // For kitchens/bathrooms without labels, include a stable hash using an index fall-back
-    const idx = Number(est.room_index ?? est.floorplan_room_id ?? est.order ?? 0) || 0;
-    return `${t}::${label || idx.toString()}`;
-  }
-  function prettyRoomName(key: string) {
-    const [t, label] = key.split('::');
-    const title = titleize(t.replace(/_/g, ' '));
-    if (!label) return title;
-    const labelPretty = titleize(label.replace(/_/g, ' '));
-    // Avoid "Bedroom Bedroom 2"
-    if (labelPretty.toLowerCase().startsWith(title.toLowerCase())) return labelPretty;
-    return `${title} — ${labelPretty}`;
+  function normRoomName(x?: string | null) { return (x || '').trim(); }
+  function looksUnmapped(x?: string | null) { return (x || '').toLowerCase().includes('unmapped'); }
+  function unique<T>(xs: T[]) { return Array.from(new Set(xs)); }
+  function titleize2(k: string) { return k.replace(/_/g, ' ').replace(/\b([a-z])/g, (m) => m.toUpperCase()); }
+
+  function collectImagesForRoom(property: any, roomName: string, imageId?: string | null) {
+    const urls: string[] = [];
+    if (imageId && property?.images_map?.[imageId]) {
+      urls.push(property.images_map[imageId]); // 1) direct mapping
+    }
+    if (roomName && property?.image_urls_by_room?.[roomName]) {
+      urls.push(...(property.image_urls_by_room[roomName] as string[])); // 2) by room name
+    }
+    if (Array.isArray(property?.not_in_floorplan)) { // 3) extras (garden, facade, etc.)
+      const needle = roomName.toLowerCase().replace(/\s+/g, '_');
+      for (const group of property.not_in_floorplan) {
+        const predicted = (group?.predicted_room || '').toLowerCase();
+        if (predicted.includes(needle)) urls.push(...(group?.image_urls || []));
+      }
+    }
+    const deduped = unique(urls.filter(Boolean));
+    return deduped.length ? deduped : [NO_IMAGE_PLACEHOLDER];
   }
 
-  function collectImages(est: any): string[] {
-    const imgs: string[] = [];
-    if (est.image_url) imgs.push(est.image_url);
-    if (Array.isArray(est.image_urls)) imgs.push(...est.image_urls.filter(Boolean));
-    if (Array.isArray(est.images)) imgs.push(...est.images.filter(Boolean));
-    // dedupe while preserving order
-    return Array.from(new Set(imgs.filter(Boolean)));
-  }
+  const displayRooms: DisplayRoom[] = useMemo(() => {
+    const p = data?.property || {};
+    const totals = Array.isArray(p.room_totals) ? p.room_totals : [];
 
-  const groupedRooms: GroupedRoom[] = useMemo(() => {
+    // ---- Preferred: use room_totals with PDF-parity filters ----
+    const roomRows = totals
+      .filter((r: any) => r?.type === 'room')
+      .filter((r: any) => r?.room_name && !looksUnmapped(r.room_name));
+
+    if (roomRows.length) {
+      const map = new Map<string, DisplayRoom>();
+      for (const r of roomRows) {
+        const roomName = normRoomName(r.room_name);
+        const key = roomName.toLowerCase().replace(/\s+/g, '::');
+        const imgs = collectImagesForRoom(p, roomName, r.image_id);
+        const primary = imgs[0];
+
+        const existing = map.get(key);
+        if (!existing) {
+          map.set(key, {
+            key,
+            name: roomName,
+            room_type: r.room_type || r.detected_room_type || null,
+            materials_total_with_vat_gbp: n(r.materials_total_with_vat_gbp) ?? null,
+            materials_total_gbp: n(r.materials_total_gbp) ?? null,
+            labour_total_gbp: n(r.labour_total_gbp) ?? null,
+            total_with_vat: n(r.total_with_vat) ?? n(r.room_total_with_vat_gbp) ?? null,
+            total_without_vat: n(r.total_without_vat) ?? n(r.room_total_gbp) ?? null,
+            image_urls: imgs,
+            primaryImage: primary,
+            confidence: n(r.room_confidence ?? r.confidence) ?? null,
+            rep: r,
+          });
+        } else {
+          // Merge if duplicates slip in with the same name
+          existing.materials_total_with_vat_gbp =
+            (existing.materials_total_with_vat_gbp ?? 0) + (n(r.materials_total_with_vat_gbp) ?? 0);
+          existing.materials_total_gbp =
+            (existing.materials_total_gbp ?? 0) + (n(r.materials_total_gbp) ?? 0);
+          existing.labour_total_gbp =
+            (existing.labour_total_gbp ?? 0) + (n(r.labour_total_gbp) ?? 0);
+          existing.total_with_vat =
+            (existing.total_with_vat ?? 0) + (n(r.total_with_vat ?? r.room_total_with_vat_gbp) ?? 0);
+          existing.total_without_vat =
+            (existing.total_without_vat ?? 0) + (n(r.total_without_vat ?? r.room_total_gbp) ?? 0);
+          existing.image_urls = unique([...(existing.image_urls || []), ...imgs]);
+          existing.primaryImage = existing.image_urls[0] || NO_IMAGE_PLACEHOLDER;
+          if (n(r.room_confidence ?? r.confidence) != null) {
+            existing.confidence = Math.max(existing.confidence ?? 0, Number(r.room_confidence ?? r.confidence));
+          }
+        }
+      }
+      return Array.from(map.values());
+    }
+
+    // ---- Fallback: use refurb_estimates (v2) and merge labour/material lines ----
     const rows = (data?.refurb_estimates || []) as any[];
-    const map = new Map<string, GroupedRoom>();
+    if (!rows.length) return [];
+
+    const map = new Map<string, DisplayRoom>();
+
+    function makeKey(est: any) {
+      const name =
+        est.floorplan_room_label ||
+        est.room_label ||
+        est.room_name ||
+        est.detected_room_type ||
+        'Room';
+      return normRoomName(name).toLowerCase().replace(/\s+/g, '::');
+    }
+    function collectImagesFromEstimate(est: any) {
+      const imgs: string[] = [];
+      if (est.image_url) imgs.push(est.image_url);
+      if (Array.isArray(est.image_urls)) imgs.push(...est.image_urls.filter(Boolean));
+      if (Array.isArray(est.images)) imgs.push(...est.images.filter(Boolean));
+      const deduped = unique(imgs.filter(Boolean));
+      return deduped.length ? deduped : [NO_IMAGE_PLACEHOLDER];
+    }
 
     for (const est of rows) {
       const key = makeKey(est);
-      const images = collectImages(est);
-      const materials = toInt(est.materials_total_with_vat_gbp ?? est.materials_total_gbp);
-      const labour    = toInt(est.labour_total_gbp);
-      const total     = roomV2Total(est);
-      const conf      = typeof est.confidence === 'number'
-        ? Number(est.confidence)
-        : typeof est.room_confidence === 'number' ? Number(est.room_confidence) : null;
+      const name =
+        est.floorplan_room_label || est.room_label || est.room_name || est.detected_room_type || 'Room';
+      const imgs = collectImagesFromEstimate(est);
+
+      const mat = n(est.materials_total_with_vat_gbp ?? est.materials_total_gbp) ?? 0;
+      const lab = n(est.labour_total_gbp) ?? 0;
+      const tot = n(est.room_total_with_vat_gbp ?? est.room_total_gbp ?? mat + lab) ?? 0;
 
       const existing = map.get(key);
       if (!existing) {
-        const imgList = images.length ? images : [NO_IMAGE_PLACEHOLDER];
         map.set(key, {
           key,
-          room_type: normaliseType(est.detected_room_type || est.room_type || 'other'),
-          room_label: extractLabel(est),
-          materials_total_with_vat_gbp: materials,
-          labour_total_gbp: labour,
-          room_total_with_vat_gbp: total,
-          confidence: conf,
-          images: imgList,
-          primaryImage: imgList[0],
+          name,
+          room_type: est.detected_room_type || est.room_type || null,
+          materials_total_with_vat_gbp: n(est.materials_total_with_vat_gbp) ?? n(est.materials_total_gbp) ?? null,
+          materials_total_gbp: n(est.materials_total_gbp) ?? null,
+          labour_total_gbp: n(est.labour_total_gbp) ?? null,
+          total_with_vat: n(est.room_total_with_vat_gbp ?? (mat + lab)) ?? null,
+          total_without_vat: n(est.room_total_gbp) ?? null,
+          image_urls: imgs,
+          primaryImage: imgs[0],
+          confidence: n(est.confidence ?? est.room_confidence) ?? null,
           rep: est,
-          mergedCount: 1,
         });
       } else {
-        existing.materials_total_with_vat_gbp = (existing.materials_total_with_vat_gbp || 0) + materials;
-        existing.labour_total_gbp = (existing.labour_total_gbp || 0) + labour;
-        existing.room_total_with_vat_gbp = (existing.room_total_with_vat_gbp || 0) + total;
-        existing.confidence = Math.max(existing.confidence ?? 0, conf ?? 0);
-        // merge images & dedupe
-        const merged = Array.from(new Set([...existing.images, ...images]));
-        existing.images = merged.length ? merged : [NO_IMAGE_PLACEHOLDER];
-        existing.primaryImage = existing.images[0];
-        existing.mergedCount += 1;
+        existing.materials_total_with_vat_gbp =
+          (existing.materials_total_with_vat_gbp ?? 0) + (n(est.materials_total_with_vat_gbp ?? est.materials_total_gbp) ?? 0);
+        existing.materials_total_gbp =
+          (existing.materials_total_gbp ?? 0) + (n(est.materials_total_gbp) ?? 0);
+        existing.labour_total_gbp =
+          (existing.labour_total_gbp ?? 0) + (n(est.labour_total_gbp) ?? 0);
+        existing.total_with_vat =
+          (existing.total_with_vat ?? 0) + (n(est.room_total_with_vat_gbp ?? tot) ?? 0);
+        existing.total_without_vat =
+          (existing.total_without_vat ?? 0) + (n(est.room_total_gbp) ?? 0);
+        existing.image_urls = unique([...(existing.image_urls || []), ...imgs]);
+        existing.primaryImage = existing.image_urls[0] || NO_IMAGE_PLACEHOLDER;
+        if (n(est.confidence ?? est.room_confidence) != null) {
+          existing.confidence = Math.max(existing.confidence ?? 0, Number(est.confidence ?? est.room_confidence));
+        }
       }
     }
 
-    // Facade/exterior: force single group (already normalized to 'facade')
-    // Nothing extra needed: makeKey collapses by type + label; exterior variants normalize to 'facade'.
+    return Array.from(map.values());
+  }, [data?.property, data?.refurb_estimates]);
 
-    // to list
-    let list = Array.from(map.values());
+  function prettyRoomNameFromDisplay(r: DisplayRoom) {
+    if (!r.room_type) return r.name;
+    const t = titleize2(String(r.room_type));
+    return r.name.toLowerCase().startsWith(t.toLowerCase()) ? r.name : `${t} — ${r.name}`;
+  }
 
-    // filter by type dropdown
-    if (filterType !== 'All') {
-      list = list.filter(g => titleize(g.room_type) === filterType);
+  const filteredRooms = useMemo(() => {
+    let list = displayRooms.slice();
+    if (filterType !== 'All') list = list.filter(r => titleize2(String(r.room_type || 'Other')) === filterType);
+    if (minConfidence > 0) {
+      list = list.filter(r => (typeof r.confidence === 'number' ? r.confidence * 100 >= minConfidence : true));
     }
-    // confidence threshold
-    list = list.filter(g => (typeof g.confidence === 'number' ? g.confidence * 100 >= minConfidence : true));
-
-    // sort
-    list = [...list].sort((a, b) => {
-      if (sortKey === 'total_desc') return (b.room_total_with_vat_gbp || 0) - (a.room_total_with_vat_gbp || 0);
-      if (sortKey === 'total_asc')  return (a.room_total_with_vat_gbp || 0) - (b.room_total_with_vat_gbp || 0);
-      return a.key.localeCompare(b.key);
+    list.sort((a, b) => {
+      const at = Number(a.total_with_vat ?? a.total_without_vat ?? 0);
+      const bt = Number(b.total_with_vat ?? b.total_without_vat ?? 0);
+      if (sortKey === 'total_desc') return bt - at;
+      if (sortKey === 'total_asc') return at - bt;
+      return a.name.localeCompare(b.name);
     });
-
     return list;
-  }, [data?.refurb_estimates, filterType, sortKey, minConfidence]);
+  }, [displayRooms, filterType, sortKey, minConfidence]);
 
   const roomTypes = useMemo(() => {
     const set = new Set<string>();
-    groupedRooms.forEach((g) => set.add(titleize(g.room_type)));
+    displayRooms.forEach((r) => set.add(titleize2(String(r.room_type || 'Other'))));
     return ['All', ...Array.from(set).sort()];
-  }, [groupedRooms]);
-
-  const tops = useMemo(() => {
-    const p = data?.property || {};
-    return [
-      { label: 'Displayed Price', value: money0(p.purchase_price_gbp ?? p.guide_price_gbp ?? p.asking_price_gbp ?? p.display_price_gbp), subtitle: 'price' },
-      { label: 'Guide Price',     value: money0(p.guide_price_gbp) },
-      { label: 'Purchase Price',  value: money0(p.purchase_price_gbp) },
-      { label: 'EPC Potential',   value: String(p.epc_potential ?? p.epc_rating_potential ?? '—') },
-    ];
-  }, [data?.property]);
-
-  /* ---------- scenarios helpers (labels & render) ---------- */
-  const labelMap: Record<string, { label?: string; hint?: string; fmt?: 'money'|'pct'|'raw' }> = {
-    // Inputs
-    purchase_price_gbp: { label: 'Purchase Price', hint: 'Assumed acquisition price', fmt: 'money' },
-    refurb_cost_gbp:    { label: 'Refurb Budget',  hint: 'Incl. VAT unless stated', fmt: 'money' },
-    annual_rent_gbp:    { label: 'Annual Rent',    hint: 'Gross scheduled rent', fmt: 'money' },
-    monthly_rent_gbp:   { label: 'Monthly Rent',   hint: 'Gross scheduled monthly rent', fmt: 'money' },
-    ground_rent_gbp:    { label: 'Ground Rent',    hint: 'Annual ground rent (if leasehold)', fmt: 'money' },
-    service_charge_gbp: { label: 'Service Charge', hint: 'Annual charge (if applicable)', fmt: 'money' },
-    sdlit_gbp:          { label: 'Stamp Duty',     hint: 'Stamp Duty Land Tax', fmt: 'money' },
-
-    // Exit: Sell
-    sale_price_gbp:     { label: 'Sale Price', fmt: 'money' },
-    selling_costs_gbp:  { label: 'Selling Costs', fmt: 'money' },
-    net_profit_gbp:     { label: 'Net Profit', fmt: 'money' },
-    roi_percent:        { label: 'ROI', fmt: 'pct' },
-
-    // Exit: Refi
-    ltv:                                { label: 'LTV', fmt: 'pct' },
-    dscr_month1:                        { label: 'DSCR (Month-1)', fmt: 'raw' },
-    refi_value_gbp:                     { label: 'Refi Value', fmt: 'money' },
-    final_btl_loan_gbp:                 { label: 'Final BTL Loan', fmt: 'money' },
-    net_cash_left_in_after_refi_gbp:    { label: 'Net Cash Left In', fmt: 'money' },
-    roi_cash_on_cash_percent_24m:       { label: 'Cash-on-Cash (24m)', fmt: 'pct' },
-
-    // Period (no refi)
-    facility_loan_gbp:  { label: 'Bridge Facility', fmt: 'money' },
-    deposit_gbp:        { label: 'Deposit', fmt: 'money' },
-    interest_gbp:       { label: 'Interest', fmt: 'money' },
-  };
-  const prettifyKey = (k: string) => labelMap[k]?.label || titleize(k.replace(/_gbp(_per_m)?$/.test(k) ? k.replace(/_gbp(_per_m)?$/,'') : k).replace(/_/g,' '));
-  const formatCell = (k: string, v: any) => {
-    const meta = labelMap[k];
-    const fmt = meta?.fmt;
-    if (v == null) return '—';
-    if (fmt === 'money' || /_gbp(_per_m)?$/.test(k) || /price|fee|cost|loan/i.test(k)) return money0(v);
-    if (fmt === 'pct'   || /_pct$/.test(k) || /rate|ltv|roi|yield|growth/i.test(k)) return `${(Number(v) * (String(v).includes('%') ? 1 : 100)).toFixed(2)}%`.replace('NaN%', '—');
-    if (typeof v === 'number') return v.toLocaleString();
-    return String(v);
-  };
-
-  const ScenarioKV = ({ obj }: { obj: any }) => {
-    const safe = tryParseJSON(obj);
-    if (safe == null) return <div className="text-slate-500 text-sm">No data.</div>;
-    if (Array.isArray(safe)) {
-      return (
-        <div className="space-y-2">
-          {safe.map((row, i) => (
-            <div key={i} className="rounded border p-2">
-              <ScenarioKV obj={row} />
-            </div>
-          ))}
-        </div>
-      );
-    }
-    if (isPlainObject(safe)) {
-      return (
-        <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
-          {Object.entries(safe as Record<string, any>).map(([k, v]) => (
-            <FragmentKV key={k} k={k} v={v} formatCell={formatCell} prettifyKey={prettifyKey} />
-          ))}
-        </dl>
-      );
-    }
-    return <div className="text-xs font-mono text-slate-700 break-all">{String(safe)}</div>;
-  };
+  }, [displayRooms]);
 
   /* ---------- UI ---------- */
   return (
@@ -815,7 +808,12 @@ export default function Page() {
                 </div>
 
                 <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {tops.map((k) => (<KPI key={k.label} label={k.label} value={k.value} subtitle={k.subtitle} />))}
+                  {[
+                    { label: 'Displayed Price', value: money0(data.property?.purchase_price_gbp ?? data.property?.guide_price_gbp ?? data.property?.asking_price_gbp ?? data.property?.display_price_gbp), subtitle: 'price' },
+                    { label: 'Guide Price',     value: money0(data.property?.guide_price_gbp) },
+                    { label: 'Purchase Price',  value: money0(data.property?.purchase_price_gbp) },
+                    { label: 'EPC Potential',   value: String(epc?.potential ?? '—') },
+                  ].map((k) => (<KPI key={k.label} label={k.label} value={k.value} subtitle={k.subtitle} />))}
                 </div>
 
                 {/* Floorplan gallery */}
@@ -834,7 +832,6 @@ export default function Page() {
                 )}
 
                 <div className="mt-2">
-                  {/* Keep a single overview feedback if needed */}
                   <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="financials" targetKey="overview" compact />
                 </div>
               </div>
@@ -922,7 +919,7 @@ export default function Page() {
           {/* Refurbishment */}
           <Section
             title="Refurbishment Estimates"
-            desc="Rooms are grouped (materials + labour merged) and tagged by floorplan labels (e.g., Bedroom 1). If a room has costs but no photos, we show a clear placeholder. Extra photos appear as a small gallery."
+            desc="Rooms are merged by name (materials + labour combined) and tagged by floorplan labels (e.g., Bedroom 1). If a room has costs but no photos, we show a clear placeholder. Extra photos appear as a small gallery."
             right={
               <div className="flex flex-wrap items-center gap-2 ml-auto">
                 <label className="text-xs text-slate-600">Filter:</label>
@@ -949,26 +946,23 @@ export default function Page() {
               {period?.months_refurb != null ? <> Current assumption: <strong>{Number(period.months_refurb)} months</strong>.</> : ' If not shown, the backend hasn’t provided a refurb duration for this run.'}
             </div>
 
-            {/* Cards (grouped) */}
-            {groupedRooms.length ? (
+            {/* Cards */}
+            {filteredRooms.length ? (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                  {groupedRooms.map((g, idx) => {
-                    // We’ll pass a representative room to RoomCard but decorate the header + gallery here.
-                    const title = prettyRoomName(g.key);
+                  {filteredRooms.map((g, idx) => {
+                    const title = prettyRoomNameFromDisplay(g);
                     const conf = typeof g.confidence === 'number' ? Math.round(g.confidence * 100) : null;
 
                     return (
                       <div key={g.key ?? idx} className="rounded-xl border bg-white overflow-hidden shadow-sm">
-                        {/* Top media: primary + thumbs */}
+                        {/* Media */}
                         <div className="p-2 border-b">
-                          <div className="w-full h-40 bg-white rounded-md overflow-hidden flex items-center justify-center">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={g.primaryImage} alt={title} className="w-full h-40 object-cover object-center" loading="lazy" />
-                          </div>
-                          {g.images.length > 1 && (
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={g.primaryImage} alt={title} className="w-full h-40 object-cover object-center" loading="lazy" />
+                          {g.image_urls.length > 1 && (
                             <div className="mt-2 grid grid-cols-5 gap-1">
-                              {g.images.slice(1, 6).map((src, i) => (
+                              {g.image_urls.slice(1, 6).map((src, i) => (
                                 <div key={i} className="h-10 rounded overflow-hidden border bg-white">
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img src={src} alt={`${title} ${i+2}`} className="w-full h-10 object-cover" loading="lazy" />
@@ -981,16 +975,16 @@ export default function Page() {
                           )}
                         </div>
 
-                        {/* Title + tag row */}
+                        {/* Header */}
                         <div className="px-3 pt-2 pb-0.5 flex items-center justify-between">
                           <div className="text-sm font-medium">{title}</div>
                           <div className="flex items-center gap-2">
-                            {g.room_label && <Badge tone="slate">{g.room_label}</Badge>}
+                            {g.room_type && <Badge tone="slate">{titleize2(String(g.room_type))}</Badge>}
                             {conf != null && <Badge tone={conf >= 80 ? 'green' : conf >= 50 ? 'amber' : 'red'}>{conf}%</Badge>}
                           </div>
                         </div>
 
-                        {/* Body: totals + existing RoomCard breakdown (keeps your per-item UI) */}
+                        {/* Body */}
                         <div className="p-3">
                           <div className="mb-2 grid grid-cols-3 gap-2 text-xs">
                             <div className="rounded border p-2 bg-slate-50">
@@ -1003,24 +997,21 @@ export default function Page() {
                             </div>
                             <div className="rounded border p-2 bg-slate-50">
                               <div className="text-slate-500">Total</div>
-                              <div className="font-semibold">{money0(g.room_total_with_vat_gbp ?? g.room_total_gbp)}</div>
+                              <div className="font-semibold">{money0(g.total_with_vat ?? g.total_without_vat)}</div>
                             </div>
                           </div>
 
-                          {/* Keep your existing breakdown component for consistency */}
                           <RoomCard
                             key={g.key}
                             room={{
-                              ...g.rep,
-                              // supply merged totals so RoomCard shows correct single figure
-                              materials_total_with_vat_gbp: g.materials_total_with_vat_gbp ?? g.materials_total_gbp,
-                              labour_total_gbp: g.labour_total_gbp,
-                              room_total_with_vat_gbp: g.room_total_with_vat_gbp ?? g.room_total_gbp,
-                              // hint the label for icons/titles
-                              room_label: g.room_label ?? undefined,
-                              // ensure RoomCard has at least one image (the placeholder will be used if none)
+                              ...(g.rep || {}),
+                              materials_total_with_vat_gbp: g.materials_total_with_vat_gbp ?? g.materials_total_gbp ?? undefined,
+                              labour_total_gbp: g.labour_total_gbp ?? undefined,
+                              room_total_with_vat_gbp: g.total_with_vat ?? undefined,
+                              room_total_gbp: g.total_without_vat ?? undefined,
+                              room_label: g.name,
                               image_url: g.primaryImage,
-                              image_urls: g.images,
+                              image_urls: g.image_urls,
                             } as any}
                             runId={runIdRef.current}
                             propertyId={data.property_id}
@@ -1044,7 +1035,7 @@ export default function Page() {
                   <KPI label="V2 fallback (incl. VAT)" value={rollup.v2_total_with_vat_fallback ? money0(rollup.v2_total_with_vat_fallback) : '—'} subtitle="Displayed when project rollup is missing" />
                 </div>
 
-                {/* Totals table (from original rows; optional to keep) */}
+                {/* Totals table */}
                 <div className="overflow-x-auto">
                   <table className="w-full border text-sm">
                     <thead>
@@ -1057,14 +1048,14 @@ export default function Page() {
                       </tr>
                     </thead>
                     <tbody>
-                      {groupedRooms.map((g, i) => {
+                      {filteredRooms.map((g, i) => {
                         const conf = typeof g.confidence === 'number' ? Math.round(g.confidence * 100) : null;
                         return (
                           <tr key={g.key ?? `row-${i}`} className="border-t">
-                            <td className="p-2 capitalize">{prettyRoomName(g.key)}</td>
+                            <td className="p-2">{prettyRoomNameFromDisplay(g)}</td>
                             <td className="p-2 text-right">{money0(g.materials_total_with_vat_gbp ?? g.materials_total_gbp)}</td>
                             <td className="p-2 text-right">{money0(g.labour_total_gbp)}</td>
-                            <td className="p-2 text-right font-semibold">{money0(g.room_total_with_vat_gbp ?? g.room_total_gbp)}</td>
+                            <td className="p-2 text-right font-semibold">{money0(g.total_with_vat ?? g.total_without_vat)}</td>
                             <td className="p-2 text-right">{conf != null ? `${conf}%` : '—'}</td>
                           </tr>
                         );
@@ -1074,13 +1065,13 @@ export default function Page() {
                       <tr className="border-t bg-slate-50">
                         <td className="p-2 text-right font-medium">Totals</td>
                         <td className="p-2 text-right font-medium">
-                          {money0(groupedRooms.reduce((a, r) => a + toInt(r.materials_total_with_vat_gbp ?? r.materials_total_gbp), 0))}
+                          {money0(filteredRooms.reduce((a, r) => a + (Number(r.materials_total_with_vat_gbp ?? r.materials_total_gbp ?? 0)), 0))}
                         </td>
                         <td className="p-2 text-right font-medium">
-                          {money0(groupedRooms.reduce((a, r) => a + toInt(r.labour_total_gbp), 0))}
+                          {money0(filteredRooms.reduce((a, r) => a + (Number(r.labour_total_gbp ?? 0)), 0))}
                         </td>
                         <td className="p-2 text-right font-semibold">
-                          {money0(groupedRooms.reduce((a, r) => a + toInt(r.room_total_with_vat_gbp ?? r.room_total_gbp), 0))}
+                          {money0(filteredRooms.reduce((a, r) => a + (Number(r.total_with_vat ?? r.total_without_vat ?? 0)), 0))}
                         </td>
                         <td className="p-2" />
                       </tr>
@@ -1186,7 +1177,6 @@ export default function Page() {
                 }}
               />
               <div className="mt-2 flex items-center gap-3">
-                {/* SINGLE feedback bar only (no duplicate thumbs in this section) */}
                 <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="financials" targetKey="summary" variant="yesno" compact />
               </div>
             </div>
@@ -1265,7 +1255,7 @@ export default function Page() {
                   <dd className="text-right">{exitRefi?.dscr_month1 != null ? exitRefi.dscr_month1.toFixed(2) : '—'}</dd>
                 </dl>
 
-                {/* Mini bars if we have a totals object in scenarios */}
+                {/* Mini bars if totals_24m exists */}
                 {isPlainObject(tryParseJSON(scenarios?.exit_refi_24m?.totals_24m)) && (() => {
                   const t = tryParseJSON(scenarios.exit_refi_24m.totals_24m) as any;
                   const items = [
