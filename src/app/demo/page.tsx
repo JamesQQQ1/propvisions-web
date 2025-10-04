@@ -3,7 +3,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 
 import { pollUntilDone, type RunStatus, startAnalyze, POLL_BUILD } from '@/lib/api';
 import RoomCard, { type RefurbRoom } from '@/components/RoomCard';
@@ -13,7 +12,6 @@ import FinancialSliders, {
   type Derived as SliderDerived,
   type Assumptions as SliderAssumptions,
 } from '@/components/FinancialSliders';
-import MetricsCards from '@/components/MetricsCards';
 
 /* ---------- demo mode config (REQUIRED) ---------- */
 const DEFAULT_DEMO_RUN_ID = '51767b89-2793-49ac-b578-da8063d59b2f';
@@ -22,36 +20,31 @@ console.debug('[demo-page] POLL_BUILD =', POLL_BUILD);
 /* ---------- branding ---------- */
 const LOGO_SRC = '/propvisions_logo.png';
 
-/* ---------- tiny helpers ---------- */
-const nfGBP0 = new Intl.NumberFormat('en-GB', {
-  style: 'currency',
-  currency: 'GBP',
-  maximumFractionDigits: 0,
-});
-const nfGBP2 = new Intl.NumberFormat('en-GB', {
-  style: 'currency',
-  currency: 'GBP',
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-const nfPct1 = new Intl.NumberFormat('en-GB', { style: 'percent', maximumFractionDigits: 1 });
+/* ---------- number/format helpers ---------- */
+const nfGBP0 = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 });
+const nfGBP2 = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const nfPct1  = new Intl.NumberFormat('en-GB', { style: 'percent', maximumFractionDigits: 1 });
 
 const isFiniteNum = (n: unknown) => Number.isFinite(Number(n));
-const n = (x: unknown) => (isFiniteNum(x) ? Number(x) : undefined);
+const n  = (x: unknown) => (isFiniteNum(x) ? Number(x) : undefined);
 const nz = (x: unknown) => (isFiniteNum(x) ? Number(x) : 0);
 
 export const money0 = (x?: unknown) => (x == null || x === '' ? '—' : nfGBP0.format(Number(x)));
 export const money2 = (x?: unknown) => (x == null || x === '' ? '—' : nfGBP2.format(Number(x)));
-const pc = (x?: unknown) => (x == null || x === '' ? '—' : `${Number(x) * 100 % 1 ? Number(x).toFixed(2) : Number(x)}%`);
 const pc1 = (x?: unknown) => (x == null || x === '' ? '—' : nfPct1.format(Number(x)));
 
 const classNames = (...xs: (string | false | null | undefined)[]) => xs.filter(Boolean).join(' ');
+const titleize = (k: string) => k.replace(/_/g, ' ').replace(/\b([a-z])/g, (m) => m.toUpperCase());
 
-const titleize = (k: string) =>
-  k
-    .replace(/_/g, ' ')
-    .replace(/\b([a-z])/g, (m) => m.toUpperCase());
+const tryParseJSON = (v: unknown) => {
+  if (typeof v === 'string' && v.trim().length && /^[\[{]/.test(v.trim())) {
+    try { return JSON.parse(v); } catch { /* ignore */ }
+  }
+  return v;
+};
+const isPlainObject = (x: any) => x && typeof x === 'object' && !Array.isArray(x);
 
+/* ---------- price pick ---------- */
 const pickPrice = (p: any): number =>
   Number(p?.purchase_price_gbp ?? 0) ||
   Number(p?.guide_price_gbp ?? 0) ||
@@ -59,7 +52,7 @@ const pickPrice = (p: any): number =>
   Number(p?.display_price_gbp ?? 0) ||
   0;
 
-/* ---------- refurbishment totals helpers (keep logic, just richer display) ---------- */
+/* ---------- refurbishment totals helpers ---------- */
 function toInt(v: unknown) {
   const x = Math.round(Number(v ?? 0));
   return Number.isFinite(x) && x > 0 ? x : 0;
@@ -75,7 +68,6 @@ function sumV2Totals(rows?: RefurbRoom[] | null) {
   if (!Array.isArray(rows)) return 0;
   return rows.reduce((acc, r) => acc + roomV2Total(r), 0);
 }
-
 /** Pulls rollups from property.room_totals when available, else falls back to v2 sums */
 function computeRefurbRollup(property: any, refurb_estimates: RefurbRoom[] | undefined | null) {
   const rows = Array.isArray(property?.room_totals) ? property.room_totals : [];
@@ -117,11 +109,9 @@ function computeRefurbRollup(property: any, refurb_estimates: RefurbRoom[] | und
       n(property?.property_total_without_vat) ??
       n(property?.refurb_total_without_vat_gbp) ??
       undefined,
-    // fallbacks from v2 per-room if needed
     v2_total_with_vat_fallback: sumV2Totals(refurb_estimates),
   };
 
-  // If no explicit rooms_total_with_vat but we do have per-room v2, provide a backstop
   if (!result.rooms_total_with_vat && result.v2_total_with_vat_fallback) {
     result.rooms_total_with_vat = result.v2_total_with_vat_fallback;
   }
@@ -129,7 +119,7 @@ function computeRefurbRollup(property: any, refurb_estimates: RefurbRoom[] | und
   return result;
 }
 
-/* ---------- inline visual micro components (no extra deps) ---------- */
+/* ---------- UI micro components ---------- */
 function Badge({ children, tone = 'slate' }: { children: React.ReactNode; tone?: 'green' | 'red' | 'amber' | 'slate' | 'blue' }) {
   const m: Record<string, string> = {
     green: 'bg-green-50 text-green-700 ring-green-200',
@@ -140,20 +130,9 @@ function Badge({ children, tone = 'slate' }: { children: React.ReactNode; tone?:
   };
   return <span className={classNames('inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs ring-1', m[tone])}>{children}</span>;
 }
-
 function KPI({
-  label,
-  value,
-  subtitle,
-  tone,
-  big = true,
-}: {
-  label: string;
-  value: React.ReactNode;
-  subtitle?: React.ReactNode;
-  tone?: 'green' | 'red' | 'amber' | 'slate' | 'blue';
-  big?: boolean;
-}) {
+  label, value, subtitle, tone, big = true,
+}: { label: string; value: React.ReactNode; subtitle?: React.ReactNode; tone?: 'green'|'red'|'amber'|'slate'|'blue'; big?: boolean; }) {
   return (
     <div className="rounded-xl border border-slate-200 p-3 bg-white shadow-sm">
       <div className="flex items-center justify-between">
@@ -165,30 +144,28 @@ function KPI({
     </div>
   );
 }
-
-function Section({ title, children, right }: { title: string; children: React.ReactNode; right?: React.ReactNode }) {
+function Section({ title, children, right, desc }: { title: string; children: React.ReactNode; right?: React.ReactNode; desc?: string }) {
   return (
     <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-xl font-semibold">{title}</h3>
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <h3 className="text-xl font-semibold">{title}</h3>
+          {desc && <p className="text-sm text-slate-600 mt-0.5">{desc}</p>}
+        </div>
         {right}
       </div>
       {children}
     </section>
   );
 }
-
-/** Tiny semicircle DSCR gauge (SVG only) */
+/** Tiny semicircle DSCR gauge (SVG) */
 function DSCRGauge({ value }: { value?: number }) {
-  const v = Math.max(0, Math.min(2, Number(value ?? 0))); // cap 0..2
-  const pct = v / 2; // 0..1 across the arc
-  const angle = Math.PI * (1 + pct); // map 0..1 → pi..2pi
-  const r = 42;
-  const cx = 50;
-  const cy = 50;
+  const v = Math.max(0, Math.min(2, Number(value ?? 0)));
+  const pct = v / 2;
+  const angle = Math.PI * (1 + pct);
+  const r = 42, cx = 50, cy = 50;
   const x = cx + r * Math.cos(angle);
   const y = cy + r * Math.sin(angle);
-
   const critical = v < 1.0;
   const ok = v >= 1.25;
   const tone = critical ? '#ef4444' : ok ? '#22c55e' : '#f59e0b';
@@ -196,19 +173,9 @@ function DSCRGauge({ value }: { value?: number }) {
   return (
     <div className="inline-flex items-center gap-3">
       <svg width="120" height="70" viewBox="0 0 100 60" aria-label="DSCR gauge">
-        {/* background arc */}
         <path d="M8,50 A42,42 0 1 1 92,50" fill="none" stroke="#e5e7eb" strokeWidth="8" strokeLinecap="round" />
-        {/* value arc */}
-        <path
-          d={`M8,50 A42,42 0 ${pct > 0.5 ? 1 : 0} 1 ${x},${y}`}
-          fill="none"
-          stroke={tone}
-          strokeWidth="8"
-          strokeLinecap="round"
-        />
-        {/* tick at 1.25 */}
+        <path d={`M8,50 A42,42 0 ${pct > 0.5 ? 1 : 0} 1 ${x},${y}`} fill="none" stroke={tone} strokeWidth="8" strokeLinecap="round" />
         <path d="M63,14 L66,9" stroke="#9ca3af" strokeWidth="2" />
-        {/* center text */}
         <text x="50" y="52" textAnchor="middle" fontSize="10" fill="#111827" fontWeight={700}>
           {value == null ? '—' : value.toFixed(2)}
         </text>
@@ -217,6 +184,28 @@ function DSCRGauge({ value }: { value?: number }) {
         <div className="font-medium">DSCR (Month-1)</div>
         <div className="text-slate-600">≥ 1.25 preferred by lenders</div>
       </div>
+    </div>
+  );
+}
+/** Minimal bar chart (SVG) for 24m summary */
+function MiniBars({ items }: { items: { label: string; value: number; fmt?: 'money'|'raw' }[] }) {
+  const max = Math.max(1, ...items.map(i => Math.abs(i.value)));
+  return (
+    <div className="space-y-1">
+      {items.map((it, i) => {
+        const width = Math.round((Math.abs(it.value) / max) * 100);
+        return (
+          <div key={i} className="flex items-center gap-2">
+            <div className="w-28 text-xs text-slate-600">{it.label}</div>
+            <div className="flex-1 h-3 bg-slate-100 rounded">
+              <div className="h-3 rounded bg-blue-500" style={{ width: `${width}%` }} />
+            </div>
+            <div className="w-24 text-right text-xs tabular-nums">
+              {it.fmt === 'money' ? money0(it.value) : it.value.toLocaleString()}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -231,18 +220,13 @@ function StatusBadge({ status }: { status?: RunStatus | 'idle' }) {
       : status === 'queued' || status === 'processing'
       ? 'bg-amber-100 text-amber-900 border-amber-200'
       : 'bg-gray-100 text-gray-800 border-gray-200';
-
   return <span className={classNames('inline-block px-2 py-0.5 text-xs rounded border', color)}>{status || 'idle'}</span>;
 }
-
 function ProgressBar({ percent, show }: { percent: number; show: boolean }) {
   return (
     <div className={classNames('mt-3 w-full', !show && 'hidden')} aria-hidden={!show}>
       <div className="h-2 w-full bg-slate-200/70 rounded overflow-hidden">
-        <div
-          className="h-2 bg-blue-600 transition-[width] duration-300 ease-out will-change-[width]"
-          style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
-        />
+        <div className="h-2 bg-blue-600 transition-[width] duration-300 ease-out will-change-[width]" style={{ width: `${Math.max(0, Math.min(100, percent))}%` }} />
       </div>
     </div>
   );
@@ -276,10 +260,7 @@ export default function Page() {
     if (typeof window === 'undefined') return;
     const usp = new URLSearchParams(window.location.search);
     const qRun = usp.get('run');
-    if (qRun) {
-      setUseDemo(true);
-      setDemoRunId(qRun);
-    }
+    if (qRun) { setUseDemo(true); setDemoRunId(qRun); }
   }, []);
 
   // Sliders
@@ -302,9 +283,7 @@ export default function Page() {
 
   /* logout */
   async function handleLogout() {
-    try {
-      await fetch('/api/demo-logout', { method: 'POST' });
-    } catch {}
+    try { await fetch('/api/demo-logout', { method: 'POST' }); } catch {}
     window.location.href = '/demo-access?next=/demo';
   }
 
@@ -314,26 +293,15 @@ export default function Page() {
     submittingRef.current = true;
     try {
       const theRunId = (theRunIdRaw || '').trim();
-      setShowDebug(false);
-      setError(undefined);
-      setData(null);
-      setSlDerived(null);
-      setSlAssumptions(null);
-      setFilterType('All');
-      setSortKey('total_desc');
-      setMinConfidence(0);
+      setShowDebug(false); setError(undefined); setData(null);
+      setSlDerived(null); setSlAssumptions(null);
+      setFilterType('All'); setSortKey('total_desc'); setMinConfidence(0);
 
-      if (!theRunId) {
-        setStatus('failed');
-        setError('No demo run_id provided.');
-        return;
-      }
+      if (!theRunId) { setStatus('failed'); setError('No demo run_id provided.'); return; }
       abortRef.current?.abort();
 
-      setStatus('queued');
-      setProgress((p) => (p < 6 ? 6 : p));
-      runIdRef.current = theRunId;
-      execIdRef.current = null;
+      setStatus('queued'); setProgress((p) => (p < 6 ? 6 : p));
+      runIdRef.current = theRunId; execIdRef.current = null;
 
       const controller = new AbortController();
       abortRef.current = controller;
@@ -345,8 +313,7 @@ export default function Page() {
         signal: controller.signal,
       });
 
-      setStatus('completed');
-      setProgress(100);
+      setStatus('completed'); setProgress(100);
       setData({
         property_id: result.property_id ?? null,
         property: result.property ?? null,
@@ -362,9 +329,7 @@ export default function Page() {
       setStatus('failed');
     } finally {
       abortRef.current = null;
-      setTimeout(() => {
-        submittingRef.current = false;
-      }, 300);
+      setTimeout(() => { submittingRef.current = false; }, 300);
     }
   }
 
@@ -374,35 +339,20 @@ export default function Page() {
     if (submittingRef.current) return;
     submittingRef.current = true;
     try {
-      setShowDebug(false);
-      setError(undefined);
-      setData(null);
-      setSlDerived(null);
-      setSlAssumptions(null);
-      setFilterType('All');
-      setSortKey('total_desc');
-      setMinConfidence(0);
+      setShowDebug(false); setError(undefined); setData(null);
+      setSlDerived(null); setSlAssumptions(null);
+      setFilterType('All'); setSortKey('total_desc'); setMinConfidence(0);
 
-      if (useDemo) {
-        await loadDemoRun(demoRunId);
-        return;
-      }
+      if (useDemo) { await loadDemoRun(demoRunId); return; }
 
-      if (usage && usage.remaining === 0) {
-        setStatus('failed');
-        setError('Daily demo limit reached.');
-        return;
-      }
+      if (usage && usage.remaining === 0) { setStatus('failed'); setError('Daily demo limit reached.'); return; }
 
-      setStatus('queued');
-      setProgress((p) => (p < 6 ? 6 : p));
+      setStatus('queued'); setProgress((p) => (p < 6 ? 6 : p));
 
       let kickoff: { run_id: string; execution_id?: string; usage?: any };
-      try {
-        kickoff = await startAnalyze(url);
-      } catch (err: any) {
-        setStatus('failed');
-        setError(err?.message || 'Failed to start analysis');
+      try { kickoff = await startAnalyze(url); }
+      catch (err: any) {
+        setStatus('failed'); setError(err?.message || 'Failed to start analysis');
         if (err?.usage) setUsage(err.usage as any);
         return;
       }
@@ -422,8 +372,7 @@ export default function Page() {
           signal: controller.signal,
         });
 
-        setStatus('completed');
-        setProgress(100);
+        setStatus('completed'); setProgress(100);
         setData({
           property_id: result.property_id ?? null,
           property: result.property ?? null,
@@ -436,13 +385,9 @@ export default function Page() {
       } catch (err: any) {
         setError(err?.message === 'Polling aborted' ? 'Cancelled.' : err?.message || 'Run failed');
         setStatus('failed');
-      } finally {
-        abortRef.current = null;
-      }
+      } finally { abortRef.current = null; }
     } finally {
-      setTimeout(() => {
-        submittingRef.current = false;
-      }, 300);
+      setTimeout(() => { submittingRef.current = false; }, 300);
     }
   }
 
@@ -450,14 +395,9 @@ export default function Page() {
     const run_id = runIdRef.current;
     const execution_id = execIdRef.current;
     try {
-      await fetch('/api/run/cancel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ run_id, execution_id }),
-      });
+      await fetch('/api/run/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ run_id, execution_id }) });
     } catch {}
-    abortRef.current?.abort();
-    abortRef.current = null;
+    abortRef.current?.abort(); abortRef.current = null;
     setStatus('failed');
     setError(execution_id ? 'Stop requested.' : 'Stopped locally (no execution id).');
   }
@@ -469,28 +409,14 @@ export default function Page() {
   const MAX_DURING_RUN = 97;
 
   useEffect(() => {
-    if (!running) {
-      if (timerRef.current) clearInterval(timerRef.current);
-      timerRef.current = null;
-      return;
-    }
-    startedAtRef.current = Date.now();
-    setElapsedMs(0);
-    timerRef.current = setInterval(() => {
-      if (startedAtRef.current) setElapsedMs(Date.now() - startedAtRef.current);
-    }, 250);
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      timerRef.current = null;
-    };
+    if (!running) { if (timerRef.current) clearInterval(timerRef.current); timerRef.current = null; return; }
+    startedAtRef.current = Date.now(); setElapsedMs(0);
+    timerRef.current = setInterval(() => { if (startedAtRef.current) setElapsedMs(Date.now() - startedAtRef.current); }, 250);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); timerRef.current = null; };
   }, [running]);
 
   useEffect(() => {
-    if (!running) {
-      if (progressTickRef.current) clearInterval(progressTickRef.current);
-      progressTickRef.current = null;
-      return;
-    }
+    if (!running) { if (progressTickRef.current) clearInterval(progressTickRef.current); progressTickRef.current = null; return; }
     setProgress((p) => (p < 6 ? 6 : p));
     progressTickRef.current = setInterval(() => {
       if (!startedAtRef.current) return;
@@ -498,46 +424,37 @@ export default function Page() {
       const target = Math.min(MAX_DURING_RUN, (elapsed / RAMP_MS) * MAX_DURING_RUN);
       setProgress((p) => (p < target ? p + Math.min(0.8, target - p) : p));
     }, 300);
-    return () => {
-      if (progressTickRef.current) clearInterval(progressTickRef.current);
-      progressTickRef.current = null;
-    };
+    return () => { if (progressTickRef.current) clearInterval(progressTickRef.current); progressTickRef.current = null; };
   }, [running]);
 
   useEffect(() => {
-    if (status === 'completed') {
-      setProgress(100);
-    } else if ((status === 'failed' || status === 'idle') && !running) {
-      setProgress(0);
-    }
+    if (status === 'completed') setProgress(100);
+    else if ((status === 'failed' || status === 'idle') && !running) setProgress(0);
   }, [status, running]);
 
-  /* derived UI bits */
-  const basePrice = useMemo(() => pickPrice(data?.property), [data?.property]);
-  const baseRent = useMemo(() => Number((data?.financials as any)?.monthly_rent_gbp ?? 0) || 0, [data?.financials]);
+  /* derived */
+  const basePrice  = useMemo(() => pickPrice(data?.property), [data?.property]);
+  const baseRent   = useMemo(() => Number((data?.financials as any)?.monthly_rent_gbp ?? 0) || 0, [data?.financials]);
   const baseRefurb = useMemo(() => sumV2Totals(data?.refurb_estimates), [data?.refurb_estimates]);
+  const rollup     = useMemo(() => computeRefurbRollup(data?.property, data?.refurb_estimates), [data?.property, data?.refurb_estimates]);
 
-  const rollup = useMemo(() => computeRefurbRollup(data?.property, data?.refurb_estimates), [data?.property, data?.refurb_estimates]);
+  const epc = data?.property ? {
+    current: data.property.epc_rating_current ?? data.property.epc_rating ?? null,
+    potential: data.property.epc_rating_potential ?? null,
+    score_current: n(data.property.epc_score_current),
+    score_potential: n(data.property.epc_score_potential),
+  } : null;
 
-  const epc = data?.property
-    ? {
-        current: data.property.epc_rating_current ?? data.property.epc_rating ?? null,
-        potential: data.property.epc_rating_potential ?? null,
-        score_current: n(data.property.epc_score_current),
-        score_potential: n(data.property.epc_score_potential),
-      }
-    : null;
-
-  const services = data?.property?.services || {};
+  const services   = data?.property?.services || {};
   const efficiency = data?.property?.efficiency || {};
-  const dims = data?.property?.dimensions || {};
+  const dims       = data?.property?.dimensions || {};
 
-  const backendSummary = (data?.financials?.summary as any) || (data?.property?.summary as any) || null;
-  const period = backendSummary?.period || null;
+  const backendSummary = (data?.financials as any)?.summary || (data?.property as any)?.summary || null;
+  const period   = backendSummary?.period || null;
   const exitSell = backendSummary?.exit_sell || null;
   const exitRefi = backendSummary?.exit_refi_24m || null;
 
-  const scenarios = (data?.financials?.scenarios as any) || (data?.property?.scenarios as any) || null;
+  const scenarios = ((data?.financials as any)?.scenarios || (data?.property as any)?.scenarios || null) as any;
 
   const roomTypes = useMemo(() => {
     const set = new Set<string>();
@@ -567,49 +484,84 @@ export default function Page() {
     return list;
   }, [data?.refurb_estimates, filterType, sortKey, minConfidence]);
 
-  const fallbackForMetrics = useMemo(() => {
-    const F = (data?.financials || {}) as Record<string, any>;
-    const maybe = (k: string) => (Number.isFinite(+F[k]) ? +F[k] : undefined);
-    return {
-      noiAnnual: maybe('annual_net_income_gbp'),
-      totalInvestment: maybe('total_investment_gbp'),
-      mortgageMonthly: maybe('mortgage_monthly_gbp'),
-      cashflowMonthly:
-        maybe('monthly_cashflow_gbp') ??
-        (maybe('annual_net_income_gbp') ? ((maybe('annual_net_income_gbp') as number) / 12) : undefined),
-      netYieldPct: maybe('net_yield_percent'),
-      roiPctYear1: maybe('roi_percent'),
-    };
-  }, [data?.financials]);
-
   const tops = useMemo(() => {
     const p = data?.property || {};
     return [
-      {
-        label: 'Displayed Price',
-        value: money0(
-          p.purchase_price_gbp ??
-            p.guide_price_gbp ??
-            p.asking_price_gbp ??
-            p.display_price_gbp
-        ),
-        subtitle: 'price',
-      },
-      {
-        label: 'Guide Price',
-        value: money0(p.guide_price_gbp),
-      },
-      {
-        label: 'Purchase Price',
-        value: money0(p.purchase_price_gbp),
-      },
-      {
-        label: 'EPC Potential',
-        value: String(p.epc_potential ?? p.epc_rating_potential ?? '—'),
-      },
+      { label: 'Displayed Price', value: money0(p.purchase_price_gbp ?? p.guide_price_gbp ?? p.asking_price_gbp ?? p.display_price_gbp), subtitle: 'price' },
+      { label: 'Guide Price',     value: money0(p.guide_price_gbp) },
+      { label: 'Purchase Price',  value: money0(p.purchase_price_gbp) },
+      { label: 'EPC Potential',   value: String(p.epc_potential ?? p.epc_rating_potential ?? '—') },
     ];
   }, [data?.property]);
 
+  /* ---------- scenarios helpers (labels & render) ---------- */
+  const labelMap: Record<string, { label?: string; hint?: string; fmt?: 'money'|'pct'|'int'|'raw' }> = {
+    // Inputs
+    purchase_price_gbp: { label: 'Purchase Price', hint: 'Assumed acquisition price', fmt: 'money' },
+    refurb_cost_gbp:    { label: 'Refurb Budget',  hint: 'Incl. VAT unless stated', fmt: 'money' },
+    annual_rent_gbp:    { label: 'Annual Rent',    hint: 'Gross scheduled rent', fmt: 'money' },
+    monthly_rent_gbp:   { label: 'Monthly Rent',   hint: 'Gross scheduled monthly rent', fmt: 'money' },
+    ground_rent_gbp:    { label: 'Ground Rent',    hint: 'Annual ground rent (if leasehold)', fmt: 'money' },
+    service_charge_gbp: { label: 'Service Charge', hint: 'Annual charge (if applicable)', fmt: 'money' },
+    sdlit_gbp:          { label: 'Stamp Duty',     hint: 'Stamp Duty Land Tax', fmt: 'money' },
+
+    // Exit: Sell
+    sale_price_gbp:     { label: 'Sale Price', fmt: 'money' },
+    selling_costs_gbp:  { label: 'Selling Costs', fmt: 'money' },
+    net_profit_gbp:     { label: 'Net Profit', fmt: 'money' },
+    roi_percent:        { label: 'ROI', fmt: 'pct' },
+
+    // Exit: Refi
+    ltv:                                { label: 'LTV', fmt: 'pct' },
+    dscr_month1:                        { label: 'DSCR (Month-1)', fmt: 'raw' },
+    refi_value_gbp:                     { label: 'Refi Value', fmt: 'money' },
+    final_btl_loan_gbp:                 { label: 'Final BTL Loan', fmt: 'money' },
+    net_cash_left_in_after_refi_gbp:    { label: 'Net Cash Left In', fmt: 'money' },
+    roi_cash_on_cash_percent_24m:       { label: 'Cash-on-Cash (24m)', fmt: 'pct' },
+
+    // Period (no refi)
+    facility_loan_gbp:  { label: 'Bridge Facility', fmt: 'money' },
+    deposit_gbp:        { label: 'Deposit', fmt: 'money' },
+    interest_gbp:       { label: 'Interest', fmt: 'money' },
+  };
+  const prettifyKey = (k: string) => labelMap[k]?.label || titleize(k.replace(/_gbp(_per_m)?$/,'').replace(/_/g,' '));
+  const formatCell = (k: string, v: any) => {
+    const meta = labelMap[k];
+    const fmt = meta?.fmt;
+    if (v == null) return '—';
+    if (fmt === 'money' || /_gbp(_per_m)?$/.test(k) || /price|fee|cost|loan/i.test(k)) return money0(v);
+    if (fmt === 'pct'   || /_pct$/.test(k) || /rate|ltv|roi|yield|growth/i.test(k)) return `${(Number(v) * (String(v).includes('%') ? 1 : 100)).toFixed(2)}%`.replace('NaN%', '—');
+    if (typeof v === 'number') return v.toLocaleString();
+    return String(v);
+  };
+
+  const ScenarioKV = ({ obj }: { obj: any }) => {
+    const safe = tryParseJSON(obj);
+    if (safe == null) return <div className="text-slate-500 text-sm">No data.</div>;
+    if (Array.isArray(safe)) {
+      return (
+        <div className="space-y-2">
+          {safe.map((row, i) => (
+            <div key={i} className="rounded border p-2">
+              <ScenarioKV obj={row} />
+            </div>
+          ))}
+        </div>
+      );
+    }
+    if (isPlainObject(safe)) {
+      return (
+        <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+          {Object.entries(safe as Record<string, any>).map(([k, v]) => (
+            <FragmentKV key={k} k={k} v={v} formatCell={formatCell} prettifyKey={prettifyKey} />
+          ))}
+        </dl>
+      );
+    }
+    return <div className="text-xs font-mono text-slate-700 break-all">{String(safe)}</div>;
+  };
+
+  /* ---------- UI ---------- */
   return (
     <main className="p-6 max-w-6xl mx-auto space-y-8">
       {/* Protected banner + logout */}
@@ -662,7 +614,7 @@ export default function Page() {
             required
             inputMode="url"
           />
-          <button
+        <button
             type="submit"
             disabled={running || !url}
             className="px-4 py-3 bg-blue-600 text-white rounded-lg disabled:opacity-50"
@@ -689,11 +641,7 @@ export default function Page() {
 
           <button
             type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              loadDemoRun((demoRunId || '').trim());
-            }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); loadDemoRun((demoRunId || '').trim()); }}
             disabled={!useDemo || !(demoRunId || '').trim()}
             className="px-3 py-2 bg-slate-200 rounded-md disabled:opacity-50"
             title="Load demo data using the run_id"
@@ -710,13 +658,12 @@ export default function Page() {
       {status === 'completed' && data && (
         <div className="grid grid-cols-1 gap-6">
           {/* Property header */}
-          <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
+          <Section title="Property Overview" desc="Core listing facts and quick KPIs.">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="md:col-span-2 space-y-2">
                 <h2 className="text-2xl font-semibold tracking-tight">{data.property?.property_title || 'Untitled property'}</h2>
                 <p className="text-slate-700">
-                  {data.property?.address}
-                  {data.property?.postcode ? `, ${data.property.postcode}` : ''}
+                  {data.property?.address}{data.property?.postcode ? `, ${data.property.postcode}` : ''}
                 </p>
 
                 <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-700 mt-1">
@@ -730,22 +677,19 @@ export default function Page() {
                 </div>
 
                 <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {tops.map((k) => (
-                    <KPI key={k.label} label={k.label} value={k.value} subtitle={k.subtitle} />
-                  ))}
+                  {tops.map((k) => (<KPI key={k.label} label={k.label} value={k.value} subtitle={k.subtitle} />))}
                 </div>
 
-                <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="financials" />
+                <div className="mt-2">
+                  <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="financials" />
+                </div>
               </div>
 
               <div>
                 <div className="rounded-lg overflow-hidden border">
-                  {data.property?.listing_images?.[0] ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={data.property.listing_images[0]} alt="Property" className="w-full h-48 object-cover" loading="lazy" />
-                  ) : (
-                    <div className="w-full h-48 flex items-center justify-center text-slate-500">No image</div>
-                  )}
+                  {data.property?.listing_images?.[0]
+                    ? (<img src={data.property.listing_images[0]} alt="Property" className="w-full h-48 object-cover" loading="lazy" />)
+                    : (<div className="w-full h-48 flex items-center justify-center text-slate-500">No image</div>)}
                 </div>
 
                 <div className="mt-3 text-sm space-y-1">
@@ -753,9 +697,9 @@ export default function Page() {
                     <strong>Displayed Price:</strong>{' '}
                     {money0(
                       data.property?.purchase_price_gbp ??
-                        data.property?.guide_price_gbp ??
-                        data.property?.asking_price_gbp ??
-                        data.property?.display_price_gbp
+                      data.property?.guide_price_gbp ??
+                      data.property?.asking_price_gbp ??
+                      data.property?.display_price_gbp
                     )}{' '}
                     <span className="text-slate-500">({data.property?.price_label || 'price'})</span>
                   </div>
@@ -767,20 +711,12 @@ export default function Page() {
                 </div>
               </div>
             </div>
-          </section>
+          </Section>
 
           {/* Investor metrics headline */}
-          <Section title="Investor Metrics">
-            <p className="text-sm text-slate-600 mb-3">
-              Backend-calculated metrics are authoritative. Sliders below are for visual scenarios.
-            </p>
-            {/* KPI Row: Yield on Cost, DSCR, Net Profit (sell), ROI (sell), Net Cash Left In (refi) */}
+          <Section title="Investor Metrics" desc="Backend-calculated metrics are authoritative. Sliders model sensitivities only.">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              <KPI
-                label="Yield on cost"
-                value={period?.yield_on_cost_percent != null ? `${Number(period.yield_on_cost_percent).toFixed(2)}%` : '—'}
-                subtitle="At stabilised reference"
-              />
+              <KPI label="Yield on cost" value={period?.yield_on_cost_percent != null ? `${Number(period.yield_on_cost_percent).toFixed(2)}%` : '—'} subtitle="At stabilised reference" />
               <KPI label="DSCR (Month-1)" value={exitRefi?.dscr_month1 != null ? exitRefi.dscr_month1.toFixed(2) : '—'} />
               <KPI label="Sell: Net profit" value={exitSell?.net_profit_gbp != null ? money0(exitSell.net_profit_gbp) : '—'} />
               <KPI label="Sell: ROI" value={exitSell?.roi_percent != null ? `${Number(exitSell.roi_percent).toFixed(2)}%` : '—'} />
@@ -809,15 +745,12 @@ export default function Page() {
           {/* Refurbishment — with rollups incl. Overheads + EPC */}
           <Section
             title="Refurbishment Estimates"
+            desc="Per-room AI scope, whole-house overheads, and EPC works. Totals include VAT unless stated."
             right={
               <div className="flex flex-wrap items-center gap-2 ml-auto">
                 <label className="text-xs text-slate-600">Filter:</label>
                 <select className="text-sm border rounded-md px-2 py-1" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
-                  {roomTypes.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
+                  {roomTypes.map((t) => (<option key={t} value={t}>{t}</option>))}
                 </select>
 
                 <label className="text-xs text-slate-600 ml-2">Sort:</label>
@@ -828,16 +761,7 @@ export default function Page() {
                 </select>
 
                 <label className="text-xs text-slate-600 ml-2">Min confidence:</label>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  step={5}
-                  value={minConfidence}
-                  onChange={(e) => setMinConfidence(Number(e.target.value))}
-                  className="w-28"
-                  title={`${minConfidence}%`}
-                />
+                <input type="range" min={0} max={100} step={5} value={minConfidence} onChange={(e) => setMinConfidence(Number(e.target.value))} className="w-28" title={`${minConfidence}%`} />
                 <span className="text-xs text-slate-600 w-10 text-right">{minConfidence}%</span>
               </div>
             }
@@ -853,42 +777,18 @@ export default function Page() {
 
                 {/* Rollup strip */}
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-                  <KPI
-                    label="Rooms total (incl. VAT)"
-                    value={money0(rollup.rooms_total_with_vat)}
-                    subtitle={rollup.rooms_total_without_vat ? `ex-VAT ${money0(rollup.rooms_total_without_vat)}` : undefined}
-                  />
-                  <KPI
-                    label="Whole-house overheads"
-                    value={rollup.overheads_with_vat != null ? money0(rollup.overheads_with_vat) : '—'}
-                    subtitle={rollup.overheads_without_vat != null ? `ex-VAT ${money0(rollup.overheads_without_vat)}` : undefined}
-                  />
-                  <KPI
-                    label="EPC works"
-                    value={rollup.epc_total_with_vat != null ? money0(rollup.epc_total_with_vat) : '—'}
-                    subtitle={rollup.epc_total_without_vat != null ? `ex-VAT ${money0(rollup.epc_total_without_vat)}` : undefined}
-                  />
+                  <KPI label="Rooms total (incl. VAT)" value={money0(rollup.rooms_total_with_vat)} subtitle={rollup.rooms_total_without_vat ? `ex-VAT ${money0(rollup.rooms_total_without_vat)}` : undefined} />
+                  <KPI label="Whole-house overheads" value={rollup.overheads_with_vat != null ? money0(rollup.overheads_with_vat) : '—'} subtitle={rollup.overheads_without_vat != null ? `ex-VAT ${money0(rollup.overheads_without_vat)}` : undefined} />
+                  <KPI label="EPC works" value={rollup.epc_total_with_vat != null ? money0(rollup.epc_total_with_vat) : '—'} subtitle={rollup.epc_total_without_vat != null ? `ex-VAT ${money0(rollup.epc_total_without_vat)}` : undefined} />
                   <KPI
                     label="Grand refurb (incl. VAT)"
-                    value={
-                      rollup.property_total_with_vat != null
-                        ? money0(rollup.property_total_with_vat)
-                        : money0((rollup.rooms_total_with_vat ?? 0) + nz(rollup.overheads_with_vat) + nz(rollup.epc_total_with_vat))
-                    }
-                    subtitle={
-                      rollup.property_total_without_vat != null
-                        ? `ex-VAT ${money0(rollup.property_total_without_vat)}`
-                        : undefined
-                    }
+                    value={rollup.property_total_with_vat != null ? money0(rollup.property_total_with_vat) : money0((rollup.rooms_total_with_vat ?? 0) + nz(rollup.overheads_with_vat) + nz(rollup.epc_total_with_vat))}
+                    subtitle={rollup.property_total_without_vat != null ? `ex-VAT ${money0(rollup.property_total_without_vat)}` : undefined}
                   />
-                  <KPI
-                    label="V2 fallback (incl. VAT)"
-                    value={rollup.v2_total_with_vat_fallback ? money0(rollup.v2_total_with_vat_fallback) : '—'}
-                    subtitle="if no rollups present"
-                  />
+                  <KPI label="V2 fallback (incl. VAT)" value={rollup.v2_total_with_vat_fallback ? money0(rollup.v2_total_with_vat_fallback) : '—'} subtitle="If no rollups present" />
                 </div>
 
-                {/* Totals table (with optional Overheads + EPC rows) */}
+                {/* Totals table */}
                 <div className="overflow-x-auto">
                   <table className="w-full border text-sm">
                     <thead>
@@ -905,17 +805,10 @@ export default function Page() {
                         const mat = toInt(est.materials_total_with_vat_gbp ?? est.materials_total_gbp);
                         const lab = toInt(est.labour_total_gbp);
                         const total = roomV2Total(est);
-                        const conf =
-                          typeof est.confidence === 'number'
-                            ? Math.round((est.confidence as number) * 100)
-                            : typeof est.room_confidence === 'number'
-                            ? Math.round(Number(est.room_confidence) * 100)
-                            : null;
+                        const conf = typeof est.confidence === 'number' ? Math.round(est.confidence * 100) : typeof est.room_confidence === 'number' ? Math.round(Number(est.room_confidence) * 100) : null;
                         return (
                           <tr key={est.id ?? `row-${i}`} className="border-t">
-                            <td className="p-2 capitalize">
-                              {(est.detected_room_type || est.room_type || 'room').toString().replace(/_/g, ' ')}
-                            </td>
+                            <td className="p-2 capitalize">{(est.detected_room_type || est.room_type || 'room').toString().replace(/_/g, ' ')}</td>
                             <td className="p-2 text-right">{money0(mat)}</td>
                             <td className="p-2 text-right">{money0(lab)}</td>
                             <td className="p-2 text-right font-semibold">{money0(total)}</td>
@@ -926,47 +819,30 @@ export default function Page() {
 
                       {/* Optional derived lines from room_totals */}
                       {Array.isArray(data.property?.room_totals) &&
-                        data.property.room_totals
-                          .filter((r: any) => (r.room_name || '').toLowerCase().includes('overheads'))
-                          .map((r: any, i: number) => (
-                            <tr key={`oh-${i}`} className="border-t bg-slate-50/50">
-                              <td className="p-2">Whole-House Overheads</td>
-                              <td className="p-2 text-right">—</td>
-                              <td className="p-2 text-right">—</td>
-                              <td className="p-2 text-right font-semibold">{money0(r.total_with_vat)}</td>
-                              <td className="p-2 text-right">—</td>
-                            </tr>
-                          ))}
+                        data.property.room_totals.filter((r: any) => (r.room_name || '').toLowerCase().includes('overheads')).map((r: any, i: number) => (
+                          <tr key={`oh-${i}`} className="border-t bg-slate-50/50">
+                            <td className="p-2">Whole-House Overheads</td>
+                            <td className="p-2 text-right">—</td><td className="p-2 text-right">—</td>
+                            <td className="p-2 text-right font-semibold">{money0(r.total_with_vat)}</td>
+                            <td className="p-2 text-right">—</td>
+                          </tr>
+                        ))}
                       {Array.isArray(data.property?.room_totals) &&
-                        data.property.room_totals
-                          .filter((r: any) => r.type === 'epc_totals')
-                          .map((r: any, i: number) => (
-                            <tr key={`epc-${i}`} className="border-t bg-slate-50/50">
-                              <td className="p-2">EPC Works</td>
-                              <td className="p-2 text-right">—</td>
-                              <td className="p-2 text-right">—</td>
-                              <td className="p-2 text-right font-semibold">{money0(r.epc_total_with_vat)}</td>
-                              <td className="p-2 text-right">—</td>
-                            </tr>
-                          ))}
+                        data.property.room_totals.filter((r: any) => r.type === 'epc_totals').map((r: any, i: number) => (
+                          <tr key={`epc-${i}`} className="border-t bg-slate-50/50">
+                            <td className="p-2">EPC Works</td>
+                            <td className="p-2 text-right">—</td><td className="p-2 text-right">—</td>
+                            <td className="p-2 text-right font-semibold">{money0(r.epc_total_with_vat)}</td>
+                            <td className="p-2 text-right">—</td>
+                          </tr>
+                        ))}
                     </tbody>
                     <tfoot>
                       <tr className="border-t bg-slate-50">
                         <td className="p-2 text-right font-medium">Totals</td>
-                        <td className="p-2 text-right font-medium">
-                          {money0(
-                            data.refurb_estimates.reduce(
-                              (a: number, r: any) => a + toInt(r.materials_total_with_vat_gbp ?? r.materials_total_gbp),
-                              0,
-                            ),
-                          )}
-                        </td>
-                        <td className="p-2 text-right font-medium">
-                          {money0(data.refurb_estimates.reduce((a: number, r: any) => a + toInt(r.labour_total_gbp), 0))}
-                        </td>
-                        <td className="p-2 text-right font-semibold">
-                          {money0(data.refurb_estimates.reduce((a: number, r: any) => a + roomV2Total(r), 0))}
-                        </td>
+                        <td className="p-2 text-right font-medium">{money0(data.refurb_estimates.reduce((a: number, r: any) => a + toInt(r.materials_total_with_vat_gbp ?? r.materials_total_gbp), 0))}</td>
+                        <td className="p-2 text-right font-medium">{money0(data.refurb_estimates.reduce((a: number, r: any) => a + toInt(r.labour_total_gbp), 0))}</td>
+                        <td className="p-2 text-right font-semibold">{money0(data.refurb_estimates.reduce((a: number, r: any) => a + roomV2Total(r), 0))}</td>
                         <td className="p-2" />
                       </tr>
                     </tfoot>
@@ -977,33 +853,25 @@ export default function Page() {
               <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-slate-700">
                 <p className="font-medium">No refurbishment rows were saved for this property.</p>
                 {data?.refurb_debug && (
-                  <p className="text-sm mt-1">
-                    Materials rows: <strong>{data.refurb_debug.materials_count ?? 0}</strong> · Labour rows: <strong>{data.refurb_debug.labour_count ?? 0}</strong>
-                  </p>
+                  <p className="text-sm mt-1">Materials rows: <strong>{data.refurb_debug.materials_count ?? 0}</strong> · Labour rows: <strong>{data.refurb_debug.labour_count ?? 0}</strong></p>
                 )}
               </div>
             )}
           </Section>
 
           {/* Rent estimate feedback */}
-          <Section
-            title="Rent Estimate"
-            right={<span className="text-sm text-slate-600">Modelled: <strong>{money0((data.financials as any)?.monthly_rent_gbp)}</strong> / month</span>}
-          >
-            <p className="text-sm text-slate-600 mb-2">Tell us if this looks right based on your market knowledge.</p>
-            <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="rent" />
+          <Section title="Rent Estimate" desc="Modelled view based on local comps and normalised assumptions.">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-slate-600">Modelled rent: <strong>{money0((data.financials as any)?.monthly_rent_gbp)}</strong> / month</div>
+              <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="rent" />
+            </div>
             {data.property?.rent_rationale && (
-              <div className="mt-3 text-xs text-slate-600">
-                <strong>Model notes:</strong> {data.property.rent_rationale}
-              </div>
+              <div className="mt-3 text-xs text-slate-600"><strong>Model notes:</strong> {data.property.rent_rationale}</div>
             )}
           </Section>
 
           {/* EPC + fabric and services */}
-          <Section
-            title="EPC & Fabric"
-            right={<span className="text-sm text-slate-600">Rating: <strong>{epc?.current ?? '—'}</strong>{epc?.potential ? ` → ${epc.potential}` : ''}</span>}
-          >
+          <Section title="EPC & Fabric" desc="Fabric & systems snapshot from EPC and listing cues. EPC budget sits in Refurb rollup.">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <div className="text-sm text-slate-600">Windows: <strong>{data.property?.windows ?? '—'}</strong></div>
@@ -1027,32 +895,27 @@ export default function Page() {
                     <>
                       <div className="font-medium mb-1">Score: {epc.score_current} → {epc.score_potential}</div>
                       <div className="h-2 w-56 bg-slate-200 rounded">
-                        <div
-                          className="h-2 bg-green-500 rounded"
-                          style={{ width: `${Math.max(0, Math.min(100, (epc.score_current / epc.score_potential) * 100))}%` }}
-                        />
+                        <div className="h-2 bg-green-500 rounded" style={{ width: `${Math.max(0, Math.min(100, (epc.score_current / epc.score_potential) * 100))}%` }} />
                       </div>
                       <div className="text-xs text-slate-500 mt-1">Potential improvement toward B</div>
                     </>
-                  ) : (
-                    <div className="text-slate-500">No EPC score values</div>
-                  )}
+                  ) : (<div className="text-slate-500">No EPC score values</div>)}
                 </div>
               </div>
             </div>
-            <div className="mt-3">
-              <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="epc" />
-            </div>
+            <div className="mt-3"><FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="epc" /></div>
           </Section>
 
           {/* Financial sliders + backend-calculated tables */}
-          <Section title="Financial Summary" right={data.pdf_url ? (
-            <a href={`/api/pdf-proxy?url=${encodeURIComponent(data.pdf_url)}`} target="_blank" rel="noopener noreferrer" className="text-sm inline-flex items-center rounded-md border px-3 py-1.5 hover:bg-slate-50">
-              Download PDF
-            </a>
-          ) : null}
+          <Section
+            title="Financial Summary"
+            desc="Tweak core assumptions to see directional impact. Backend snapshot remains the source of truth."
+            right={data.pdf_url ? (
+              <a href={`/api/pdf-proxy?url=${encodeURIComponent(data.pdf_url)}`} target="_blank" rel="noopener noreferrer" className="text-sm inline-flex items-center rounded-md border px-3 py-1.5 hover:bg-slate-50">
+                Download PDF
+              </a>
+            ) : null}
           >
-            {/* Live assumptions sliders (unchanged) */}
             <div className="mb-4">
               <FinancialSliders
                 priceGBP={basePrice}
@@ -1062,9 +925,7 @@ export default function Page() {
                 onChange={(a, d) => {
                   setSlAssumptions(a);
                   setSlDerived(d);
-                  if (typeof window !== 'undefined') {
-                    window.dispatchEvent(new CustomEvent('metrics:refresh'));
-                  }
+                  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('metrics:refresh'));
                 }}
               />
               <div className="mt-2 flex items-center gap-3">
@@ -1073,7 +934,7 @@ export default function Page() {
               </div>
             </div>
 
-            {/* Backend-calculated snapshot */}
+            {/* Backend snapshot */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {/* Period snapshot */}
               <div className="rounded-lg border p-4">
@@ -1090,11 +951,7 @@ export default function Page() {
                   <dt className="text-slate-600">Yield on cost</dt>
                   <dd className="text-right">{period?.yield_on_cost_percent != null ? `${Number(period.yield_on_cost_percent).toFixed(2)}%` : '—'}</dd>
                   <dt className="text-slate-600">ROI (period / annualised)</dt>
-                  <dd className="text-right">
-                    {period?.roi_period_percent != null
-                      ? `${Number(period.roi_period_percent).toFixed(2)}% / ${Number(period.roi_annualised_percent ?? 0).toFixed(2)}%`
-                      : '—'}
-                  </dd>
+                  <dd className="text-right">{period?.roi_period_percent != null ? `${Number(period.roi_period_percent).toFixed(2)}% / ${Number(period.roi_annualised_percent ?? 0).toFixed(2)}%` : '—'}</dd>
                 </dl>
               </div>
 
@@ -1117,7 +974,14 @@ export default function Page() {
 
               {/* Exit — Refi 24m */}
               <div className="rounded-lg border p-4">
-                <h4 className="font-semibold mb-2">Exit: Refi (24m)</h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold">Exit: Refi (24m)</h4>
+                  {exitRefi?.dscr_month1 != null && (
+                    <Badge tone={exitRefi.dscr_month1 >= 1.25 ? 'green' : exitRefi.dscr_month1 >= 1.0 ? 'amber' : 'red'}>
+                      {exitRefi.dscr_month1 >= 1.25 ? 'Lender-friendly' : exitRefi.dscr_month1 >= 1.0 ? 'Tight' : 'Below 1.0'}
+                    </Badge>
+                  )}
+                </div>
                 <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
                   <dt className="text-slate-600">Refi value</dt>
                   <dd className="text-right">{exitRefi ? money0(exitRefi.refi_value_gbp) : '—'}</dd>
@@ -1129,110 +993,38 @@ export default function Page() {
                   <dd className="text-right">{exitRefi ? money0(exitRefi.net_cash_left_in_after_refi_gbp) : '—'}</dd>
                   <dt className="text-slate-600">Tot. 24m net cashflow</dt>
                   <dd className="text-right">{exitRefi ? money0(exitRefi.net_cashflow_24m_gbp) : '—'}</dd>
-                  <dt className="text-slate-600">ROI (cash-on-cash 24m)</dt>
-                  <dd className="text-right">
-                    {exitRefi?.roi_cash_on_cash_percent_24m != null ? `${Number(exitRefi.roi_cash_on_cash_percent_24m).toFixed(2)}%` : '—'}
-                  </dd>
+                  <dt className="text-slate-600">Cash-on-Cash (24m)</dt>
+                  <dd className="text-right">{exitRefi?.roi_cash_on_cash_percent_24m != null ? `${Number(exitRefi.roi_cash_on_cash_percent_24m).toFixed(2)}%` : '—'}</dd>
                   <dt className="text-slate-600">DSCR (Month-1)</dt>
                   <dd className="text-right">{exitRefi?.dscr_month1 != null ? exitRefi.dscr_month1.toFixed(2) : '—'}</dd>
                 </dl>
+
+                {/* Mini bars if we have a totals object in scenarios */}
+                {isPlainObject(tryParseJSON(scenarios?.exit_refi_24m?.totals_24m)) && (() => {
+                  const t = tryParseJSON(scenarios.exit_refi_24m.totals_24m) as any;
+                  const items = [
+                    { label: 'Rent',     value: Number(t.rent_gbp ?? 0),     fmt: 'money' as const },
+                    { label: 'Opex',     value: Number(t.opex_gbp ?? 0),     fmt: 'money' as const },
+                    { label: 'Interest', value: Number(t.mortgage_interest_gbp ?? 0), fmt: 'money' as const },
+                    { label: 'Net',      value: Number(t.net_cashflow_gbp ?? 0), fmt: 'money' as const },
+                  ];
+                  return <div className="mt-3"><MiniBars items={items} /></div>;
+                })()}
               </div>
-            </div>
-
-            {/* Backend-calculated "flat list" for anything else present in financials */}
-            {data.financials ? (
-              <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2 mt-4">
-                {Object.entries(data.financials)
-                  .filter(([k]) => !new Set(['id', 'property_id', 'created_at', 'updated_at', 'summary', 'scenarios']).has(k))
-                  .map(([k, v]) => (
-                    <div key={k} className="flex justify-between border-b py-1 text-sm">
-                      <dt className="capitalize text-slate-600">{titleize(k)}</dt>
-                      <dd className="font-medium text-right">
-                        {String(k).endsWith('_gbp') ? money0(v) : typeof v === 'number' ? v.toLocaleString() : String(v)}
-                      </dd>
-                    </div>
-                  ))}
-              </dl>
-            ) : (
-              <p className="text-slate-600">No financials found for this property yet.</p>
-            )}
-
-            <div className="mt-3">
-              <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="financials" />
             </div>
           </Section>
 
           {/* Report preview */}
           {data.pdf_url && (
-            <Section title="Report Preview">
+            <Section title="Report Preview" desc="Inline PDF viewer for the investor pack.">
               <PDFViewer pdfUrl={`/api/pdf-proxy?url=${encodeURIComponent(data.pdf_url)}`} />
             </Section>
           )}
 
-          {/* Scenarios (render safely) */}
+          {/* Scenarios (backend) — PRO console */}
           {(scenarios?.inputs || scenarios?.exit_sell || scenarios?.exit_refi_24m || scenarios?.period_no_refi) && (
-            <Section title="Scenarios (backend)">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 text-sm">
-                <div className="rounded-lg border p-4">
-                  <h4 className="font-semibold mb-2">Inputs</h4>
-                  <dl className="grid grid-cols-2 gap-x-3 gap-y-2">
-                    {Object.entries(scenarios.inputs || {}).map(([k, v]) => (
-                      <FragmentKV key={`in-${k}`} k={k} v={v} />
-                    ))}
-                  </dl>
-                </div>
-
-                <div className="rounded-lg border p-4">
-                  <h4 className="font-semibold mb-2">Exit: Sell</h4>
-                  <dl className="grid grid-cols-2 gap-x-3 gap-y-2">
-                    {Object.entries(scenarios.exit_sell || {}).map(([k, v]) => (
-                      <FragmentKV key={`sell-${k}`} k={k} v={v} />
-                    ))}
-                  </dl>
-                </div>
-
-                <div className="rounded-lg border p-4">
-                  <h4 className="font-semibold mb-2">Exit: Refi (24m)</h4>
-                  <dl className="grid grid-cols-2 gap-x-3 gap-y-2">
-                    {Object.entries(scenarios.exit_refi_24m || {}).map(([k, v]) => (
-                      <FragmentKV key={`refi-${k}`} k={k} v={v} />
-                    ))}
-                  </dl>
-                </div>
-
-                {/* Period (no-refi) */}
-                {scenarios.period_no_refi && (
-                  <div className="rounded-lg border p-4 lg:col-span-3">
-                    <h4 className="font-semibold mb-2">Period (no refi)</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <h5 className="font-medium">Bridge</h5>
-                        <dl className="grid grid-cols-2 gap-x-3 gap-y-2">
-                          {Object.entries(scenarios.period_no_refi.bridge || {}).map(([k, v]) => (
-                            <FragmentKV key={`bridge-${k}`} k={k} v={v} />
-                          ))}
-                        </dl>
-                      </div>
-                      <div>
-                        <h5 className="font-medium">Works phase</h5>
-                        <dl className="grid grid-cols-2 gap-x-3 gap-y-2">
-                          {Object.entries(scenarios.period_no_refi.works_phase || {}).map(([k, v]) => (
-                            <FragmentKV key={`works-${k}`} k={k} v={v} />
-                          ))}
-                        </dl>
-                      </div>
-                      <div>
-                        <h5 className="font-medium">Operations during bridge</h5>
-                        <dl className="grid grid-cols-2 gap-x-3 gap-y-2">
-                          {Object.entries(scenarios.period_no_refi.operations_during_bridge || {}).map(([k, v]) => (
-                            <FragmentKV key={`ops-${k}`} k={k} v={v} />
-                          ))}
-                        </dl>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+            <Section title="Scenarios (backend)" desc="Raw backend assumptions and outcomes, rendered cleanly. Objects are parsed and expanded.">
+              <ScenariosTabs scenarios={scenarios} ScenarioKV={ScenarioKV} />
             </Section>
           )}
 
@@ -1243,15 +1035,9 @@ export default function Page() {
             </button>
             {showDebug && (
               <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                <pre className="bg-slate-50 p-3 rounded border overflow-auto">
-                  <code>{JSON.stringify({ status, run: data?.run }, null, 2)}</code>
-                </pre>
-                <pre className="bg-slate-50 p-3 rounded border overflow-auto">
-                  <code>{JSON.stringify({ property: data?.property, financials: data?.financials }, null, 2)}</code>
-                </pre>
-                <pre className="bg-slate-50 p-3 rounded border overflow-auto md:col-span-2">
-                  <code>{JSON.stringify({ refurb_estimates: data?.refurb_estimates }, null, 2)}</code>
-                </pre>
+                <pre className="bg-slate-50 p-3 rounded border overflow-auto"><code>{JSON.stringify({ status, run: data?.run }, null, 2)}</code></pre>
+                <pre className="bg-slate-50 p-3 rounded border overflow-auto"><code>{JSON.stringify({ property: data?.property, financials: data?.financials }, null, 2)}</code></pre>
+                <pre className="bg-slate-50 p-3 rounded border overflow-auto md:col-span-2"><code>{JSON.stringify({ refurb_estimates: data?.refurb_estimates }, null, 2)}</code></pre>
               </div>
             )}
           </section>
@@ -1261,26 +1047,136 @@ export default function Page() {
   );
 }
 
-/* ---------- small helper for scenarios table rows ---------- */
-function FragmentKV({ k, v }: { k: string; v: any }) {
-  const isMoney = k.endsWith('_gbp') || k.endsWith('_gbp_per_m') || /price|fee|cost|loan/i.test(k);
-  const isPct = k.endsWith('_pct') || /rate|ltv|roi|yield|growth/i.test(k);
-  const formatted =
-    v == null
-      ? '—'
-      : typeof v === 'object'
-      ? JSON.stringify(v)
-      : isMoney
-      ? money0(v)
-      : isPct
-      ? `${(Number(v) * (String(v).includes('%') ? 1 : 100)).toFixed(2)}%`.replace('NaN%', '—')
-      : Number.isFinite(Number(v))
-      ? Number(v).toLocaleString()
-      : String(v);
+/* ---------- small helpers ---------- */
+function FragmentKV({ k, v, formatCell, prettifyKey }: { k: string; v: any; formatCell: (k: string, v: any) => string; prettifyKey: (k: string) => string }) {
+  const parsed = tryParseJSON(v);
+  const isObj = isPlainObject(parsed);
+  const isArr = Array.isArray(parsed);
+
+  if (isObj || isArr) {
+    return (
+      <>
+        <dt className="text-slate-600 capitalize">{prettifyKey(k)}</dt>
+        <dd className="text-right">
+          <DetailsDrawer label="Details">
+            {isObj && (
+              <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                {Object.entries(parsed as Record<string, any>).map(([kk, vv]) => (
+                  <FragmentKV key={kk} k={kk} v={vv} formatCell={formatCell} prettifyKey={prettifyKey} />
+                ))}
+              </dl>
+            )}
+            {isArr && (
+              <div className="space-y-1">
+                {(parsed as any[]).map((row, i) => (
+                  <div key={i} className="rounded border p-2">
+                    {isPlainObject(row) ? (
+                      <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                        {Object.entries(row).map(([kk, vv]) => (
+                          <FragmentKV key={kk} k={kk} v={vv} formatCell={formatCell} prettifyKey={prettifyKey} />
+                        ))}
+                      </dl>
+                    ) : <pre className="text-xs font-mono break-all">{String(row)}</pre>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </DetailsDrawer>
+        </dd>
+      </>
+    );
+  }
+
   return (
     <>
-      <dt className="text-slate-600 capitalize">{titleize(k)}</dt>
-      <dd className="text-right">{formatted}</dd>
+      <dt className="text-slate-600 capitalize">{prettifyKey(k)}</dt>
+      <dd className="text-right">{formatCell(k, parsed)}</dd>
     </>
+  );
+}
+
+function DetailsDrawer({ label, children }: { label: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="text-right">
+      <button onClick={() => setOpen((s) => !s)} className="text-xs rounded-md border px-2 py-1 hover:bg-slate-50">
+        {open ? 'Hide' : label}
+      </button>
+      {open && <div className="mt-2 text-left">{children}</div>}
+    </div>
+  );
+}
+
+function ScenariosTabs({ scenarios, ScenarioKV }: { scenarios: any; ScenarioKV: ({ obj }: { obj: any }) => JSX.Element }) {
+  const [tab, setTab] = useState<'inputs'|'sell'|'refi'|'period'>('inputs');
+  const TabBtn = ({ id, children }: { id: typeof tab; children: React.ReactNode }) => (
+    <button
+      onClick={() => setTab(id)}
+      className={classNames(
+        'px-3 py-1.5 rounded-md text-sm border',
+        tab === id ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 hover:bg-slate-50'
+      )}
+    >
+      {children}
+    </button>
+  );
+
+  // normalise nested objects/strings
+  const inputs  = tryParseJSON(scenarios?.inputs);
+  const sell    = tryParseJSON(scenarios?.exit_sell);
+  const refi    = tryParseJSON(scenarios?.exit_refi_24m);
+  const period  = tryParseJSON(scenarios?.period_no_refi);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <TabBtn id="inputs">Inputs</TabBtn>
+        <TabBtn id="sell">Exit: Sell</TabBtn>
+        <TabBtn id="refi">Exit: Refi (24m)</TabBtn>
+        <TabBtn id="period">Period (no refi)</TabBtn>
+      </div>
+
+      <div className="rounded-lg border p-4 bg-white">
+        {tab === 'inputs' && (
+          <>
+            <p className="text-sm text-slate-600 mb-3">Assumptions used to drive the scenarios below.</p>
+            <ScenarioKV obj={inputs} />
+          </>
+        )}
+        {tab === 'sell' && (
+          <>
+            <p className="text-sm text-slate-600 mb-3">Disposal economics assuming sale at stabilisation.</p>
+            <ScenarioKV obj={sell} />
+          </>
+        )}
+        {tab === 'refi' && (
+          <>
+            <p className="text-sm text-slate-600 mb-3">Refinance outcome after circa 24 months of operations.</p>
+            <ScenarioKV obj={refi} />
+          </>
+        )}
+        {tab === 'period' && (
+          <>
+            <p className="text-sm text-slate-600 mb-3">If no refinance occurs, period cashflows and bridge details.</p>
+            {isPlainObject(period) ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <h5 className="font-medium mb-1">Bridge</h5>
+                  <ScenarioKV obj={(period as any).bridge} />
+                </div>
+                <div>
+                  <h5 className="font-medium mb-1">Works phase</h5>
+                  <ScenarioKV obj={(period as any).works_phase} />
+                </div>
+                <div>
+                  <h5 className="font-medium mb-1">Operations during bridge</h5>
+                  <ScenarioKV obj={(period as any).operations_during_bridge} />
+                </div>
+              </div>
+            ) : <ScenarioKV obj={period} />}
+          </>
+        )}
+      </div>
+    </div>
   );
 }
