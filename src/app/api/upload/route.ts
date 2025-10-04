@@ -134,38 +134,50 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'DB insert failed', details: insErr.message }, { status: 500 });
     }
 
-    // 5) Fire n8n once per image
-    const basePayload = {
-      request_id: row.id,
-      property_id: row.property_id,
-      room_key: row.room_key,
-      room_label: row.room_label,
-      floor: row.floor,
-      kind: row.kind,
-    };
+    // ... keep everything above as-is ...
 
-    await Promise.all(
-      inserted.map((u, idx) =>
-        fireWebhookOnce({
-          ...basePayload,
-          upload_id: u.id,
-          public_url: u.public_url,
-          storage_path: u.storage_path,
-          ordinal: idx + 1,
-          total: inserted.length,
-          images: [u.public_url],
-        }).catch(async (err) => {
-          await supabase.from('missing_room_uploads')
-            .update({ status: 'failed', error: String(err), updated_at: new Date().toISOString() })
-            .eq('id', u.id);
-        })
-      )
-    );
-
-    return NextResponse.json({ ok: true, uploaded: publicUrls.length, urls: publicUrls });
-
+// 5) Fire n8n once per image
+const basePayload = {
+    request_id: row.id,
+    property_id: row.property_id,
+    room_key: row.room_key,
+    room_label: row.room_label,
+    floor: row.floor,
+    kind: row.kind,
+  };
+  
+  await Promise.all(
+    inserted.map((u, idx) =>
+      fireWebhookOnce({
+        ...basePayload,
+        upload_id: u.id,
+        public_url: u.public_url,
+        storage_path: u.storage_path,
+        ordinal: idx + 1,
+        total: inserted.length,
+        images: [u.public_url],
+      }).catch(async (err) => {
+        await supabase.from('missing_room_uploads')
+          .update({ status: 'failed', error: String(err), updated_at: new Date().toISOString() })
+          .eq('id', u.id);
+      })
+    )
+  );
+  
+  // ✅ REDIRECT INSTEAD OF JSON
+  // If the request came from a normal <form>, this sends the browser to your success page.
+  const successUrl = new URL(`/upload/success?count=${publicUrls.length}`, req.url);
+  return NextResponse.redirect(successUrl, { status: 302 });
+  
+  // If you ever need JSON for XHR/fetch uploads, you could detect and return JSON instead:
+  // const wantsJson = req.headers.get('accept')?.includes('application/json');
+  // if (wantsJson) return NextResponse.json({ ok: true, uploaded: publicUrls.length, urls: publicUrls });
+  // else return NextResponse.redirect(successUrl, { status: 302 });
+  
   } catch (e: any) {
     console.error('UPLOAD_API_ERR', e);
-    return NextResponse.json({ error: e?.message || 'Unexpected error' }, { status: 500 });
+    // Optional: send users to a friendly error page instead of raw JSON
+    const errorUrl = new URL(`/upload/error?msg=${encodeURIComponent(e?.message || 'Upload failed')}`, req.url);
+    return NextResponse.redirect(errorUrl, { status: 302 });
   }
-}
+  
