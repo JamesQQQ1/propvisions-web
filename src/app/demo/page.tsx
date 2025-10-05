@@ -23,7 +23,6 @@ const LOGO_SRC = '/propvisions_logo.png';
 /* ---------- number/format helpers ---------- */
 const nfGBP0 = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 });
 const nfGBP2 = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const nfPct1  = new Intl.NumberFormat('en-GB', { style: 'percent', maximumFractionDigits: 1 });
 
 const isFiniteNum = (n: unknown) => Number.isFinite(Number(n));
 const n  = (x: unknown) => (isFiniteNum(x) ? Number(x) : undefined);
@@ -153,10 +152,6 @@ function isFloorplanMapped(t: any) {
 function normaliseType(x?: string | null) {
   if (!x) return 'other';
   const raw = x.toString().trim().toLowerCase();
-  const UNWANTED_TYPES = new Set([
-    'rooms_totals', 'epc_totals', 'epc', 'overheads', 'whole-house', 'whole_house', 'wholehouse', 'property_totals',
-    'unmapped' // <— add this
-  ]);  
   const map: Record<string, string> = {
     lounge: 'living_room', reception: 'living_room', receptions: 'living_room', living: 'living_room', 'living room': 'living_room',
     wc: 'bathroom', cloakroom: 'bathroom', ensuite: 'bathroom', 'en-suite': 'bathroom', bath: 'bathroom',
@@ -372,6 +367,18 @@ function ProgressBar({ percent, show }: { percent: number; show: boolean }) {
     </div>
   );
 }
+
+// Placeholder used when a room has costs but no photos (module-scope so Carousel can use it)
+const NO_IMAGE_PLACEHOLDER =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420">
+  <rect width="100%" height="100%" fill="#f8fafc"/>
+  <g fill="#94a3b8" font-family="Verdana" font-size="18">
+    <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">Image unavailable</text>
+  </g>
+  <rect x="2" y="2" width="636" height="416" fill="none" stroke="#cbd5e1" stroke-width="4"/>
+</svg>`);
+
 
 function Carousel({ images, title }: { images: string[]; title: string }) {
   const [idx, setIdx] = useState(0);
@@ -668,17 +675,6 @@ export default function Page() {
   const showEpcFeedback  = true;
 
 /* ---------- ROOM GROUPING & GALLERY (room_totals is the truth) ---------- */
-
-// Minimal embedded placeholder for rooms with no images
-const NO_IMAGE_PLACEHOLDER =
-'data:image/svg+xml;utf8,' +
-encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420">
-  <rect width="100%" height="100%" fill="#f8fafc"/>
-  <g fill="#94a3b8" font-family="Verdana" font-size="18">
-    <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">Image unavailable</text>
-  </g>
-  <rect x="2" y="2" width="636" height="416" fill="none" stroke="#cbd5e1" stroke-width="4"/>
-</svg>`);
 
 type GroupedRoom = {
   key: string;
