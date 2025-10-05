@@ -542,11 +542,56 @@ function isFloorplanMapped(t: any) {
 
 
 function normaliseType(x?: string | null) {
-if (!x) return 'other';
-const t = x.toString().trim().toLowerCase().replace(/\s+/g, '_');
-if (t.includes('exterior') || t.includes('facade') || t.includes('front') || t.includes('garden')) return 'facade';
-return t;
+  if (!x) return 'other';
+  const raw = x.toString().trim().toLowerCase();
+
+  // Canonical map for common aliases/typos
+  const map: Record<string, string> = {
+    lounge: 'living_room',
+    reception: 'living_room',
+    receptions: 'living_room',
+    living: 'living_room',
+    'living room': 'living_room',
+    wc: 'bathroom',
+    cloakroom: 'bathroom',
+    ensuite: 'bathroom',
+    en-suite: 'bathroom',
+    bath: 'bathroom',
+    beds: 'bedroom',
+    bed: 'bedroom',
+    'bed room': 'bedroom',
+    hallway: 'hall',
+    landing: 'hall',
+    corridor: 'hall',
+    stair: 'hall',
+    stairs: 'hall',
+    exterior: 'facade',
+    front: 'facade',
+    garden: 'facade',
+  };
+
+  // try direct map first
+  if (map[raw]) return map[raw];
+
+  // collapse whitespace/underscores
+  const t = raw.replace(/\s+/g, '_');
+
+  // partial contains checks
+  if (t.includes('bed')) return 'bedroom';
+  if (t.includes('kitchen')) return 'kitchen';
+  if (t.includes('bath')) return 'bathroom';
+  if (t.includes('toilet')) return 'bathroom';
+  if (t.includes('ensuite') || t.includes('en-suite')) return 'bathroom';
+  if (t.includes('reception') || t.includes('lounge') || t.includes('living')) return 'living_room';
+  if (t.includes('hall') || t.includes('landing') || t.includes('stairs')) return 'hall';
+  if (t.includes('utility')) return 'utility';
+  if (t.includes('store') || t.includes('cupboard')) return 'store';
+  if (t.includes('garage')) return 'garage';
+  if (t.includes('facade') || t.includes('exterior') || t.includes('front') || t.includes('garden')) return 'facade';
+
+  return t;
 }
+
 function extractLabelFromAny(estOrTot: any): string | null {
 return (
   estOrTot?.floorplan_room_label ||
@@ -653,8 +698,10 @@ function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
     if (isOverheadsOrTotalsRow(tot)) continue; // skip EPC/overheads rollups
 
     const isExterior = EXTERIOR_TYPES.has(t);
-    if (!isExterior && !isFloorplanMapped(tot)) continue; // only floorplan-mapped internals
-    if (!isExterior && t === 'other') continue;
+// Show all non-overhead rooms from room_totals, even if not floorplan-mapped.
+// Still hide totally untyped “other” (optional — comment out next line if you want those too).
+if (!isExterior && t === 'other') continue;
+
 
     const matches = refurbByKey.get(k) ?? [];
     let mat = readMaterialsTotal(tot);
@@ -671,9 +718,10 @@ function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
       const refLab = sumFromRefurb((r) => r.labour_total_gbp);
       const refTot = matches.reduce((a, r) => a + roomV2Total(r), 0);
 
-      if (!mat) mat = refMat;
-      if (!lab) lab = refLab;
-      if (!roomTotal) roomTotal = refTot;
+      if (mat == null) mat = refMat;
+if (lab == null) lab = refLab;
+if (roomTotal == null) roomTotal = refTot;
+
 
       conf = matches.reduce((m, r) => {
         let c = typeof (r as any).confidence === 'number'
@@ -718,8 +766,7 @@ function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
 
     const t = normaliseType(est?.detected_room_type ?? est?.room_type ?? 'other');
     const isExterior = EXTERIOR_TYPES.has(t);
-    const isMappedToFloorplan = !!(est?.floorplan_room_id || est?.floorplan_room_label);
-    if (!isExterior && !isMappedToFloorplan) continue; // drop unmapped internals
+// Allow unmapped internals to appear; they’ll still dedupe by key.
 
     const lbl = extractLabelFromAny(est);
     const imgList = collectImages(est);
