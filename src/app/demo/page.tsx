@@ -869,7 +869,8 @@ if (floorplanByType.has(type) && isTypeLabelOnly(type, maybeLabel)) continue;
 
 
     const key = forceExteriorKey(type) ?? canonicalMatchKey(tot, type);
-    upsert(key, type, tot, { mapped: isFloorplanMapped(tot, type) });
+    upsert(key, key.split('::')[0], tot, { mapped: isFloorplanMapped(tot, type) });
+
 
   }
 
@@ -882,7 +883,8 @@ if (floorplanByType.has(type) && isTypeLabelOnly(type, maybeLabel)) continue;
     // If there is a clear floorplan id/label, use it; otherwise we create/merge into generic,
     // but later we’ll suppress generic cards when labelled/id’d exist for that type.
     const k = canonicalMatchKey(est, estType);
-upsert(k, estType, est, { mapped: isFloorplanMapped(est, estType) });
+    upsert(k, k.split('::')[0], est, { mapped: isFloorplanMapped(est, estType) });
+
 
   }
 
