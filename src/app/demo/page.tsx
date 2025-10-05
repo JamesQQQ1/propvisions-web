@@ -517,6 +517,30 @@ rep: RefurbRoom;
 mergedCount: number;
 };
 
+// --- place these BEFORE buildRoomGroups ---
+
+const EXTERIOR_TYPES = new Set(['facade', 'garden', 'exterior']);
+
+function isOverheadsOrTotalsRow(t: any) {
+  const type = String(t?.type ?? '').toLowerCase();
+  const name = String(t?.room_name ?? '').toLowerCase();
+  return (
+    type.includes('rooms_totals') ||
+    type.includes('epc_totals') ||
+    name.includes('overheads') ||
+    name.includes('whole-house') ||
+    name.includes('whole house')
+  );
+}
+
+function isFloorplanMapped(t: any) {
+  return (
+    t?.floorplan_room_id != null ||
+    (t?.floorplan_room_label && String(t.floorplan_room_label).trim().length > 0)
+  );
+}
+
+
 function normaliseType(x?: string | null) {
 if (!x) return 'other';
 const t = x.toString().trim().toLowerCase().replace(/\s+/g, '_');
@@ -613,13 +637,41 @@ function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
 const totals: any[] = Array.isArray(property?.room_totals) ? property.room_totals : [];
 const refurb: any[] = Array.isArray(refurbRows) ? refurbRows : [];
 
-// Index refurb rows by their best-fit key for quick merging
-const refurbByKey = new Map<string, RefurbRoom[]>();
+// OPTIONAL: include any refurb rows that didn’t match a room_total (edge cases).
+// Only include if mapped to the floorplan OR is an allowed exterior type.
 for (const est of refurb) {
   const k = keyFromRefurb(est);
-  if (!refurbByKey.has(k)) refurbByKey.set(k, []);
-  refurbByKey.get(k)!.push(est);
+  if (groups.find(g => g.key === k)) continue; // already represented
+
+  const t = normaliseType(est?.detected_room_type ?? est?.room_type ?? 'other');
+  const isExterior = EXTERIOR_TYPES.has(t);
+  const isMappedToFloorplan = !!(est?.floorplan_room_id || est?.floorplan_room_label);
+
+  // 🚫 drop “other/unmapped” internals
+  if (!isExterior && !isMappedToFloorplan) continue;
+
+  const lbl = extractLabelFromAny(est);
+  const imgList = collectImages(est);
+  const conf = typeof (est as any).confidence === 'number'
+    ? Number((est as any).confidence)
+    : typeof (est as any).room_confidence === 'number'
+      ? Number((est as any).room_confidence) : null;
+
+  groups.push({
+    key: k,
+    room_type: t,
+    room_label: lbl,
+    materials_total_with_vat_gbp: toInt((est as any).materials_total_with_vat_gbp ?? (est as any).materials_total_gbp) || undefined,
+    labour_total_gbp: toInt((est as any).labour_total_gbp) || undefined,
+    room_total_with_vat_gbp: roomV2Total(est) || undefined,
+    confidence: conf,
+    images: imgList.length ? imgList : [NO_IMAGE_PLACEHOLDER],
+    primaryImage: (imgList[0] ?? NO_IMAGE_PLACEHOLDER),
+    rep: est as any,
+    mergedCount: 1,
+  });
 }
+
 
 const groups: GroupedRoom[] = [];
 
@@ -1114,6 +1166,9 @@ const roomTypes = useMemo(() => {
                     // We’ll pass a representative room to RoomCard but decorate the header + gallery here.
                     const title = prettyRoomName(g.key);
                     const conf = typeof g.confidence === 'number' ? Math.round(g.confidence * 100) : null;
+                    // strip media fields so RoomCard doesn't render another image block
+                    const { image_url: _iu, image_urls: _ius, images: _imgs, ...repForCard } = (g.rep as any);
+
 
                     return (
                       <div key={g.key ?? idx} className="rounded-xl border bg-white overflow-hidden shadow-sm">
@@ -1172,7 +1227,6 @@ const { image_url: _iu, image_urls: _ius, images: _imgs, ...repForCard } = (g.re
   key={g.key}
   room={{
     ...repForCard,
-    // supply merged totals so RoomCard shows correct numbers
     materials_total_with_vat_gbp: g.materials_total_with_vat_gbp ?? g.materials_total_gbp,
     labour_total_gbp: g.labour_total_gbp,
     room_total_with_vat_gbp: g.room_total_with_vat_gbp ?? g.room_total_gbp,
@@ -1181,6 +1235,7 @@ const { image_url: _iu, image_urls: _ius, images: _imgs, ...repForCard } = (g.re
   runId={runIdRef.current}
   propertyId={data?.property_id}
 />
+
 
                         </div>
                       </div>
