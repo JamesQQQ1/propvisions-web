@@ -438,48 +438,6 @@ const NO_IMAGE_PLACEHOLDER =
   </svg>`);
 
 
-function Carousel({ images, title }: { images: string[]; title: string }) {
-  const [idx, setIdx] = useState(0);
-  const list = (images || []).filter(Boolean);
-  const src = list[idx] || NO_IMAGE_PLACEHOLDER;
-  const go = (d: number) => setIdx((i) => (list.length ? (i + d + list.length) % list.length : 0));
-  return (
-    <div className="relative w-full h-48 bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl overflow-hidden flex items-center justify-center group-hover:scale-[1.02] transition-transform duration-300">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt={src === NO_IMAGE_PLACEHOLDER ? `${title} (image unavailable)` : title}
-        className="w-full h-48 object-cover object-center"
-        loading="lazy"
-      />
-      {list.length > 1 && (
-        <>
-          <button
-            type="button"
-            aria-label="Prev image"
-            onClick={() => go(-1)}
-            className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-white/90 backdrop-blur border border-white/20 text-slate-700 hover:bg-white hover:shadow-md transition-all duration-200 flex items-center justify-center font-medium"
-          >
-            ‹
-          </button>
-          <button
-            type="button"
-            aria-label="Next image"
-            onClick={() => go(1)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-white/90 backdrop-blur border border-white/20 text-slate-700 hover:bg-white hover:shadow-md transition-all duration-200 flex items-center justify-center font-medium"
-          >
-            ›
-          </button>
-          <div className="absolute bottom-2 left-0 right-0 text-center">
-            <span className="inline-block bg-black/70 backdrop-blur text-white text-[10px] font-medium px-2 py-0.5 rounded-full">
-              {idx + 1}/{list.length}
-            </span>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
 
 
 /* =========================================================================================
@@ -1133,7 +1091,7 @@ return cleaned;
       const estType = normName(est.room_type || est.detected_room_type || '');
 
       // 1. Image-based (strongest, for bedrooms)
-      if (est.image_id && data.property.images_map?.[est.image_id]) {
+      if (est.image_id && data?.property?.images_map?.[est.image_id]) {
         const url = data.property.images_map[est.image_id];
         const bedIdx = imageIdToBedIndex.get(est.image_id);
         if (bedIdx !== null && bedIdx !== undefined) {
@@ -1205,7 +1163,7 @@ return cleaned;
       if (est.image_url && !room.images.includes(est.image_url)) {
         room.extras.push(est.image_url);
       }
-      if (est.image_id && data.property.images_map?.[est.image_id]) {
+      if (est.image_id && data?.property?.images_map?.[est.image_id]) {
         const url = data.property.images_map[est.image_id];
         if (!room.images.includes(url)) {
           room.extras.push(url);
@@ -1659,66 +1617,11 @@ const roomTypes = useMemo(() => {
             {/* Cards (grouped) */}
             {groupedRooms.length ? (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-                  {groupedRooms.map((g, idx) => {
-                    // We'll pass a representative room to RoomCard but decorate the header + gallery here.
-                    const title = prettyRoomNameFromKey(g.key);
-                    const conf = typeof g.confidence === 'number' ? Math.round(g.confidence * 100) : null;
-
-
-                    return (
-                      <div key={g.key ?? idx} className="group rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300 hover:-translate-y-1">
-                        {/* Top media: primary + thumbs */}
-                        {/* Top media: single image + tiny arrows */}
-<div className="p-3 border-b border-slate-100">
-  <Carousel images={[g.primaryImage, ...g.images.slice(1)]} title={title} />
-  {g.primaryImage === NO_IMAGE_PLACEHOLDER && (
-    <div className="mt-2 text-center text-xs text-slate-500">
-      Room costs estimated from analysis signals
-    </div>
-  )}
-</div>
-
-
-                        {/* Title + tag row */}
-                        <div className="px-4 pt-3 pb-2 flex items-start justify-between">
-                          <div className="text-base font-semibold text-slate-900 leading-tight">{title}</div>
-                          <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
-                            {g.room_label && <Badge tone="slate">{g.room_label}</Badge>}
-                            {conf != null && <Badge tone={conf >= 80 ? 'green' : conf >= 50 ? 'amber' : 'red'}>{conf}%</Badge>}
-                          </div>
-                        </div>
-
-                        {/* Body: totals + existing RoomCard breakdown (keeps your per-item UI) */}
-                        <div className="px-4 pb-4">
-                          <div className="mb-3 grid grid-cols-3 gap-3 text-xs">
-                            <div className="rounded-lg border border-emerald-200 p-3 bg-emerald-50/50">
-                              <div className="text-emerald-700 font-medium">Materials</div>
-                              <div className="font-semibold text-emerald-900 mt-1">{money0(g.materials_total_with_vat_gbp ?? g.materials_total_gbp)}</div>
-                            </div>
-                            <div className="rounded-lg border border-purple-200 p-3 bg-purple-50/50">
-                              <div className="text-purple-700 font-medium">Labour</div>
-                              <div className="font-semibold text-purple-900 mt-1">{money0(g.labour_total_gbp)}</div>
-                            </div>
-                            <div className="rounded-lg border border-blue-200 p-3 bg-blue-50/50">
-                              <div className="text-blue-700 font-medium">Total</div>
-                              <div className="font-semibold text-blue-900 mt-1">{money0(g.room_total_with_vat_gbp ?? g.room_total_gbp)}</div>
-                            </div>
-                          </div>
-
-                          {/* Keep your existing breakdown component for consistency */}
-
-                          <RoomCard
-                            key={g.key}
-                            room={g.rep}
-/>
-
-
-
-                        </div>
-                      </div>
-                    );
-                  })}
+                {/* Room Cards Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {groupedRooms.map((group) => (
+                    <RoomCard key={group.key} room={group.rep} />
+                  ))}
                 </div>
 
                 {/* Rollup strip */}
