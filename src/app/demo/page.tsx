@@ -708,8 +708,23 @@ const forceExteriorKey = (ty: string) =>
     ? property.listing_images.filter(Boolean)
     : [];
 
+    // Map of image_id -> image_url (adjust keys to your payload)
+const imagesMap: Record<string, string> =
+(isPlainObject(property?.images_map) && property.images_map) ||
+(isPlainObject(property?.images_by_id) && property.images_by_id) ||
+{};
 
-
+// helpers
+const isUrl = (s: any) => typeof s === 'string' && (s.startsWith('http://') || s.startsWith('https://') || s.startsWith('data:'));
+const resolveToUrls = (arr: unknown[]): string[] => {
+const out: string[] = [];
+for (const x of Array.isArray(arr) ? arr : []) {
+  if (!x) continue;
+  if (isUrl(x)) out.push(String(x));
+  else if (typeof x === 'string' && imagesMap[x]) out.push(imagesMap[x]);
+}
+return Array.from(new Set(out));
+};
 
   // 1) Identify which types have any floorplan-mapped rows.
   const floorplanByType = new Set<string>();
@@ -840,39 +855,36 @@ const forceExteriorKey = (ty: string) =>
   }[];
 
   for (const a of acc.values()) {
-    // Suppress generic “type::” if we already have labelled/id’d rooms for that type
-    const isGeneric = !a.key.includes('::id:') && !a.key.includes('::label:');
-    if (isGeneric && hasSpecificByType.has(a.type)) continue;
-
-    // Respect SHOW_ONLY_FLOORPLAN_MAPPED for non-exteriors
-    if (SHOW_ONLY_FLOORPLAN_MAPPED && !a.mapped && !a.isExterior) continue;
-
-      // Only show per-room images. If the room has none, use a property-level fallback
-    // **only** for exterior/facade types (rooms rarely have their own images).
-    const imgs = a.images.length ? a.images : (a.isExterior ? globalImages : []);
-
-
-
-
-    // Build the representative row for RoomCard (strip image fields so RoomCard doesn’t try to render its own)
+    // 5a) resolve gallery to URLs
+    let gallery = resolveToUrls(a.images);
+  
+    // allow exterior/facade to borrow listing images if still empty
+    if (!gallery.length && a.isExterior) {
+      gallery = globalImages;
+    }
+  
+    const primary = gallery[0] ?? NO_IMAGE_PLACEHOLDER;
+  
+    // Representative row for RoomCard (strip image fields so RoomCard doesn’t double-render)
     const { image_url: _iu, image_urls: _ius, images: _imgs, ...repForCard } = (a.rep ?? {}) as any;
-
+  
     groups.push({
       key: a.key,
       room_type: a.type,
       room_label: a.label ?? null,
       materials_total_with_vat_gbp: a.mat ?? undefined,
-      materials_total_gbp: a.mat ?? undefined, // keep one of these populated for money0 fallback
+      materials_total_gbp: a.mat ?? undefined,
       labour_total_gbp: a.lab ?? undefined,
       room_total_with_vat_gbp: a.tot ?? undefined,
       room_total_gbp: a.tot ?? undefined,
       confidence: a.confidence ?? null,
-      images: imgs,
-      primaryImage: (imgs[0] ?? NO_IMAGE_PLACEHOLDER),
+      images: gallery,                 // <-- URLs only
+      primaryImage: primary,           // <-- URL or placeholder
       rep: repForCard as RefurbRoom,
       mergedCount: a.mergedCount,
     });
   }
+  
 
   return groups;
 }
