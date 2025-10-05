@@ -125,8 +125,10 @@ const SHOW_ONLY_FLOORPLAN_MAPPED = true;
 
 // Any of these should never become a “room card”.
 const UNWANTED_TYPES = new Set([
-  'rooms_totals', 'epc_totals', 'epc', 'overheads', 'whole-house', 'whole_house', 'wholehouse', 'property_totals'
+  'rooms_totals', 'epc_totals', 'epc', 'overheads', 'whole-house', 'whole_house', 'wholehouse', 'property_totals',
+  'unmapped'
 ]);
+
 
 // Exterior bucket we allow even without floorplan mapping (often no labelled rooms)
 const EXTERIOR_TYPES = new Set(['facade', 'exterior', 'garden', 'front', 'rear', 'outside']);
@@ -702,7 +704,10 @@ function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
   const totals: any[] = Array.isArray(property?.room_totals) ? property.room_totals : [];
   const refurb: any[] = Array.isArray(refurbRows) ? refurbRows : [];
   // If exterior-type, collapse into a single bucket for the type
-  const forceExteriorKey = (ty: string) => (EXTERIOR_TYPES.has(ty) || ty === 'facade') ? `${ty}::` : null;
+  // If exterior-type, collapse into a single bucket for the type
+const forceExteriorKey = (ty: string) =>
+(EXTERIOR_TYPES.has(ty) || ty === 'facade') ? `${ty}::` : null;
+
 
 
   // 1) Identify which types have any floorplan-mapped rows.
@@ -731,15 +736,6 @@ function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
     mapped: boolean;
     isExterior: boolean;
   };
-  const NO_IMAGE_PLACEHOLDER =
-    'data:image/svg+xml;utf8,' +
-    encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420">
-      <rect width="100%" height="100%" fill="#f8fafc"/>
-      <g fill="#94a3b8" font-family="Verdana" font-size="18">
-        <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">Image unavailable</text>
-      </g>
-      <rect x="2" y="2" width="636" height="416" fill="none" stroke="#cbd5e1" stroke-width="4"/>
-    </svg>`);
 
   const acc = new Map<string, Acc>();
 
@@ -1251,31 +1247,16 @@ const roomTypes = useMemo(() => {
                     return (
                       <div key={g.key ?? idx} className="rounded-xl border bg-white overflow-hidden shadow-sm">
                         {/* Top media: primary + thumbs */}
-                        <div className="p-2 border-b">
-                          <div className="w-full h-40 bg-white rounded-md overflow-hidden flex items-center justify-center">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                                src={g.primaryImage}
-                                alt={g.primaryImage === NO_IMAGE_PLACEHOLDER ? `${title} (image unavailable)` : title}
-                                className="w-full h-40 object-cover object-center"
-                                loading="lazy"
-                              />
+                        {/* Top media: single image + tiny arrows */}
+<div className="p-2 border-b">
+  <Carousel images={[g.primaryImage, ...g.images.slice(1)]} title={title} />
+  {g.primaryImage === NO_IMAGE_PLACEHOLDER && (
+    <div className="mt-2 text-center text-xs text-slate-500">
+      Image unavailable (priced from other signals)
+    </div>
+  )}
+</div>
 
-                          </div>
-                          {g.images.length > 1 && (
-                            <div className="mt-2 grid grid-cols-5 gap-1">
-                              {g.images.slice(1, 6).map((src, i) => (
-                                <div key={i} className="h-10 rounded overflow-hidden border bg-white">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img src={src} alt={`${title} ${i+2}`} className="w-full h-10 object-cover" loading="lazy" />
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {g.primaryImage === NO_IMAGE_PLACEHOLDER && (
-                            <div className="mt-2 text-center text-xs text-slate-500">Image unavailable (priced from other signals)</div>
-                          )}
-                        </div>
 
                         {/* Title + tag row */}
                         <div className="px-3 pt-2 pb-0.5 flex items-center justify-between">
