@@ -1304,7 +1304,7 @@ const roomTypes = useMemo(() => {
                         const conf = typeof g.confidence === 'number' ? Math.round(g.confidence * 100) : null;
                         return (
                           <tr key={g.key ?? `row-${i}`} className="border-t">
-                            <td className="p-2 capitalize">{prettyRoomNamFromKey(g.key)}</td>
+                            <td className="p-2 capitalize">{prettyRoomNameFromKey(g.key)}</td>
                             <td className="p-2 text-right">{money0(g.materials_total_with_vat_gbp ?? g.materials_total_gbp)}</td>
                             <td className="p-2 text-right">{money0(g.labour_total_gbp)}</td>
                             <td className="p-2 text-right font-semibold">{money0(g.room_total_with_vat_gbp ?? g.room_total_gbp)}</td>
