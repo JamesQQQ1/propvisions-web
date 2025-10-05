@@ -694,7 +694,10 @@ type GroupedRoom = {
   rep: RefurbRoom;
   // count of merged source rows (refurb rows matched into this total)
   mergedCount: number;
+  // NEW: is this card tied to a floorplan room (id/label)?
+  mapped: boolean;
 };
+
 
 function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
   const totals: any[] = Array.isArray(property?.room_totals) ? property.room_totals : [];
@@ -838,21 +841,38 @@ return Array.from(new Set(out));
   }
 
   // Build final list
-  const groups = [] as {
-    key: string;
-    room_type: string;
-    room_label?: string | null;
-    materials_total_with_vat_gbp?: number;
-    materials_total_gbp?: number;
-    labour_total_gbp?: number;
-    room_total_with_vat_gbp?: number;
-    room_total_gbp?: number;
-    confidence?: number | null;
-    images: string[];
-    primaryImage: string;
-    rep: RefurbRoom;
-    mergedCount: number;
-  }[];
+for (const a of acc.values()) {
+  // 5a) resolve gallery to URLs
+  let gallery = resolveToUrls(a.images);
+
+  // allow exterior/facade to borrow listing images if still empty
+  if (!gallery.length && a.isExterior) {
+    gallery = globalImages;
+  }
+
+  const primary = gallery[0] ?? NO_IMAGE_PLACEHOLDER;
+
+  // Representative row for RoomCard (strip image fields so RoomCard doesn’t double-render)
+  const { image_url: _iu, image_urls: _ius, images: _imgs, ...repForCard } = (a.rep ?? {}) as any;
+
+  groups.push({
+    key: a.key,
+    room_type: a.type,
+    room_label: a.label ?? null,
+    materials_total_with_vat_gbp: a.mat ?? undefined,
+    materials_total_gbp: a.mat ?? undefined,
+    labour_total_gbp: a.lab ?? undefined,
+    room_total_with_vat_gbp: a.tot ?? undefined,
+    room_total_gbp: a.tot ?? undefined,
+    confidence: a.confidence ?? null,
+    images: gallery,                 // URLs only
+    primaryImage: primary,           // URL or placeholder
+    rep: repForCard as RefurbRoom,
+    mergedCount: a.mergedCount,
+    mapped: a.mapped,                // <-- NEW: carry mapped flag forward
+  });
+}
+
 
   for (const a of acc.values()) {
     // 5a) resolve gallery to URLs
@@ -887,16 +907,14 @@ return Array.from(new Set(out));
   
 
 // --- SUPPRESS GENERIC "type::" CARDS WHEN SPECIFIC LABEL/ID CARDS EXIST ---
-const specificTypes = new Set(
-  groups
-    .filter(g => g.key.includes('::id:') || g.key.includes('::label:'))
-    .map(g => g.room_type)
+// Determine which types have at least one floorplan-mapped card
+const hasMappedByType = new Set(
+  groups.filter(g => g.mapped === true).map(g => g.room_type)
 );
 
-// Drop generic "type::" groups whenever a specific exists for that type
-const cleaned = groups.filter(
-  g => !(g.key.endsWith('::') && specificTypes.has(g.room_type))
-);
+// Drop any UNMAPPED card for a type that already has a MAPPED card
+const cleaned = groups.filter(g => !(g.mapped === false && hasMappedByType.has(g.room_type)));
+
 
 return cleaned;
 }
