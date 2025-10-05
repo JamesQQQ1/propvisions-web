@@ -978,7 +978,8 @@ function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
 
 // === derive groupedRooms from room_totals (truth) + refurb merges ===
 const groupedRooms: GroupedRoom[] = useMemo(() => {
-  let list = buildRoomGroups(data?.property, data?.refurb_estimates);
+  let list = buildRoomGroups(data?.property, data?.refurb_estimates)
+  .filter(g => !UNWANTED_TYPES.has(g.room_type));
 
   if (filterType !== 'All') {
     list = list.filter((g) => titleize(g.room_type) === filterType);
@@ -1339,7 +1340,7 @@ const roomTypes = useMemo(() => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                   {groupedRooms.map((g, idx) => {
                     // We’ll pass a representative room to RoomCard but decorate the header + gallery here.
-                    const title = prettyRoomName(g.key);
+                    const title = prettyRoomNameFromKey(g.key);
                     const conf = typeof g.confidence === 'number' ? Math.round(g.confidence * 100) : null;
                     // strip media fields so RoomCard doesn't render another image block
                     const { image_url: _iu, image_urls: _ius, images: _imgs, ...repForCard } = (g.rep as any);
