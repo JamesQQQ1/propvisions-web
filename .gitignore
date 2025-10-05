@@ -34,3 +34,4 @@ WhitePaper/*.pdf
 
 # PDFs generated locally
 *.pdf
+.vercel

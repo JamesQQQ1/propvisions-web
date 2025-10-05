@@ -484,7 +484,7 @@ export default function Page() {
   const showRentFeedback = true;
   const showEpcFeedback  = true;
 
-  /* ---------- ROOM GROUPING & GALLERY (room_totals is the truth) ---------- */
+/* ---------- ROOM GROUPING & GALLERY (room_totals is the truth) ---------- */
 
 // Minimal embedded placeholder for rooms with no images
 const NO_IMAGE_PLACEHOLDER =
@@ -498,26 +498,26 @@ encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="640" height="
 </svg>`);
 
 type GroupedRoom = {
-key: string;
-room_type: string;
-room_label?: string | null;
-// merged numbers
-materials_total_with_vat_gbp?: number;
-materials_total_gbp?: number;
-labour_total_gbp?: number;
-room_total_with_vat_gbp?: number;
-room_total_gbp?: number;
-confidence?: number | null;
-// images
-images: string[];
-primaryImage: string;
-// representative row (for RoomCard consumption)
-rep: RefurbRoom;
-// count of merged source rows (refurb rows matched into this total)
-mergedCount: number;
+  key: string;
+  room_type: string;
+  room_label?: string | null;
+  // merged numbers
+  materials_total_with_vat_gbp?: number;
+  materials_total_gbp?: number;
+  labour_total_gbp?: number;
+  room_total_with_vat_gbp?: number;
+  room_total_gbp?: number;
+  confidence?: number | null;
+  // images
+  images: string[];
+  primaryImage: string;
+  // representative row (for RoomCard consumption)
+  rep: RefurbRoom;
+  // count of merged source rows (refurb rows matched into this total)
+  mergedCount: number;
 };
 
-// --- place these BEFORE buildRoomGroups ---
+// --- helpers (must be BEFORE buildRoomGroups) ---
 
 const EXTERIOR_TYPES = new Set(['facade', 'garden', 'exterior']);
 
@@ -540,7 +540,6 @@ function isFloorplanMapped(t: any) {
   );
 }
 
-
 function normaliseType(x?: string | null) {
   if (!x) return 'other';
   const raw = x.toString().trim().toLowerCase();
@@ -555,7 +554,7 @@ function normaliseType(x?: string | null) {
     wc: 'bathroom',
     cloakroom: 'bathroom',
     ensuite: 'bathroom',
-    en-suite: 'bathroom',
+    'en-suite': 'bathroom',
     bath: 'bathroom',
     beds: 'bedroom',
     bed: 'bedroom',
@@ -570,13 +569,10 @@ function normaliseType(x?: string | null) {
     garden: 'facade',
   };
 
-  // try direct map first
   if (map[raw]) return map[raw];
 
-  // collapse whitespace/underscores
   const t = raw.replace(/\s+/g, '_');
 
-  // partial contains checks
   if (t.includes('bed')) return 'bedroom';
   if (t.includes('kitchen')) return 'kitchen';
   if (t.includes('bath')) return 'bathroom';
@@ -593,93 +589,92 @@ function normaliseType(x?: string | null) {
 }
 
 function extractLabelFromAny(estOrTot: any): string | null {
-return (
-  estOrTot?.floorplan_room_label ||
-  estOrTot?.room_label ||
-  estOrTot?.room_name ||
-  estOrTot?.label ||
-  null
-);
+  return (
+    estOrTot?.floorplan_room_label ||
+    estOrTot?.room_label ||
+    estOrTot?.room_name ||
+    estOrTot?.label ||
+    null
+  );
 }
+
 function extractIndexFromAny(estOrTot: any): number | null {
-const idx =
-  estOrTot?.room_index ??
-  estOrTot?.floorplan_room_id ??
-  estOrTot?.index ??
-  estOrTot?.order ??
-  null;
-const n = Number(idx);
-return Number.isFinite(n) ? n : null;
+  const idx =
+    estOrTot?.room_index ??
+    estOrTot?.floorplan_room_id ??
+    estOrTot?.index ??
+    estOrTot?.order ??
+    null;
+  const n = Number(idx);
+  return Number.isFinite(n) ? n : null;
 }
 
 // canonical key for property.room_totals rows
 function keyFromTotal(tot: any) {
-const typeRaw = tot?.type ?? tot?.room_type ?? tot?.category ?? 'other';
-const t = normaliseType(typeRaw);
-const label = (extractLabelFromAny(tot) || '').toString().trim().toLowerCase();
-const idx = extractIndexFromAny(tot);
-if (label) return `${t}::${label}`;
-if (idx != null) return `${t}::${idx}`;
-return `${t}::`;
+  const typeRaw = tot?.type ?? tot?.room_type ?? tot?.category ?? 'other';
+  const t = normaliseType(typeRaw);
+  const label = (extractLabelFromAny(tot) || '').toString().trim().toLowerCase();
+  const idx = extractIndexFromAny(tot);
+  if (label) return `${t}::${label}`;
+  if (idx != null) return `${t}::${idx}`;
+  return `${t}::`;
 }
 
 // best-effort match between a refurb row and a room_total key
 function keyFromRefurb(est: any) {
-const t = normaliseType(est?.detected_room_type ?? est?.room_type ?? 'other');
-const label = (extractLabelFromAny(est) || '').toString().trim().toLowerCase();
-const idx = extractIndexFromAny(est);
-if (label) return `${t}::${label}`;
-if (idx != null) return `${t}::${idx}`;
-return `${t}::`;
+  const t = normaliseType(est?.detected_room_type ?? est?.room_type ?? 'other');
+  const label = (extractLabelFromAny(est) || '').toString().trim().toLowerCase();
+  const idx = extractIndexFromAny(est);
+  if (label) return `${t}::${label}`;
+  if (idx != null) return `${t}::${idx}`;
+  return `${t}::`;
 }
 
 function prettyRoomName(key: string) {
-const [t, label] = key.split('::');
-const title = titleize(t.replace(/_/g, ' '));
-if (!label) return title;
-const labelPretty = titleize(label.replace(/_/g, ' '));
-if (labelPretty.toLowerCase().startsWith(title.toLowerCase())) return labelPretty;
-return `${title} — ${labelPretty}`;
+  const [t, label] = key.split('::');
+  const title = titleize(t.replace(/_/g, ' '));
+  if (!label) return title;
+  const labelPretty = titleize(label.replace(/_/g, ' '));
+  if (labelPretty.toLowerCase().startsWith(title.toLowerCase())) return labelPretty;
+  return `${title} — ${labelPretty}`;
 }
 
 function collectImages(est: any): string[] {
-const imgs: string[] = [];
-if (est?.image_url) imgs.push(est.image_url);
-if (Array.isArray(est?.image_urls)) imgs.push(...est.image_urls.filter(Boolean));
-if (Array.isArray(est?.images)) imgs.push(...est.images.filter(Boolean));
-return Array.from(new Set(imgs.filter(Boolean)));
+  const imgs: string[] = [];
+  if (est?.image_url) imgs.push(est.image_url);
+  if (Array.isArray(est?.image_urls)) imgs.push(...est.image_urls.filter(Boolean));
+  if (Array.isArray(est?.images)) imgs.push(...est.images.filter(Boolean));
+  return Array.from(new Set(imgs.filter(Boolean)));
 }
 
-// read totals from room_totals row with graceful fallbacks
 function readTotalWithVat(t: any) {
-return (
-  toInt(t?.room_total_with_vat_gbp) ||
-  toInt(t?.room_total_with_vat) ||
-  toInt(t?.total_with_vat) ||
-  toInt(t?.total_gbp) ||
-  toInt(t?.total)
-);
+  return (
+    toInt(t?.room_total_with_vat_gbp) ||
+    toInt(t?.room_total_with_vat) ||
+    toInt(t?.total_with_vat) ||
+    toInt(t?.total_gbp) ||
+    toInt(t?.total)
+  );
 }
 function readMaterialsTotal(t: any) {
-return (
-  toInt(t?.materials_total_with_vat_gbp) ||
-  toInt(t?.materials_total_with_vat) ||
-  toInt(t?.materials_total_gbp) ||
-  toInt(t?.materials_total)
-);
+  return (
+    toInt(t?.materials_total_with_vat_gbp) ||
+    toInt(t?.materials_total_with_vat) ||
+    toInt(t?.materials_total_gbp) ||
+    toInt(t?.materials_total)
+  );
 }
 function readLabourTotal(t: any) {
-return (
-  toInt(t?.labour_total_gbp) ||
-  toInt(t?.labour_total)
-);
+  return (
+    toInt(t?.labour_total_gbp) ||
+    toInt(t?.labour_total)
+  );
 }
 
 function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
   const totals: any[] = Array.isArray(property?.room_totals) ? property.room_totals : [];
   const refurb: any[] = Array.isArray(refurbRows) ? refurbRows : [];
 
-  // Index refurb rows by a best-fit key for fast matching
   const refurbByKey = new Map<string, RefurbRoom[]>();
   for (const est of refurb) {
     const k = keyFromRefurb(est);
@@ -689,19 +684,15 @@ function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
 
   const groups: GroupedRoom[] = [];
 
-  // 1) Build from room_totals (authoritative), merging any refurb matches
   for (const tot of totals) {
     const k = keyFromTotal(tot);
     const t = normaliseType(tot?.type ?? tot?.room_type ?? 'other');
     const lbl = extractLabelFromAny(tot);
 
-    if (isOverheadsOrTotalsRow(tot)) continue; // skip EPC/overheads rollups
+    if (isOverheadsOrTotalsRow(tot)) continue;
 
     const isExterior = EXTERIOR_TYPES.has(t);
-// Show all non-overhead rooms from room_totals, even if not floorplan-mapped.
-// Still hide totally untyped “other” (optional — comment out next line if you want those too).
-if (!isExterior && t === 'other') continue;
-
+    if (!isExterior && t === 'other') continue;
 
     const matches = refurbByKey.get(k) ?? [];
     let mat = readMaterialsTotal(tot);
@@ -719,9 +710,8 @@ if (!isExterior && t === 'other') continue;
       const refTot = matches.reduce((a, r) => a + roomV2Total(r), 0);
 
       if (mat == null) mat = refMat;
-if (lab == null) lab = refLab;
-if (roomTotal == null) roomTotal = refTot;
-
+      if (lab == null) lab = refLab;
+      if (roomTotal == null) roomTotal = refTot;
 
       conf = matches.reduce((m, r) => {
         let c = typeof (r as any).confidence === 'number'
@@ -729,11 +719,9 @@ if (roomTotal == null) roomTotal = refTot;
           : typeof (r as any).room_confidence === 'number'
             ? Number((r as any).room_confidence)
             : 0;
-        // normalise if someone sent 0–100
         if (c > 1 && c <= 100) c = c / 100;
         return Math.max(m, c);
       }, 0);
-      
 
       for (const r of matches) images.push(...collectImages(r));
       rep = { ...(matches[0] || {}) };
@@ -749,9 +737,8 @@ if (roomTotal == null) roomTotal = refTot;
       room_type: t,
       room_label: lbl,
       materials_total_with_vat_gbp: mat ?? undefined,
-labour_total_gbp: lab ?? undefined,
-room_total_with_vat_gbp: roomTotal ?? undefined,
-
+      labour_total_gbp: lab ?? undefined,
+      room_total_with_vat_gbp: roomTotal ?? undefined,
       confidence: conf,
       images: imgList,
       primaryImage: imgList[0],
@@ -760,23 +747,19 @@ room_total_with_vat_gbp: roomTotal ?? undefined,
     });
   }
 
-  // 2) Orphans: refurb rows that didn’t match any total (guarded)
   for (const est of refurb) {
     const k = keyFromRefurb(est);
-    if (groups.find(g => g.key === k)) continue; // already represented
+    if (groups.find(g => g.key === k)) continue;
 
     const t = normaliseType(est?.detected_room_type ?? est?.room_type ?? 'other');
-// Allow unmapped internals to appear; they’ll still dedupe by key.
-
     const lbl = extractLabelFromAny(est);
     const imgList = collectImages(est);
     let conf = typeof (est as any).confidence === 'number'
-  ? Number((est as any).confidence)
-  : typeof (est as any).room_confidence === 'number'
-    ? Number((est as any).room_confidence)
-    : null;
-if (typeof conf === 'number' && conf > 1 && conf <= 100) conf = conf / 100;
-
+      ? Number((est as any).confidence)
+      : typeof (est as any).room_confidence === 'number'
+        ? Number((est as any).room_confidence)
+        : null;
+    if (typeof conf === 'number' && conf > 1 && conf <= 100) conf = conf / 100;
 
     groups.push({
       key: k,
@@ -827,6 +810,9 @@ const roomTypes = useMemo(() => {
   groupedRooms.forEach((g) => set.add(titleize(g.room_type)));
   return ['All', ...Array.from(set).sort()];
 }, [groupedRooms]);
+
+/* ---------- scenarios helpers (labels & render) ---------- */
+
 
 
 
