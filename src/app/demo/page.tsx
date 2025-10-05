@@ -833,6 +833,8 @@ return Array.from(new Set(out));
     upsert(k, estType, est, { mapped: isFloorplanMapped(est) });
   }
 
+  const groups: GroupedRoom[] = [];
+
   // Build final list
 for (const a of acc.values()) {
   // 5a) resolve gallery to URLs
