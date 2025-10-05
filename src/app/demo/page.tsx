@@ -847,8 +847,10 @@ const forceExteriorKey = (ty: string) =>
     // Respect SHOW_ONLY_FLOORPLAN_MAPPED for non-exteriors
     if (SHOW_ONLY_FLOORPLAN_MAPPED && !a.mapped && !a.isExterior) continue;
 
-        // Ensure a displayable image list; if none on the room, fall back to property listing images
-        const imgs = a.images.length ? a.images : globalImages;
+      // Only show per-room images. If the room has none, use a property-level fallback
+    // **only** for exterior/facade types (rooms rarely have their own images).
+    const imgs = a.images.length ? a.images : (a.isExterior ? globalImages : []);
+
 
 
 
