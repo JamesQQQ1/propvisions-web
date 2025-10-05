@@ -118,6 +118,31 @@ function computeRefurbRollup(property: any, refurb_estimates: RefurbRoom[] | und
 }
 
 /* ---------- room grouping: constants & canonical helpers (STRICT) ---------- */
+// infer a room type from a free-text label (used when backend says type: "room")
+function inferTypeFromLabel(lbl?: string | null) {
+  const s = (lbl || '').toLowerCase();
+  if (!s) return null;
+  if (s.includes('kitchen')) return 'kitchen';
+  if (s.includes('bed')) return 'bedroom';
+  if (s.includes('bath') || s.includes('toilet') || s.includes('ensuite') || s.includes('en-suite')) return 'bathroom';
+  if (s.includes('reception') || s.includes('lounge') || s.includes('living')) return 'living_room';
+  if (s.includes('hall') || s.includes('landing') || s.includes('stairs')) return 'hall';
+  if (s.includes('utility')) return 'utility';
+  if (s.includes('garage')) return 'garage';
+  if (s.includes('garden') || s.includes('facade') || s.includes('exterior') || s.includes('outside') || s.includes('front') || s.includes('rear')) return 'facade';
+  return null;
+}
+
+// true when the label is basically just the type name (e.g., label "Bedroom" with type "bedroom")
+// -> smells like a per-type rollup rather than a specific mapped room
+function isTypeLabelOnly(type: string, label?: string | null) {
+  const t = (type || '').trim().toLowerCase();
+  const l = (label || '').trim().toLowerCase();
+  if (!t || !l) return false;
+  const canon = (x: string) => x.replace(/_/g, ' ').replace(/\s+/g, ' ').replace(/s\b/, '').trim();
+  return canon(l) === canon(t);
+}
+
 
 // When true, only render rooms that are mapped to the floorplan (label or id).
 const SHOW_ONLY_FLOORPLAN_MAPPED = true;
@@ -202,14 +227,25 @@ function extractIndexFromAny(estOrTot: any): number | null {
 
 // Prefer floorplan id → else label → else index; include type
 function canonicalMatchKey(payload: any, fallbackType?: string) {
+  const labelRaw = extractLabelFromAny(payload);
   const typeRaw = payload?.type ?? payload?.room_type ?? fallbackType ?? 'other';
-  const t = normaliseType(typeRaw);
+
+  // Start from backend type
+  let t = normaliseType(typeRaw);
+
+  // If backend said "room" or "other", try to infer from the label
+  if (t === 'room' || t === 'other') {
+    const inferred = inferTypeFromLabel(labelRaw || undefined);
+    if (inferred) t = inferred;
+  }
+
   const id = extractIndexFromAny(payload);     // floorplan_room_id if present
-  const lbl = (extractLabelFromAny(payload) || '').toString().trim().toLowerCase();
+  const lbl = (labelRaw || '').toString().trim().toLowerCase();
   if (id != null) return `${t}::id:${id}`;
   if (lbl)       return `${t}::label:${lbl}`;
-  return `${t}::`; // “generic” (will be suppressed when labelled/id’d rooms exist for this type)
+  return `${t}::`; // generic (later suppressed when labelled/id’d rooms exist)
 }
+
 
 function prettyRoomNameFromKey(key: string) {
   const [t, rest] = key.split('::');
@@ -810,12 +846,15 @@ return Array.from(new Set(out));
   for (const tot of totals) {
     if (isOverheadsOrTotalsRow(tot)) continue;
     const type = normaliseType(tot?.type ?? tot?.room_type ?? 'other');
+    const maybeLabel = extractLabelFromAny(tot);
     if (SHOW_ONLY_FLOORPLAN_MAPPED && !isFloorplanMapped(tot) && !EXTERIOR_TYPES.has(type)) {
       // Unmapped totals are allowed ONLY if exterior.
       continue;
     }
-    // Hide generic per-type rollups when any mapped rooms exist for the type
-    if (floorplanByType.has(type) && !isFloorplanMapped(tot)) continue;
+    // If this looks like a per-type rollup (e.g., label "Bedroom") and we already
+// have floorplan-mapped rooms of this type, skip it.
+if (floorplanByType.has(type) && isTypeLabelOnly(type, maybeLabel)) continue;
+
 
     const key = forceExteriorKey(type) ?? canonicalMatchKey(tot, type);
     upsert(key, type, tot, { mapped: isFloorplanMapped(tot) });
