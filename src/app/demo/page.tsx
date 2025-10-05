@@ -1314,7 +1314,7 @@ const roomTypes = useMemo(() => {
             right={
               <div className="flex flex-wrap items-center gap-2 ml-auto">
                 <label className="text-xs text-slate-600">Filter:</label>
-                <select className="text-sm border rounded-md px-2 py-1" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+                <select className="text-sm border rounded-md px-2 py-1" value={filterType} onChange={(e) => setFilterType(e.target.value)}> 
                   {roomTypes.map((t) => (<option key={t} value={t}>{t}</option>))}
                 </select>
 
@@ -1456,7 +1456,7 @@ const roomTypes = useMemo(() => {
                         const conf = typeof g.confidence === 'number' ? Math.round(g.confidence * 100) : null;
                         return (
                           <tr key={g.key ?? `row-${i}`} className="border-t">
-                            <td className="p-2 capitalize">{prettyRoomName(g.key)}</td>
+                            <td className="p-2 capitalize">{prettyRoomNamFromKey(g.key)}</td>
                             <td className="p-2 text-right">{money0(g.materials_total_with_vat_gbp ?? g.materials_total_gbp)}</td>
                             <td className="p-2 text-right">{money0(g.labour_total_gbp)}</td>
                             <td className="p-2 text-right font-semibold">{money0(g.room_total_with_vat_gbp ?? g.room_total_gbp)}</td>
