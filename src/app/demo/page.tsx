@@ -630,181 +630,117 @@ return (
 );
 }
 
-// Build groups where property.room_totals is the single source of truth,
-// then merge/attach any matching refurb_estimates rows (materials/labour/images)
-// to those groups, without double-counting.
 function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
-const totals: any[] = Array.isArray(property?.room_totals) ? property.room_totals : [];
-const refurb: any[] = Array.isArray(refurbRows) ? refurbRows : [];
+  const totals: any[] = Array.isArray(property?.room_totals) ? property.room_totals : [];
+  const refurb: any[] = Array.isArray(refurbRows) ? refurbRows : [];
 
-// OPTIONAL: include any refurb rows that didn’t match a room_total (edge cases).
-// Only include if mapped to the floorplan OR is an allowed exterior type.
-for (const est of refurb) {
-  const k = keyFromRefurb(est);
-  if (groups.find(g => g.key === k)) continue; // already represented
-
-  const t = normaliseType(est?.detected_room_type ?? est?.room_type ?? 'other');
-  const isExterior = EXTERIOR_TYPES.has(t);
-  const isMappedToFloorplan = !!(est?.floorplan_room_id || est?.floorplan_room_label);
-
-  // 🚫 drop “other/unmapped” internals
-  if (!isExterior && !isMappedToFloorplan) continue;
-
-  const lbl = extractLabelFromAny(est);
-  const imgList = collectImages(est);
-  const conf = typeof (est as any).confidence === 'number'
-    ? Number((est as any).confidence)
-    : typeof (est as any).room_confidence === 'number'
-      ? Number((est as any).room_confidence) : null;
-
-  groups.push({
-    key: k,
-    room_type: t,
-    room_label: lbl,
-    materials_total_with_vat_gbp: toInt((est as any).materials_total_with_vat_gbp ?? (est as any).materials_total_gbp) || undefined,
-    labour_total_gbp: toInt((est as any).labour_total_gbp) || undefined,
-    room_total_with_vat_gbp: roomV2Total(est) || undefined,
-    confidence: conf,
-    images: imgList.length ? imgList : [NO_IMAGE_PLACEHOLDER],
-    primaryImage: (imgList[0] ?? NO_IMAGE_PLACEHOLDER),
-    rep: est as any,
-    mergedCount: 1,
-  });
-}
-
-
-const groups: GroupedRoom[] = [];
-
-for (const tot of totals) {
-  const k = keyFromTotal(tot);
-  const t = normaliseType(tot?.type ?? tot?.room_type ?? 'other');
-  const lbl = extractLabelFromAny(tot);
-
-  // 🚫 skip summary/overheads/epc
-  if (isOverheadsOrTotalsRow(tot)) continue;
-
-  // 🚫 skip “other” and unmapped unless it’s an exterior type we allow
-  const isExterior = EXTERIOR_TYPES.has(t);
-  if (!isExterior && !isFloorplanMapped(tot)) continue;
-  if (!isExterior && t === 'other') continue;
-
-
-  // merge matching refurb rows (if any)
-  const matches = refurbByKey.get(k) ?? [];
-  let mat = readMaterialsTotal(tot);
-  let lab = readLabourTotal(tot);
-  let roomTotal = readTotalWithVat(tot);
-  let conf: number | null = null;
-
-  const images: string[] = [];
-  let rep: RefurbRoom | any = null;
-
-  if (matches.length) {
-    // Use sums from refurb only to fill gaps; totals from room_totals remain authoritative.
-    const sumFromRefurb = (sel: (x: any) => number) => matches.reduce((a, r) => a + toInt(sel(r)), 0);
-    const refMat = sumFromRefurb((r) => r.materials_total_with_vat_gbp ?? r.materials_total_gbp);
-    const refLab = sumFromRefurb((r) => r.labour_total_gbp);
-    const refTot = matches.reduce((a, r) => a + roomV2Total(r), 0);
-
-    // If room_totals didn’t provide a number, fall back to refurb sums.
-    if (!mat) mat = refMat;
-    if (!lab) lab = refLab;
-    if (!roomTotal) roomTotal = refTot;
-
-    // confidence = max of matched rows
-    conf = matches.reduce((m, r) => {
-      const c = typeof (r as any).confidence === 'number'
-        ? Number((r as any).confidence)
-        : typeof (r as any).room_confidence === 'number'
-          ? Number((r as any).room_confidence) : 0;
-      return Math.max(m, c);
-    }, 0);
-
-    // images
-    for (const r of matches) images.push(...collectImages(r));
-    // rep row for RoomCard
-    rep = { ...(matches[0] || {}) };
+  // Index refurb rows by a best-fit key for fast matching
+  const refurbByKey = new Map<string, RefurbRoom[]>();
+  for (const est of refurb) {
+    const k = keyFromRefurb(est);
+    if (!refurbByKey.has(k)) refurbByKey.set(k, []);
+    refurbByKey.get(k)!.push(est);
   }
 
-  const imgList = images.length ? Array.from(new Set(images)) : [NO_IMAGE_PLACEHOLDER];
+  const groups: GroupedRoom[] = [];
 
-  // If no refurb rep exists, make a stub so RoomCard can still render
-  if (!rep) {
-    rep = {
+  // 1) Build from room_totals (authoritative), merging any refurb matches
+  for (const tot of totals) {
+    const k = keyFromTotal(tot);
+    const t = normaliseType(tot?.type ?? tot?.room_type ?? 'other');
+    const lbl = extractLabelFromAny(tot);
+
+    if (isOverheadsOrTotalsRow(tot)) continue; // skip EPC/overheads rollups
+
+    const isExterior = EXTERIOR_TYPES.has(t);
+    if (!isExterior && !isFloorplanMapped(tot)) continue; // only floorplan-mapped internals
+    if (!isExterior && t === 'other') continue;
+
+    const matches = refurbByKey.get(k) ?? [];
+    let mat = readMaterialsTotal(tot);
+    let lab = readLabourTotal(tot);
+    let roomTotal = readTotalWithVat(tot);
+    let conf: number | null = null;
+
+    const images: string[] = [];
+    let rep: RefurbRoom | any = null;
+
+    if (matches.length) {
+      const sumFromRefurb = (sel: (x: any) => number) => matches.reduce((a, r) => a + toInt(sel(r)), 0);
+      const refMat = sumFromRefurb((r) => r.materials_total_with_vat_gbp ?? r.materials_total_gbp);
+      const refLab = sumFromRefurb((r) => r.labour_total_gbp);
+      const refTot = matches.reduce((a, r) => a + roomV2Total(r), 0);
+
+      if (!mat) mat = refMat;
+      if (!lab) lab = refLab;
+      if (!roomTotal) roomTotal = refTot;
+
+      conf = matches.reduce((m, r) => {
+        const c = typeof (r as any).confidence === 'number'
+          ? Number((r as any).confidence)
+          : typeof (r as any).room_confidence === 'number'
+            ? Number((r as any).room_confidence) : 0;
+        return Math.max(m, c);
+      }, 0);
+
+      for (const r of matches) images.push(...collectImages(r));
+      rep = { ...(matches[0] || {}) };
+    }
+
+    const imgList = images.length ? Array.from(new Set(images)) : [NO_IMAGE_PLACEHOLDER];
+    if (!rep) {
+      rep = { room_type: t, room_label: lbl ?? undefined, image_url: imgList[0], image_urls: imgList } as any;
+    }
+
+    groups.push({
+      key: k,
       room_type: t,
-      room_label: lbl ?? undefined,
-      image_url: imgList[0],
-      image_urls: imgList,
-    } as any;
+      room_label: lbl,
+      materials_total_with_vat_gbp: mat || undefined,
+      labour_total_gbp: lab || undefined,
+      room_total_with_vat_gbp: roomTotal || undefined,
+      confidence: conf,
+      images: imgList,
+      primaryImage: imgList[0],
+      rep,
+      mergedCount: matches.length || 0,
+    });
   }
 
-  groups.push({
-    key: k,
-    room_type: t,
-    room_label: lbl,
-    materials_total_with_vat_gbp: mat || undefined,
-    labour_total_gbp: lab || undefined,
-    room_total_with_vat_gbp: roomTotal || undefined,
-    confidence: conf,
-    images: imgList,
-    primaryImage: imgList[0],
-    rep,
-    mergedCount: matches.length || 0,
-  });
+  // 2) Orphans: refurb rows that didn’t match any total (guarded)
+  for (const est of refurb) {
+    const k = keyFromRefurb(est);
+    if (groups.find(g => g.key === k)) continue; // already represented
+
+    const t = normaliseType(est?.detected_room_type ?? est?.room_type ?? 'other');
+    const isExterior = EXTERIOR_TYPES.has(t);
+    const isMappedToFloorplan = !!(est?.floorplan_room_id || est?.floorplan_room_label);
+    if (!isExterior && !isMappedToFloorplan) continue; // drop unmapped internals
+
+    const lbl = extractLabelFromAny(est);
+    const imgList = collectImages(est);
+    const conf = typeof (est as any).confidence === 'number'
+      ? Number((est as any).confidence)
+      : typeof (est as any).room_confidence === 'number'
+        ? Number((est as any).room_confidence) : null;
+
+    groups.push({
+      key: k,
+      room_type: t,
+      room_label: lbl,
+      materials_total_with_vat_gbp: toInt((est as any).materials_total_with_vat_gbp ?? (est as any).materials_total_gbp) || undefined,
+      labour_total_gbp: toInt((est as any).labour_total_gbp) || undefined,
+      room_total_with_vat_gbp: roomV2Total(est) || undefined,
+      confidence: conf,
+      images: imgList.length ? imgList : [NO_IMAGE_PLACEHOLDER],
+      primaryImage: (imgList[0] ?? NO_IMAGE_PLACEHOLDER),
+      rep: est as any,
+      mergedCount: 1,
+    });
+  }
+
+  return groups;
 }
-
-// OPTIONAL: include any refurb rows that didn’t match a room_total (edge cases).
-// These will appear as “extra” rooms so you can spot mapping gaps.
-for (const est of refurb) {
-  const k = keyFromRefurb(est);
-  if (groups.find(g => g.key === k)) continue; // already represented by a total
-  const t = normaliseType(est?.detected_room_type ?? est?.room_type ?? 'other');
-  const lbl = extractLabelFromAny(est);
-  const imgList = collectImages(est);
-  const conf = typeof (est as any).confidence === 'number'
-    ? Number((est as any).confidence)
-    : typeof (est as any).room_confidence === 'number'
-      ? Number((est as any).room_confidence) : null;
-
-  groups.push({
-    key: k,
-    room_type: t,
-    room_label: lbl,
-    materials_total_with_vat_gbp: toInt((est as any).materials_total_with_vat_gbp ?? (est as any).materials_total_gbp) || undefined,
-    labour_total_gbp: toInt((est as any).labour_total_gbp) || undefined,
-    room_total_with_vat_gbp: roomV2Total(est) || undefined,
-    confidence: conf,
-    images: imgList.length ? imgList : [NO_IMAGE_PLACEHOLDER],
-    primaryImage: (imgList[0] ?? NO_IMAGE_PLACEHOLDER),
-    rep: est as any,
-    mergedCount: 1,
-  });
-}
-
-return groups;
-}
-
-const EXTERIOR_TYPES = new Set(['facade', 'garden', 'exterior']);
-
-function isOverheadsOrTotalsRow(t: any) {
-  const type = String(t?.type ?? '').toLowerCase();
-  const name = String(t?.room_name ?? '').toLowerCase();
-  return (
-    type.includes('rooms_totals') ||
-    type.includes('epc_totals') ||
-    name.includes('overheads') ||
-    name.includes('whole-house') ||
-    name.includes('whole house')
-  );
-}
-
-function isFloorplanMapped(t: any) {
-  return (
-    t?.floorplan_room_id != null ||
-    (t?.floorplan_room_label && String(t.floorplan_room_label).trim().length > 0)
-  );
-}
-
 
 // === derive groupedRooms from room_totals (truth) + refurb merges ===
 const groupedRooms: GroupedRoom[] = useMemo(() => {
@@ -1220,8 +1156,6 @@ const roomTypes = useMemo(() => {
                           </div>
 
                           {/* Keep your existing breakdown component for consistency */}
-                          // strip media fields so RoomCard doesn't render its own image block
-const { image_url: _iu, image_urls: _ius, images: _imgs, ...repForCard } = (g.rep as any);
 
 <RoomCard
   key={g.key}
