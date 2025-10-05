@@ -301,94 +301,16 @@ function readLabourTotal(t: any) {
   return toInt(t?.labour_total_gbp ?? t?.labour_total);
 }
 
-/* ---------- Floorplan-only room resolution ---------- */
-function normName(s?: string | null): string {
-  if (!s) return '';
-  let norm = s.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^\w_]/g, '');
-
-  const synonyms: Record<string, string> = {
-    'sitting_room': 'living_room',
-    'lounge': 'living_room',
-    'hall': 'hallway',
-    'wc': 'bathroom',
-    'toilet': 'bathroom',
-    'cloakroom': 'bathroom',
-    'facade_exterior': 'facade_exterior',
-    'front_exterior': 'facade_exterior'
-  };
-
-  return synonyms[norm] || norm;
-}
-
-function extractIndex(label?: string | null): number | null {
-  if (!label) return null;
-  const match = label.match(/(\d+)$/);
-  return match ? parseInt(match[1], 10) : null;
-}
-
-function logicalKey(roomType?: string | null, roomName?: string | null): string {
-  return `${normName(roomType || roomName || '')}::${(roomName || '').toLowerCase()}`;
-}
-
-function aggregateRoomImages(roomName: string, roomType: string, property: any): { images: string[]; extras: string[] } {
-  const images = new Set<string>();
-
-  // 1. Direct room matches
-  (property?.image_urls_by_room?.[roomName] || []).forEach((url: string) => images.add(url));
-
-  // 2. Primary images
-  const primary = property?.primary_image_url_by_room?.[roomName];
-  if (primary) images.add(primary);
-
-  // 3. Images by room -> resolve via map
-  (property?.images_by_room?.[roomName] || []).forEach((id: string) => {
-    const url = property?.images_map?.[id];
-    if (url) images.add(url);
-  });
-
-  // 4. Room groups
-  (property?.room_groups || []).forEach((group: any) => {
-    const matchesRoute = normName(group.route) === normName(roomType);
-    const matchesName = normName(group.room_name) === normName(roomName);
-
-    if (matchesRoute || matchesName) {
-      (group.image_urls || []).forEach((url: string) => images.add(url));
-      if (group.primary_image_url) images.add(group.primary_image_url);
-    }
-  });
-
-  return { images: Array.from(images), extras: [] };
-}
-
-function matchEstimateToFloorplan(est: any, floorplanRooms: any[]): number | null {
-  const estType = normName(est.room_type || est.detected_room_type || '');
-  const estIndex = extractIndex(est.room_label || '');
-
-  // 1. Exact match by type and index
-  for (let i = 0; i < floorplanRooms.length; i++) {
-    const room = floorplanRooms[i];
-    if (room.type === estType) {
-      const roomIndex = extractIndex(room.label);
-      if (estIndex !== null && roomIndex === estIndex) return i;
-      if (estIndex === null && roomIndex === null) return i;
-    }
-  }
-
-  // 2. First type match
-  return floorplanRooms.findIndex(room => room.type === estType);
-}
-
-
 /* ---------- UI micro components ---------- */
 function Badge({ children, tone = 'slate' }: { children: React.ReactNode; tone?: 'green' | 'red' | 'amber' | 'slate' | 'blue' }) {
   const m: Record<string, string> = {
-    green: 'bg-green-50 text-green-800 ring-green-200/60 shadow-sm',
-    red: 'bg-red-50 text-red-800 ring-red-200/60 shadow-sm',
-    amber: 'bg-amber-50 text-amber-800 ring-amber-200/60 shadow-sm',
-    slate: 'bg-slate-50 text-slate-700 ring-slate-200/60 shadow-sm',
-    blue: 'bg-blue-50 text-blue-800 ring-blue-200/60 shadow-sm',
+    green: 'bg-green-50 text-green-700 ring-green-200',
+    red: 'bg-red-50 text-red-700 ring-red-200',
+    amber: 'bg-amber-50 text-amber-800 ring-amber-200',
+    slate: 'bg-slate-50 text-slate-700 ring-slate-200',
+    blue: 'bg-blue-50 text-blue-700 ring-blue-200',
   };
-  return <span className={classNames('inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ring-1', m[tone])}>{children}</span>;
+  return <span className={classNames('inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs ring-1', m[tone])}>{children}</span>;
 }
 function KPI({
   label, value, subtitle, tone, big = true,
@@ -496,23 +418,13 @@ function ProgressBar({ percent, show }: { percent: number; show: boolean }) {
 // Placeholder used when a room has costs but no photos (module-scope so Carousel can use it)
 const NO_IMAGE_PLACEHOLDER =
   'data:image/svg+xml;utf8,' +
-  encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420" viewBox="0 0 640 420">
-    <defs>
-      <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" style="stop-color:#f8fafc;stop-opacity:1" />
-        <stop offset="100%" style="stop-color:#f1f5f9;stop-opacity:1" />
-      </linearGradient>
-    </defs>
-    <rect width="100%" height="100%" fill="url(#bg)"/>
-    <g transform="translate(320,210)">
-      <circle cx="0" cy="-30" r="24" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="2"/>
-      <path d="M-12,-38 L-12,-30 L-6,-24 L6,-30 L12,-30 L12,-38 Z" fill="#94a3b8"/>
-      <circle cx="-6" cy="-33" r="3" fill="#64748b"/>
-      <text x="0" y="15" font-family="system-ui,-apple-system,sans-serif" font-size="14" font-weight="500" fill="#64748b" text-anchor="middle">No image available</text>
-      <text x="0" y="35" font-family="system-ui,-apple-system,sans-serif" font-size="12" fill="#94a3b8" text-anchor="middle">Costs estimated from room analysis</text>
-    </g>
-    <rect x="1" y="1" width="638" height="418" fill="none" stroke="#e2e8f0" stroke-width="2" stroke-dasharray="8,4"/>
-  </svg>`);
+  encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420">
+  <rect width="100%" height="100%" fill="#f8fafc"/>
+  <g fill="#94a3b8" font-family="Verdana" font-size="18">
+    <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">Image unavailable</text>
+  </g>
+  <rect x="2" y="2" width="636" height="416" fill="none" stroke="#cbd5e1" stroke-width="4"/>
+</svg>`);
 
 
 function Carousel({ images, title }: { images: string[]; title: string }) {
@@ -521,12 +433,12 @@ function Carousel({ images, title }: { images: string[]; title: string }) {
   const src = list[idx] || NO_IMAGE_PLACEHOLDER;
   const go = (d: number) => setIdx((i) => (list.length ? (i + d + list.length) % list.length : 0));
   return (
-    <div className="relative w-full h-48 bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl overflow-hidden flex items-center justify-center group-hover:scale-[1.02] transition-transform duration-300">
+    <div className="relative w-full h-40 bg-white rounded-md overflow-hidden flex items-center justify-center">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
         alt={src === NO_IMAGE_PLACEHOLDER ? `${title} (image unavailable)` : title}
-        className="w-full h-48 object-cover object-center"
+        className="w-full h-40 object-cover object-center"
         loading="lazy"
       />
       {list.length > 1 && (
@@ -535,7 +447,7 @@ function Carousel({ images, title }: { images: string[]; title: string }) {
             type="button"
             aria-label="Prev image"
             onClick={() => go(-1)}
-            className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-white/90 backdrop-blur border border-white/20 text-slate-700 hover:bg-white hover:shadow-md transition-all duration-200 flex items-center justify-center font-medium"
+            className="absolute left-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-white/80 border text-slate-700 hover:bg-white"
           >
             ‹
           </button>
@@ -543,14 +455,12 @@ function Carousel({ images, title }: { images: string[]; title: string }) {
             type="button"
             aria-label="Next image"
             onClick={() => go(1)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-white/90 backdrop-blur border border-white/20 text-slate-700 hover:bg-white hover:shadow-md transition-all duration-200 flex items-center justify-center font-medium"
+            className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-white/80 border text-slate-700 hover:bg-white"
           >
             ›
           </button>
-          <div className="absolute bottom-2 left-0 right-0 text-center">
-            <span className="inline-block bg-black/70 backdrop-blur text-white text-[10px] font-medium px-2 py-0.5 rounded-full">
-              {idx + 1}/{list.length}
-            </span>
+          <div className="absolute bottom-1 left-0 right-0 text-center text-[11px] text-slate-600">
+            {idx + 1}/{list.length}
           </div>
         </>
       )}
@@ -596,7 +506,7 @@ export default function Page() {
 
   // Filters
   const [filterType, setFilterType] = useState<string>('All');
-  const [sortKey, setSortKey] = useState<'total_desc' | 'total_asc' | 'room_asc' | 'room_order'>('room_order');
+  const [sortKey, setSortKey] = useState<'total_desc' | 'total_asc' | 'room_asc'>('total_desc');
   const [minConfidence, setMinConfidence] = useState<number>(0);
 
   // Run state
@@ -622,7 +532,7 @@ export default function Page() {
       const theRunId = (theRunIdRaw || '').trim();
       setShowDebug(false); setError(undefined); setData(null);
       setSlDerived(null); setSlAssumptions(null);
-      setFilterType('All'); setSortKey('room_order'); setMinConfidence(0);
+      setFilterType('All'); setSortKey('total_desc'); setMinConfidence(0);
 
       if (!theRunId) { setStatus('failed'); setError('No demo run_id provided.'); return; }
       abortRef.current?.abort();
@@ -668,7 +578,7 @@ export default function Page() {
     try {
       setShowDebug(false); setError(undefined); setData(null);
       setSlDerived(null); setSlAssumptions(null);
-      setFilterType('All'); setSortKey('room_order'); setMinConfidence(0);
+      setFilterType('All'); setSortKey('total_desc'); setMinConfidence(0);
 
       if (useDemo) { await loadDemoRun(demoRunId); return; }
 
@@ -1027,131 +937,10 @@ return cleaned;
 }
 
 
-// === derive groupedRooms from floorplan only (no unmapped) ===
+// === derive groupedRooms from room_totals (truth) + refurb merges ===
 const groupedRooms: GroupedRoom[] = useMemo(() => {
-  if (!data?.property) return [];
-
-  // 1. Build canonical floorplan room list
-  const floorplanRooms: Array<{
-    key: string;
-    label: string;
-    type: string;
-    floor?: string | null;
-    images: string[];
-    extrasCount: number;
-    costs: { materialsWithVat?: number; labour?: number; totalWithVat?: number };
-  }> = [];
-
-  // Start from floorplan_min only
-  (data.property.floorplan_min || []).forEach((fp: any) => {
-    const type = normName(fp.room_type);
-    const label = fp.room_name || '';
-    const key = logicalKey(type, label);
-
-    // Avoid duplicates
-    if (!floorplanRooms.find(r => r.key === key)) {
-      const { images } = aggregateRoomImages(label, type, data.property);
-
-      floorplanRooms.push({
-        key,
-        label,
-        type,
-        floor: fp.floor,
-        images,
-        extrasCount: 0,
-        costs: {}
-      });
-    }
-  });
-
-  // Add exterior rooms if data exists
-  const exteriorTypes = ['facade_exterior', 'garden', 'exterior'];
-  exteriorTypes.forEach(extType => {
-    const hasData = (data.property.room_groups || []).some((g: any) => normName(g.route) === extType) ||
-                   (data.property.not_in_floorplan || []).some((n: any) => normName(n.route) === extType);
-
-    if (hasData) {
-      const key = logicalKey(extType, '');
-      const { images } = aggregateRoomImages('', extType, data.property);
-
-      floorplanRooms.push({
-        key,
-        label: extType.replace('_', ' ').replace(/\b\w/g, m => m.toUpperCase()),
-        type: extType,
-        images,
-        extrasCount: 0,
-        costs: {}
-      });
-    }
-  });
-
-  // 2. Match and merge estimates
-  (data.refurb_estimates || []).forEach((est: any) => {
-    const matchIndex = matchEstimateToFloorplan(est, floorplanRooms);
-
-    if (matchIndex !== null) {
-      const room = floorplanRooms[matchIndex];
-
-      // Merge costs
-      const matVal = toInt(est.materials_total_with_vat_gbp || est.materials_total_gbp);
-      const labVal = toInt(est.labour_total_gbp);
-      const totVal = toInt(est.room_total_with_vat_gbp || est.room_total_gbp) || (matVal + labVal);
-
-      room.costs.materialsWithVat = (room.costs.materialsWithVat || 0) + matVal;
-      room.costs.labour = (room.costs.labour || 0) + labVal;
-      room.costs.totalWithVat = (room.costs.totalWithVat || 0) + totVal;
-
-      // Check for extra images
-      if (est.image_url && !room.images.includes(est.image_url)) {
-        room.extrasCount++;
-      }
-      if (est.image_id) {
-        const url = data.property.images_map?.[est.image_id];
-        if (url && !room.images.includes(url)) {
-          room.extrasCount++;
-        }
-      }
-    }
-    // Note: orphaned estimates are intentionally discarded (no unmapped cards)
-  });
-
-  // Convert to GroupedRoom format for existing rendering
-  const result: GroupedRoom[] = floorplanRooms.map((room, idx) => {
-    const rep: RefurbRoom = {
-      id: `room-${idx}`,
-      room_type: room.type,
-      detected_room_type: room.type,
-      room_label: room.label,
-      materials: null,
-      labour: null,
-      materials_total_gbp: room.costs.materialsWithVat,
-      materials_total_with_vat_gbp: room.costs.materialsWithVat,
-      labour_total_gbp: room.costs.labour,
-      room_total_gbp: room.costs.totalWithVat,
-      room_total_with_vat_gbp: room.costs.totalWithVat,
-      extrasCount: room.extrasCount
-    };
-
-    return {
-      key: room.key,
-      room_type: room.type,
-      room_label: room.label,
-      materials_total_with_vat_gbp: room.costs.materialsWithVat,
-      materials_total_gbp: room.costs.materialsWithVat,
-      labour_total_gbp: room.costs.labour,
-      room_total_with_vat_gbp: room.costs.totalWithVat,
-      room_total_gbp: room.costs.totalWithVat,
-      confidence: null,
-      images: room.images,
-      primaryImage: room.images[0] || NO_IMAGE_PLACEHOLDER,
-      rep,
-      mergedCount: 1,
-      mapped: true
-    };
-  });
-
-  // Apply existing filters and sorting
-  let list = result.filter(g => !UNWANTED_TYPES.has(g.room_type));
+  let list = buildRoomGroups(data?.property, data?.refurb_estimates)
+  .filter(g => !UNWANTED_TYPES.has(g.room_type));
 
   if (filterType !== 'All') {
     list = list.filter((g) => titleize(g.room_type) === filterType);
@@ -1163,18 +952,18 @@ const groupedRooms: GroupedRoom[] = useMemo(() => {
       : true
   );
 
-  // Apply sorting
-  const displayOrder = ['kitchen', 'bathroom', 'bedroom', 'living_room', 'hallway', 'facade_exterior', 'garden', 'exterior', 'other'];
-
   list = [...list].sort((a, b) => {
     if (sortKey === 'total_desc')
       return (b.room_total_with_vat_gbp || 0) - (a.room_total_with_vat_gbp || 0);
     if (sortKey === 'total_asc')
       return (a.room_total_with_vat_gbp || 0) - (b.room_total_with_vat_gbp || 0);
     if (sortKey === 'room_order') {
-      const ia = displayOrder.indexOf(a.room_type);
-      const ib = displayOrder.indexOf(b.room_type);
+      // Canonical room ordering matching the API logic
+      const order = ['kitchen', 'bathroom', 'living', 'sitting', 'reception', 'bedroom', 'hall', 'landing'];
+      const ia = order.findIndex((k) => (a.room_type || '').toLowerCase().includes(k));
+      const ib = order.findIndex((k) => (b.room_type || '').toLowerCase().includes(k));
       const orderDiff = (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+      // If same order index, sort by name
       return orderDiff !== 0 ? orderDiff : a.key.localeCompare(b.key);
     }
     return a.key.localeCompare(b.key);
@@ -1227,7 +1016,7 @@ const roomTypes = useMemo(() => {
     deposit_gbp:        { label: 'Deposit', fmt: 'money' },
     interest_gbp:       { label: 'Interest', fmt: 'money' },
   };
-  const prettifyKey = (k: string) => labelMap[k]?.label || titleize(/_gbp(_per_m)?$/.test(k) ? k.replace(/_gbp(_per_m)?$/,'') : k).replace(/_/g,' ');
+  const prettifyKey = (k: string) => labelMap[k]?.label || titleize(k.replace(/_gbp(_per_m)?$/.test(k) ? k.replace(/_gbp(_per_m)?$/,'') : k).replace(/_/g,' '));
   const formatCell = (k: string, v: any) => {
     const meta = labelMap[k];
     const fmt = meta?.fmt;
@@ -1498,7 +1287,6 @@ const roomTypes = useMemo(() => {
 
                 <label className="text-xs text-slate-600 ml-2">Sort:</label>
                 <select className="text-sm border rounded-md px-2 py-1" value={sortKey} onChange={(e) => setSortKey(e.target.value as any)}>
-                  <option value="room_order">Room order (logical)</option>
                   <option value="total_desc">Total (high → low)</option>
                   <option value="total_asc">Total (low → high)</option>
                   <option value="room_asc">Room (A → Z)</option>
@@ -1519,7 +1307,7 @@ const roomTypes = useMemo(() => {
             {/* Cards (grouped) */}
             {groupedRooms.length ? (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                   {groupedRooms.map((g, idx) => {
                     // We’ll pass a representative room to RoomCard but decorate the header + gallery here.
                     const title = prettyRoomNameFromKey(g.key);
@@ -1529,42 +1317,42 @@ const roomTypes = useMemo(() => {
 
 
                     return (
-                      <div key={g.key ?? idx} className="group rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300 hover:-translate-y-1">
+                      <div key={g.key ?? idx} className="rounded-xl border bg-white overflow-hidden shadow-sm">
                         {/* Top media: primary + thumbs */}
                         {/* Top media: single image + tiny arrows */}
-<div className="p-3 border-b border-slate-100">
+<div className="p-2 border-b">
   <Carousel images={[g.primaryImage, ...g.images.slice(1)]} title={title} />
   {g.primaryImage === NO_IMAGE_PLACEHOLDER && (
     <div className="mt-2 text-center text-xs text-slate-500">
-      Room costs estimated from analysis signals
+      Image unavailable (priced from other signals)
     </div>
   )}
 </div>
 
 
                         {/* Title + tag row */}
-                        <div className="px-4 pt-3 pb-2 flex items-start justify-between">
-                          <div className="text-base font-semibold text-slate-900 leading-tight">{title}</div>
-                          <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+                        <div className="px-3 pt-2 pb-0.5 flex items-center justify-between">
+                          <div className="text-sm font-medium">{title}</div>
+                          <div className="flex items-center gap-2">
                             {g.room_label && <Badge tone="slate">{g.room_label}</Badge>}
                             {conf != null && <Badge tone={conf >= 80 ? 'green' : conf >= 50 ? 'amber' : 'red'}>{conf}%</Badge>}
                           </div>
                         </div>
 
                         {/* Body: totals + existing RoomCard breakdown (keeps your per-item UI) */}
-                        <div className="px-4 pb-4">
-                          <div className="mb-3 grid grid-cols-3 gap-3 text-xs">
-                            <div className="rounded-lg border border-emerald-200 p-3 bg-emerald-50/50">
-                              <div className="text-emerald-700 font-medium">Materials</div>
-                              <div className="font-semibold text-emerald-900 mt-1">{money0(g.materials_total_with_vat_gbp ?? g.materials_total_gbp)}</div>
+                        <div className="p-3">
+                          <div className="mb-2 grid grid-cols-3 gap-2 text-xs">
+                            <div className="rounded border p-2 bg-slate-50">
+                              <div className="text-slate-500">Materials</div>
+                              <div className="font-medium">{money0(g.materials_total_with_vat_gbp ?? g.materials_total_gbp)}</div>
                             </div>
-                            <div className="rounded-lg border border-purple-200 p-3 bg-purple-50/50">
-                              <div className="text-purple-700 font-medium">Labour</div>
-                              <div className="font-semibold text-purple-900 mt-1">{money0(g.labour_total_gbp)}</div>
+                            <div className="rounded border p-2 bg-slate-50">
+                              <div className="text-slate-500">Labour</div>
+                              <div className="font-medium">{money0(g.labour_total_gbp)}</div>
                             </div>
-                            <div className="rounded-lg border border-blue-200 p-3 bg-blue-50/50">
-                              <div className="text-blue-700 font-medium">Total</div>
-                              <div className="font-semibold text-blue-900 mt-1">{money0(g.room_total_with_vat_gbp ?? g.room_total_gbp)}</div>
+                            <div className="rounded border p-2 bg-slate-50">
+                              <div className="text-slate-500">Total</div>
+                              <div className="font-semibold">{money0(g.room_total_with_vat_gbp ?? g.room_total_gbp)}</div>
                             </div>
                           </div>
 
@@ -1748,7 +1536,7 @@ const roomTypes = useMemo(() => {
               />
               <div className="mt-2 flex items-center gap-3">
                 {/* SINGLE feedback bar only (no duplicate thumbs in this section) */}
-                <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="financials" targetKey="summary" compact />
+                <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="financials" targetKey="summary" variant="yesno" compact />
               </div>
             </div>
 
@@ -1940,7 +1728,7 @@ function DetailsDrawer({ label, children }: { label: string; children: React.Rea
   );
 }
 
-function ScenariosTabs({ scenarios, ScenarioKV }: { scenarios: any; ScenarioKV: ({ obj }: { obj: any }) => React.ReactElement }) {
+function ScenariosTabs({ scenarios, ScenarioKV }: { scenarios: any; ScenarioKV: ({ obj }: { obj: any }) => JSX.Element }) {
   const [tab, setTab] = useState<'inputs'|'sell'|'refi'|'period'>('inputs');
   const TabBtn = ({ id, children }: { id: typeof tab; children: React.ReactNode }) => (
     <button

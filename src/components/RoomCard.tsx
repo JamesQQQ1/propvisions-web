@@ -28,6 +28,7 @@ export type LabourTrade = {
 
 export type RefurbRoom = {
   id?: string;
+  extrasCount?: number;
 
   // room labels
   room_label?: string | null;       // e.g. "Bedroom 2" (preferred for display)
@@ -267,6 +268,15 @@ export default function RoomCard({
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Extras badge for merged images */}
+      {room.extrasCount && room.extrasCount > 0 && (
+        <div className="px-3 pt-2">
+          <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full border border-blue-200">
+            +{room.extrasCount} extra photo{room.extrasCount > 1 ? 's' : ''}
+          </span>
         </div>
       )}
 
