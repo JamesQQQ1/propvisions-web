@@ -183,13 +183,17 @@ function extractLabelFromAny(estOrTot: any): string | null {
 }
 
 function extractIndexFromAny(estOrTot: any): number | null {
-  const idx =
+  const idxRaw =
     estOrTot?.floorplan_room_id ??
     estOrTot?.room_index ??
     estOrTot?.index ??
     estOrTot?.order ??
     null;
-  const n = Number(idx);
+
+  // Treat null/undefined/'' as *no index*, not 0.
+  if (idxRaw === null || idxRaw === undefined || idxRaw === '') return null;
+
+  const n = Number(idxRaw);
   return Number.isFinite(n) ? n : null;
 }
 
@@ -648,7 +652,8 @@ type GroupedRoom = {
 
 // --- helpers (must be BEFORE buildRoomGroups) ---
 
-const EXTERIOR_TYPES = new Set(['facade', 'garden', 'exterior']);
+const EXTERIOR_TYPES = new Set(['facade', 'garden', 'exterior', 'front', 'rear', 'outside']);
+
 
 function isOverheadsOrTotalsRow(t: any) {
   const type = String(t?.type ?? '').toLowerCase();
@@ -673,49 +678,40 @@ function normaliseType(x?: string | null) {
   if (!x) return 'other';
   const raw = x.toString().trim().toLowerCase();
 
-  // Canonical map for common aliases/typos
+  // Explicit map first
   const map: Record<string, string> = {
-    lounge: 'living_room',
-    reception: 'living_room',
-    receptions: 'living_room',
-    living: 'living_room',
-    'living room': 'living_room',
-    wc: 'bathroom',
-    cloakroom: 'bathroom',
-    ensuite: 'bathroom',
-    'en-suite': 'bathroom',
-    bath: 'bathroom',
-    beds: 'bedroom',
-    bed: 'bedroom',
-    'bed room': 'bedroom',
-    hallway: 'hall',
-    landing: 'hall',
-    corridor: 'hall',
-    stair: 'hall',
-    stairs: 'hall',
-    exterior: 'facade',
-    front: 'facade',
-    garden: 'facade',
-  };
+    lounge: 'living_room', reception: 'living_room', receptions: 'living_room', living: 'living_room', 'living room': 'living_room',
 
+    wc: 'bathroom', cloakroom: 'bathroom', ensuite: 'bathroom', 'en-suite': 'bathroom', bath: 'bathroom',
+
+    beds: 'bedroom', bed: 'bedroom', 'bed room': 'bedroom',
+
+    hallway: 'hall', landing: 'hall', corridor: 'hall', stair: 'hall', stairs: 'hall',
+
+    // 👇 split exterior buckets
+    facade: 'facade', exterior: 'facade', front: 'facade', rear: 'facade', outside: 'facade',
+    garden: 'garden', yard: 'garden', 'garden yard': 'garden',
+  };
   if (map[raw]) return map[raw];
 
   const t = raw.replace(/\s+/g, '_');
 
   if (t.includes('bed')) return 'bedroom';
   if (t.includes('kitchen')) return 'kitchen';
-  if (t.includes('bath')) return 'bathroom';
-  if (t.includes('toilet')) return 'bathroom';
-  if (t.includes('ensuite') || t.includes('en-suite')) return 'bathroom';
+  if (t.includes('bath') || t.includes('toilet') || t.includes('ensuite') || t.includes('en-suite')) return 'bathroom';
   if (t.includes('reception') || t.includes('lounge') || t.includes('living')) return 'living_room';
   if (t.includes('hall') || t.includes('landing') || t.includes('stairs')) return 'hall';
   if (t.includes('utility')) return 'utility';
   if (t.includes('store') || t.includes('cupboard')) return 'store';
   if (t.includes('garage')) return 'garage';
-  if (t.includes('facade') || t.includes('exterior') || t.includes('front') || t.includes('garden')) return 'facade';
+
+  // keep garden distinct from facade when inferred
+  if (t.includes('garden') || t.includes('yard')) return 'garden';
+  if (t.includes('facade') || t.includes('exterior') || t.includes('front') || t.includes('rear') || t.includes('outside')) return 'facade';
 
   return t;
 }
+
 
 function extractLabelFromAny(estOrTot: any): string | null {
   return (
@@ -759,14 +755,20 @@ function keyFromRefurb(est: any) {
   return `${t}::`;
 }
 
-function prettyRoomName(key: string) {
-  const [t, label] = key.split('::');
-  const title = titleize(t.replace(/_/g, ' '));
-  if (!label) return title;
-  const labelPretty = titleize(label.replace(/_/g, ' '));
-  if (labelPretty.toLowerCase().startsWith(title.toLowerCase())) return labelPretty;
-  return `${title} — ${labelPretty}`;
+function prettyRoomNameFromKey(key: string) {
+  const [t, rest] = key.split('::');
+  const base = t === 'garden' ? 'Garden' : t.replace(/_/g, ' ').replace(/\b([a-z])/g, (m) => m.toUpperCase());
+  if (!rest) return base;
+  if (rest.startsWith('label:')) {
+    const label = rest.slice(6).replace(/_/g, ' ');
+    const nice = label.replace(/\b([a-z])/g, (m) => m.toUpperCase());
+    if (nice.toLowerCase().startsWith(base.toLowerCase())) return nice;
+    return `${base} — ${nice}`;
+  }
+  if (rest.startsWith('id:')) return `${base}`; // drop the numeric “0/1” for exteriors
+  return base;
 }
+
 
 function collectImages(est: any): string[] {
   const imgs: string[] = [];
@@ -950,7 +952,8 @@ function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
     if (SHOW_ONLY_FLOORPLAN_MAPPED && !a.mapped && !a.isExterior) continue;
 
     // Ensure a displayable image list
-    const imgs = a.images.length ? a.images : [NO_IMAGE_PLACEHOLDER];
+    const imgs = a.images.length ? a.images : []; // don’t inject placeholder into g.images
+
 
     // Build the representative row for RoomCard (strip image fields so RoomCard doesn’t try to render its own)
     const { image_url: _iu, image_urls: _ius, images: _imgs, ...repForCard } = (a.rep ?? {}) as any;
@@ -966,7 +969,7 @@ function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
       room_total_gbp: a.tot ?? undefined,
       confidence: a.confidence ?? null,
       images: imgs,
-      primaryImage: imgs[0],
+      primaryImage: (a.images[0] ?? NO_IMAGE_PLACEHOLDER),
       rep: repForCard as RefurbRoom,
       mergedCount: a.mergedCount,
     });
