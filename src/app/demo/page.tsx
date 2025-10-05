@@ -628,6 +628,15 @@ for (const tot of totals) {
   const t = normaliseType(tot?.type ?? tot?.room_type ?? 'other');
   const lbl = extractLabelFromAny(tot);
 
+  // 🚫 skip summary/overheads/epc
+  if (isOverheadsOrTotalsRow(tot)) continue;
+
+  // 🚫 skip “other” and unmapped unless it’s an exterior type we allow
+  const isExterior = EXTERIOR_TYPES.has(t);
+  if (!isExterior && !isFloorplanMapped(tot)) continue;
+  if (!isExterior && t === 'other') continue;
+
+
   // merge matching refurb rows (if any)
   const matches = refurbByKey.get(k) ?? [];
   let mat = readMaterialsTotal(tot);
@@ -722,6 +731,28 @@ for (const est of refurb) {
 
 return groups;
 }
+
+const EXTERIOR_TYPES = new Set(['facade', 'garden', 'exterior']);
+
+function isOverheadsOrTotalsRow(t: any) {
+  const type = String(t?.type ?? '').toLowerCase();
+  const name = String(t?.room_name ?? '').toLowerCase();
+  return (
+    type.includes('rooms_totals') ||
+    type.includes('epc_totals') ||
+    name.includes('overheads') ||
+    name.includes('whole-house') ||
+    name.includes('whole house')
+  );
+}
+
+function isFloorplanMapped(t: any) {
+  return (
+    t?.floorplan_room_id != null ||
+    (t?.floorplan_room_label && String(t.floorplan_room_label).trim().length > 0)
+  );
+}
+
 
 // === derive groupedRooms from room_totals (truth) + refurb merges ===
 const groupedRooms: GroupedRoom[] = useMemo(() => {
@@ -1134,23 +1165,23 @@ const roomTypes = useMemo(() => {
                           </div>
 
                           {/* Keep your existing breakdown component for consistency */}
-                          <RoomCard
-                            key={g.key}
-                            room={{
-                              ...g.rep,
-                              // supply merged totals so RoomCard shows correct single figure
-                              materials_total_with_vat_gbp: g.materials_total_with_vat_gbp ?? g.materials_total_gbp,
-                              labour_total_gbp: g.labour_total_gbp,
-                              room_total_with_vat_gbp: g.room_total_with_vat_gbp ?? g.room_total_gbp,
-                              // hint the label for icons/titles
-                              room_label: g.room_label ?? undefined,
-                              // ensure RoomCard has at least one image (the placeholder will be used if none)
-                              image_url: g.primaryImage,
-                              image_urls: g.images,
-                            } as any}
-                            runId={runIdRef.current}
-                            propertyId={data.property_id}
-                          />
+                          // strip media fields so RoomCard doesn't render its own image block
+const { image_url: _iu, image_urls: _ius, images: _imgs, ...repForCard } = (g.rep as any);
+
+<RoomCard
+  key={g.key}
+  room={{
+    ...repForCard,
+    // supply merged totals so RoomCard shows correct numbers
+    materials_total_with_vat_gbp: g.materials_total_with_vat_gbp ?? g.materials_total_gbp,
+    labour_total_gbp: g.labour_total_gbp,
+    room_total_with_vat_gbp: g.room_total_with_vat_gbp ?? g.room_total_gbp,
+    room_label: g.room_label ?? undefined,
+  } as any}
+  runId={runIdRef.current}
+  propertyId={data?.property_id}
+/>
+
                         </div>
                       </div>
                     );
