@@ -166,12 +166,23 @@ function isOverheadsOrTotalsRow(t: any) {
   return false;
 }
 
-// Did the backend tie this row to a floorplan room?
-function isFloorplanMapped(t: any) {
-  if (t?.floorplan_room_id != null) return true;
-  const lbl = t?.floorplan_room_label ?? t?.room_label ?? t?.room_name ?? t?.label;
-  return typeof lbl === 'string' && lbl.trim().length > 0;
+// Did the backend tie this row to a specific floorplan room?
+//  - TRUE if we have a numeric/id index
+//  - TRUE if label exists and is NOT just the type name (e.g., "Bedroom 2" or "Sitting Room")
+//  - FALSE for type-only rollups like "Bedroom" or "Kitchen"
+function isFloorplanMapped(row: any, typeHint?: string) {
+  const id = row?.floorplan_room_id ?? row?.room_index ?? row?.index ?? null;
+  if (id !== null && id !== undefined && `${id}` !== '') return true;
+
+  const label = extractLabelFromAny(row);
+  const type  = normaliseType(row?.type ?? row?.room_type ?? typeHint ?? 'other');
+
+  if (!label || !label.toString().trim()) return false;
+
+  // If the label is basically the type name ("Bedroom", "Kitchen"), treat as UNMAPPED.
+  return !isTypeLabelOnly(type, label);
 }
+
 
 // Normalise a room “type” to canonical tokens
 function normaliseType(x?: string | null) {
@@ -769,11 +780,12 @@ return Array.from(new Set(out));
   const floorplanByType = new Set<string>();
   for (const t of totals) {
     if (isOverheadsOrTotalsRow(t)) continue;
-    if (isFloorplanMapped(t)) {
-      const ty = normaliseType(t?.type ?? t?.room_type ?? 'other');
+    const ty = normaliseType(t?.type ?? t?.room_type ?? 'other');
+    if (isFloorplanMapped(t, ty)) {
       floorplanByType.add(ty);
     }
   }
+  
 
   // 2) Build a map<canonicalKey, accumulator>
   type Acc = {
@@ -847,7 +859,7 @@ return Array.from(new Set(out));
     if (isOverheadsOrTotalsRow(tot)) continue;
     const type = normaliseType(tot?.type ?? tot?.room_type ?? 'other');
     const maybeLabel = extractLabelFromAny(tot);
-    if (SHOW_ONLY_FLOORPLAN_MAPPED && !isFloorplanMapped(tot) && !EXTERIOR_TYPES.has(type)) {
+    if (SHOW_ONLY_FLOORPLAN_MAPPED && !isFloorplanMapped(tot, type) && !EXTERIOR_TYPES.has(type)) {
       // Unmapped totals are allowed ONLY if exterior.
       continue;
     }
@@ -857,7 +869,8 @@ if (floorplanByType.has(type) && isTypeLabelOnly(type, maybeLabel)) continue;
 
 
     const key = forceExteriorKey(type) ?? canonicalMatchKey(tot, type);
-    upsert(key, type, tot, { mapped: isFloorplanMapped(tot) });
+    upsert(key, type, tot, { mapped: isFloorplanMapped(tot, type) });
+
   }
 
   // 4) Merge refurb rows into the best matching key
@@ -869,7 +882,8 @@ if (floorplanByType.has(type) && isTypeLabelOnly(type, maybeLabel)) continue;
     // If there is a clear floorplan id/label, use it; otherwise we create/merge into generic,
     // but later we’ll suppress generic cards when labelled/id’d exist for that type.
     const k = canonicalMatchKey(est, estType);
-    upsert(k, estType, est, { mapped: isFloorplanMapped(est) });
+upsert(k, estType, est, { mapped: isFloorplanMapped(est, estType) });
+
   }
 
   const groups: GroupedRoom[] = [];
