@@ -748,9 +748,10 @@ if (roomTotal == null) roomTotal = refTot;
       key: k,
       room_type: t,
       room_label: lbl,
-      materials_total_with_vat_gbp: mat || undefined,
-      labour_total_gbp: lab || undefined,
-      room_total_with_vat_gbp: roomTotal || undefined,
+      materials_total_with_vat_gbp: mat ?? undefined,
+labour_total_gbp: lab ?? undefined,
+room_total_with_vat_gbp: roomTotal ?? undefined,
+
       confidence: conf,
       images: imgList,
       primaryImage: imgList[0],
@@ -765,7 +766,6 @@ if (roomTotal == null) roomTotal = refTot;
     if (groups.find(g => g.key === k)) continue; // already represented
 
     const t = normaliseType(est?.detected_room_type ?? est?.room_type ?? 'other');
-    const isExterior = EXTERIOR_TYPES.has(t);
 // Allow unmapped internals to appear; they’ll still dedupe by key.
 
     const lbl = extractLabelFromAny(est);
