@@ -124,10 +124,13 @@ export default function RoomCard({
   room,
   runId,
   propertyId,
+  /** NEW: when false, this component will NOT render its own image block */
+  showImage = true,
 }: {
   room: RefurbRoom;
   runId?: string | null;
   propertyId?: string | null;
+  showImage?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -201,48 +204,50 @@ export default function RoomCard({
   return (
     <div className="group rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow">
       {/* Image */}
-      <div className="relative w-full aspect-[16/9] bg-slate-100 overflow-hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={img}
-          alt={title}
-          loading="lazy"
-          className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
-        />
+      {showImage && (
+        <div className="relative w-full aspect-[16/9] bg-slate-100 overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={img}
+            alt={title}
+            loading="lazy"
+            className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+          />
 
-        {/* Top-left: room name */}
-        <div className="absolute top-2 left-2">
-          <span className="inline-block text-[11px] tracking-wide uppercase bg-white/85 backdrop-blur px-2 py-1 rounded-full border border-slate-200 shadow-sm">
-            {title}
-          </span>
-        </div>
-
-        {/* Top-right: total / or "no work" */}
-        <div className="absolute top-2 right-2">
-          <span
-            className={`inline-block text-[11px] ${isZero ? 'bg-slate-700' : 'bg-black/70'} text-white px-2 py-1 rounded-full shadow-sm`}
-          >
-            {isZero ? 'No work required' : `Total ${formatGBP(grandTotal)}`}
-          </span>
-        </div>
-
-        {/* Confidence bar */}
-        {conf !== null && (
-          <div className="absolute bottom-0 left-0 right-0 p-2">
-            <div className="h-2 w-full bg-white/70 backdrop-blur rounded">
-              <div
-                className="h-2 rounded bg-blue-600 transition-[width] duration-500"
-                style={{ width: `${Math.round(conf * 100)}%` }}
-                aria-label={`Confidence ${pct(conf)}`}
-                title={`Confidence ${pct(conf)}`}
-              />
-            </div>
+          {/* Top-left: room name */}
+          <div className="absolute top-2 left-2">
+            <span className="inline-block text-[11px] tracking-wide uppercase bg-white/85 backdrop-blur px-2 py-1 rounded-full border border-slate-200 shadow-sm">
+              {title}
+            </span>
           </div>
-        )}
-      </div>
+
+          {/* Top-right: total / or "no work" */}
+          <div className="absolute top-2 right-2">
+            <span
+              className={`inline-block text-[11px] ${isZero ? 'bg-slate-700' : 'bg-black/70'} text-white px-2 py-1 rounded-full shadow-sm`}
+            >
+              {isZero ? 'No work required' : `Total ${formatGBP(grandTotal)}`}
+            </span>
+          </div>
+
+          {/* Confidence bar */}
+          {conf !== null && (
+            <div className="absolute bottom-0 left-0 right-0 p-2">
+              <div className="h-2 w-full bg-white/70 backdrop-blur rounded">
+                <div
+                  className="h-2 rounded bg-blue-600 transition-[width] duration-500"
+                  style={{ width: `${Math.round(conf * 100)}%` }}
+                  aria-label={`Confidence ${pct(conf)}`}
+                  title={`Confidence ${pct(conf)}`}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Small thumb gallery under hero (if extra images) */}
-      {thumbs.length > 0 && (
+      {showImage && thumbs.length > 0 && (
         <div className="px-2 pt-2">
           <div className="grid grid-cols-5 gap-1">
             {thumbs.map((src, i) => (
@@ -423,7 +428,7 @@ export default function RoomCard({
 
             {/* Footer actions / info */}
             <div className="pt-1 flex flex-wrap items-center gap-2">
-              {img && img !== NO_IMAGE_PLACEHOLDER && (
+              {showImage && img && img !== NO_IMAGE_PLACEHOLDER && (
                 <a
                   href={img}
                   target="_blank"

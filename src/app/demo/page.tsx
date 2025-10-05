@@ -151,6 +151,10 @@ function isFloorplanMapped(t: any) {
 function normaliseType(x?: string | null) {
   if (!x) return 'other';
   const raw = x.toString().trim().toLowerCase();
+  const UNWANTED_TYPES = new Set([
+    'rooms_totals', 'epc_totals', 'epc', 'overheads', 'whole-house', 'whole_house', 'wholehouse', 'property_totals',
+    'unmapped' // <— add this
+  ]);  
   const map: Record<string, string> = {
     lounge: 'living_room', reception: 'living_room', receptions: 'living_room', living: 'living_room', 'living room': 'living_room',
     wc: 'bathroom', cloakroom: 'bathroom', ensuite: 'bathroom', 'en-suite': 'bathroom', bath: 'bathroom',
@@ -169,6 +173,8 @@ function normaliseType(x?: string | null) {
   if (t.includes('store') || t.includes('cupboard')) return 'store';
   if (t.includes('garage')) return 'garage';
   if (t.includes('facade') || t.includes('exterior') || t.includes('front') || t.includes('garden')) return 'facade';
+  if (t.includes('facade exterior')) return 'facade';
+  if (t === '(unmapped)' || t === 'unmapped') return 'unmapped';
   return t;
 }
 
@@ -364,6 +370,48 @@ function ProgressBar({ percent, show }: { percent: number; show: boolean }) {
     </div>
   );
 }
+
+function Carousel({ images, title }: { images: string[]; title: string }) {
+  const [idx, setIdx] = useState(0);
+  const list = (images || []).filter(Boolean);
+  const src = list[idx] || NO_IMAGE_PLACEHOLDER;
+  const go = (d: number) => setIdx((i) => (list.length ? (i + d + list.length) % list.length : 0));
+  return (
+    <div className="relative w-full h-40 bg-white rounded-md overflow-hidden flex items-center justify-center">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={src === NO_IMAGE_PLACEHOLDER ? `${title} (image unavailable)` : title}
+        className="w-full h-40 object-cover object-center"
+        loading="lazy"
+      />
+      {list.length > 1 && (
+        <>
+          <button
+            type="button"
+            aria-label="Prev image"
+            onClick={() => go(-1)}
+            className="absolute left-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-white/80 border text-slate-700 hover:bg-white"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            aria-label="Next image"
+            onClick={() => go(1)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-white/80 border text-slate-700 hover:bg-white"
+          >
+            ›
+          </button>
+          <div className="absolute bottom-1 left-0 right-0 text-center text-[11px] text-slate-600">
+            {idx + 1}/{list.length}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 
 /* =========================================================================================
    PAGE
@@ -653,6 +701,9 @@ type GroupedRoom = {
 function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
   const totals: any[] = Array.isArray(property?.room_totals) ? property.room_totals : [];
   const refurb: any[] = Array.isArray(refurbRows) ? refurbRows : [];
+  // If exterior-type, collapse into a single bucket for the type
+  const forceExteriorKey = (ty: string) => (EXTERIOR_TYPES.has(ty) || ty === 'facade') ? `${ty}::` : null;
+
 
   // 1) Identify which types have any floorplan-mapped rows.
   const floorplanByType = new Set<string>();
@@ -751,7 +802,7 @@ function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
     // Hide generic per-type rollups when any mapped rooms exist for the type
     if (floorplanByType.has(type) && !isFloorplanMapped(tot)) continue;
 
-    const key = canonicalMatchKey(tot, type);
+    const key = forceExteriorKey(type) ?? canonicalMatchKey(tot, type);
     upsert(key, type, tot, { mapped: isFloorplanMapped(tot) });
   }
 
@@ -1254,8 +1305,9 @@ const roomTypes = useMemo(() => {
 
                           {/* Keep your existing breakdown component for consistency */}
 
-<RoomCard
+                          <RoomCard
   key={g.key}
+  showImage={false}
   room={{
     ...repForCard,
     materials_total_with_vat_gbp: g.materials_total_with_vat_gbp ?? g.materials_total_gbp,
@@ -1266,6 +1318,7 @@ const roomTypes = useMemo(() => {
   runId={runIdRef.current}
   propertyId={data?.property_id}
 />
+
 
 
                         </div>
