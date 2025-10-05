@@ -301,6 +301,132 @@ function readLabourTotal(t: any) {
   return toInt(t?.labour_total_gbp ?? t?.labour_total);
 }
 
+/* ---------- Enhanced image & cost resolution ---------- */
+function normalizeName(name?: string | null): string {
+  if (!name) return '';
+  let normalized = name.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^\w_]/g, '');
+
+  // Handle synonyms
+  const synonyms: Record<string, string> = {
+    'sitting_room': 'living_room',
+    'lounge': 'living_room',
+    'reception': 'living_room',
+    'hall': 'hallway',
+    'landing': 'hallway',
+    'facade_exterior': 'facade',
+    'garden_yard': 'garden'
+  };
+
+  return synonyms[normalized] || normalized;
+}
+
+function resolveRoomImages(roomName: string, roomType: string, property: any): string[] {
+  const images = new Set<string>();
+  const normalizedName = normalizeName(roomName);
+  const normalizedType = normalizeName(roomType);
+
+  // 1. Direct room name matches in image_urls_by_room
+  Object.entries(property?.image_urls_by_room || {}).forEach(([name, urls]) => {
+    if (normalizeName(name) === normalizedName) {
+      (urls as string[]).forEach(url => url && images.add(url));
+    }
+  });
+
+  // 2. Primary image by room name
+  Object.entries(property?.primary_image_url_by_room || {}).forEach(([name, url]) => {
+    if (normalizeName(name) === normalizedName && url) {
+      images.add(url as string);
+    }
+  });
+
+  // 3. Image IDs resolved via images_map
+  Object.entries(property?.images_by_room || {}).forEach(([name, ids]) => {
+    if (normalizeName(name) === normalizedName) {
+      (ids as string[]).forEach(id => {
+        const url = property?.images_map?.[id];
+        if (url) images.add(url);
+      });
+    }
+  });
+
+  // 4. Room groups by route or name
+  (property?.room_groups || []).forEach((group: any) => {
+    const matchesRoute = normalizeName(group.route) === normalizedType;
+    const matchesName = normalizeName(group.room_name) === normalizedName;
+
+    if (matchesRoute || matchesName) {
+      (group.image_urls || []).forEach((url: string) => url && images.add(url));
+      if (group.primary_image_url) images.add(group.primary_image_url);
+
+      // Resolve image_ids
+      (group.image_ids || []).forEach((id: string) => {
+        const url = property?.images_map?.[id];
+        if (url) images.add(url);
+      });
+    }
+  });
+
+  // 5. Not in floorplan (for exterior rooms)
+  if (['facade', 'garden', 'exterior'].includes(normalizedType)) {
+    (property?.not_in_floorplan || []).forEach((item: any) => {
+      if (normalizeName(item.route) === normalizedType) {
+        (item.image_urls || []).forEach((url: string) => url && images.add(url));
+        (item.image_ids || []).forEach((id: string) => {
+          const url = property?.images_map?.[id];
+          if (url) images.add(url);
+        });
+      }
+    });
+  }
+
+  return Array.from(images);
+}
+
+function aggregateRoomCosts(roomName: string, roomType: string, refurbEstimates: any[], roomTotals: any[]) {
+  const normalizedName = normalizeName(roomName);
+  const normalizedType = normalizeName(roomType);
+
+  // Find matching estimates
+  const matchingEstimates = refurbEstimates.filter(est => {
+    const estType = normalizeName(est.room_type || est.detected_room_type || '');
+    return estType === normalizedType || estType === normalizedName;
+  });
+
+  let materials = 0, labour = 0, total = 0;
+  let hasMaterials = false, hasLabour = false, hasTotal = false;
+
+  matchingEstimates.forEach(est => {
+    const matVal = toInt(est.materials_total_with_vat_gbp || est.materials_total_gbp);
+    const labVal = toInt(est.labour_total_gbp);
+    const totVal = toInt(est.room_total_with_vat_gbp || est.room_total_gbp);
+
+    if (matVal > 0) { materials += matVal; hasMaterials = true; }
+    if (labVal > 0) { labour += labVal; hasLabour = true; }
+    if (totVal > 0) { total += totVal; hasTotal = true; }
+  });
+
+  // Fallback to room_totals
+  if (!hasTotal && !hasMaterials && !hasLabour) {
+    const fallback = roomTotals.find(rt => normalizeName(rt.room_name) === normalizedName);
+    if (fallback?.total_with_vat) {
+      total = toInt(fallback.total_with_vat);
+      hasTotal = true;
+    }
+  }
+
+  // Compute total if not provided but components exist
+  if (!hasTotal && (hasMaterials || hasLabour)) {
+    total = materials + labour;
+    hasTotal = true;
+  }
+
+  return {
+    materialsWithVat: hasMaterials ? materials : undefined,
+    labour: hasLabour ? labour : undefined,
+    totalWithVat: hasTotal ? total : undefined
+  };
+}
+
 /* ---------- UI micro components ---------- */
 function Badge({ children, tone = 'slate' }: { children: React.ReactNode; tone?: 'green' | 'red' | 'amber' | 'slate' | 'blue' }) {
   const m: Record<string, string> = {
@@ -949,11 +1075,115 @@ return cleaned;
 }
 
 
-// === derive groupedRooms from room_totals (truth) + refurb merges ===
+// === derive groupedRooms using enhanced image & cost resolution ===
 const groupedRooms: GroupedRoom[] = useMemo(() => {
-  let list = buildRoomGroups(data?.property, data?.refurb_estimates ?? [])
-  .filter(g => !UNWANTED_TYPES.has(g.room_type));
+  if (!data?.property) return [];
 
+  const logicalRooms = new Map<string, GroupedRoom>();
+
+  // Process room_totals first (authoritative floorplan data)
+  (data.property.room_totals || []).forEach((total: any) => {
+    if (isOverheadsOrTotalsRow(total)) return;
+
+    const roomType = normaliseType(total.type || total.room_type || 'other');
+    const roomName = total.room_name || '';
+    const key = `${roomType}::${roomName.toLowerCase()}`;
+
+    const images = resolveRoomImages(roomName, roomType, data.property);
+    const costs = aggregateRoomCosts(roomName, roomType, data.refurb_estimates || [], data.property.room_totals || []);
+
+    // Create representative room for RoomCard
+    const rep: RefurbRoom = {
+      id: `room-${key}`,
+      room_type: roomType,
+      detected_room_type: roomType,
+      room_label: roomName,
+      materials: null,
+      labour: null,
+      materials_total_gbp: costs.materialsWithVat,
+      materials_total_with_vat_gbp: costs.materialsWithVat,
+      labour_total_gbp: costs.labour,
+      room_total_gbp: costs.totalWithVat,
+      room_total_with_vat_gbp: costs.totalWithVat,
+    };
+
+    logicalRooms.set(key, {
+      key,
+      room_type: roomType,
+      room_label: roomName,
+      materials_total_with_vat_gbp: costs.materialsWithVat,
+      materials_total_gbp: costs.materialsWithVat,
+      labour_total_gbp: costs.labour,
+      room_total_with_vat_gbp: costs.totalWithVat,
+      room_total_gbp: costs.totalWithVat,
+      confidence: null,
+      images,
+      primaryImage: images[0] || NO_IMAGE_PLACEHOLDER,
+      rep,
+      mergedCount: 1,
+      mapped: isFloorplanMapped(total, roomType)
+    });
+  });
+
+  // Process refurb_estimates to fill gaps
+  (data.refurb_estimates || []).forEach((est: any) => {
+    const roomType = normaliseType(est.room_type || est.detected_room_type || 'other');
+    const roomName = est.room_label || extractLabelFromAny(est) || '';
+    const key = roomName ? `${roomType}::${roomName.toLowerCase()}` : `${roomType}::`;
+
+    if (!logicalRooms.has(key)) {
+      const images = resolveRoomImages(roomName, roomType, data.property);
+
+      // Add estimate's own image if available
+      if (est.image_url && !images.includes(est.image_url)) {
+        images.push(est.image_url);
+      }
+      if (est.image_id && data.property.images_map?.[est.image_id]) {
+        const url = data.property.images_map[est.image_id];
+        if (!images.includes(url)) images.push(url);
+      }
+
+      const costs = aggregateRoomCosts(roomName, roomType, data.refurb_estimates || [], data.property.room_totals || []);
+
+      // Create representative room for RoomCard
+      const rep: RefurbRoom = {
+        id: `room-${key}`,
+        room_type: roomType,
+        detected_room_type: roomType,
+        room_label: roomName || null,
+        materials: est.materials || null,
+        labour: est.labour || null,
+        materials_total_gbp: costs.materialsWithVat,
+        materials_total_with_vat_gbp: costs.materialsWithVat,
+        labour_total_gbp: costs.labour,
+        room_total_gbp: costs.totalWithVat,
+        room_total_with_vat_gbp: costs.totalWithVat,
+      };
+
+      logicalRooms.set(key, {
+        key,
+        room_type: roomType,
+        room_label: roomName || null,
+        materials_total_with_vat_gbp: costs.materialsWithVat,
+        materials_total_gbp: costs.materialsWithVat,
+        labour_total_gbp: costs.labour,
+        room_total_with_vat_gbp: costs.totalWithVat,
+        room_total_gbp: costs.totalWithVat,
+        confidence: est.confidence || null,
+        images,
+        primaryImage: images[0] || NO_IMAGE_PLACEHOLDER,
+        rep,
+        mergedCount: 1,
+        mapped: isFloorplanMapped(est, roomType)
+      });
+    }
+  });
+
+  // Convert to array and apply existing filters/sorting
+  let list = Array.from(logicalRooms.values())
+    .filter(g => !UNWANTED_TYPES.has(g.room_type));
+
+  // Apply existing filters
   if (filterType !== 'All') {
     list = list.filter((g) => titleize(g.room_type) === filterType);
   }
@@ -964,18 +1194,17 @@ const groupedRooms: GroupedRoom[] = useMemo(() => {
       : true
   );
 
+  // Apply sorting (keep existing logic)
   list = [...list].sort((a, b) => {
     if (sortKey === 'total_desc')
       return (b.room_total_with_vat_gbp || 0) - (a.room_total_with_vat_gbp || 0);
     if (sortKey === 'total_asc')
       return (a.room_total_with_vat_gbp || 0) - (b.room_total_with_vat_gbp || 0);
     if (sortKey === 'room_order') {
-      // Canonical room ordering matching the API logic
-      const order = ['kitchen', 'bathroom', 'living', 'sitting', 'reception', 'bedroom', 'hall', 'landing'];
-      const ia = order.findIndex((k) => (a.room_type || '').toLowerCase().includes(k));
-      const ib = order.findIndex((k) => (b.room_type || '').toLowerCase().includes(k));
+      const order = ['kitchen', 'bathroom', 'living_room', 'bedroom', 'hallway', 'exterior', 'facade', 'garden'];
+      const ia = order.findIndex((k) => a.room_type.includes(k));
+      const ib = order.findIndex((k) => b.room_type.includes(k));
       const orderDiff = (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
-      // If same order index, sort by name
       return orderDiff !== 0 ? orderDiff : a.key.localeCompare(b.key);
     }
     return a.key.localeCompare(b.key);
