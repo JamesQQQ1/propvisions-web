@@ -29,9 +29,8 @@ const isFiniteNum = (n: unknown) => Number.isFinite(Number(n));
 const n  = (x: unknown) => (isFiniteNum(x) ? Number(x) : undefined);
 const nz = (x: unknown) => (isFiniteNum(x) ? Number(x) : 0);
 
-export const money0 = (x?: unknown) => (x == null || x === '' ? '—' : nfGBP0.format(Number(x)));
-export const money2 = (x?: unknown) => (x == null || x === '' ? '—' : nfGBP2.format(Number(x)));
-const pc1 = (x?: unknown) => (x == null || x === '' ? '—' : nfPct1.format(Number(x)));
+const money0 = (x?: unknown) => (x == null || x === '' ? '—' : nfGBP0.format(Number(x)));
+const money2 = (x?: unknown) => (x == null || x === '' ? '—' : nfGBP2.format(Number(x)));
 
 const classNames = (...xs: (string | false | null | undefined)[]) => xs.filter(Boolean).join(' ');
 const titleize = (k: string) => k.replace(/_/g, ' ').replace(/\b([a-z])/g, (m) => m.toUpperCase());
@@ -160,7 +159,8 @@ function Section({ title, children, right, desc }: { title: string; children: Re
 }
 /** Tiny semicircle DSCR gauge (SVG) */
 function DSCRGauge({ value }: { value?: number }) {
-  const v = Math.max(0, Math.min(2, Number(value ?? 0)));
+  const raw = Number(value);
+  const v = Number.isFinite(raw) ? Math.max(0, Math.min(2, raw)) : 0;
   const pct = v / 2;
   const angle = Math.PI * (1 + pct);
   const r = 42, cx = 50, cy = 50;
@@ -276,7 +276,7 @@ export default function Page() {
   const runIdRef = useRef<string | null>(null);
   const execIdRef = useRef<string | null>(null);
   const running = status === 'queued' || status === 'processing';
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const startedAtRef = useRef<number | null>(null);
   const submittingRef = useRef(false);
@@ -404,7 +404,7 @@ export default function Page() {
 
   /* progress */
   const [progress, setProgress] = useState(0);
-  const progressTickRef = useRef<NodeJS.Timeout | null>(null);
+  const progressTickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const RAMP_MS = 100 * 60 * 1000;
   const MAX_DURING_RUN = 97;
 
@@ -676,12 +676,16 @@ function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
       if (!roomTotal) roomTotal = refTot;
 
       conf = matches.reduce((m, r) => {
-        const c = typeof (r as any).confidence === 'number'
+        let c = typeof (r as any).confidence === 'number'
           ? Number((r as any).confidence)
           : typeof (r as any).room_confidence === 'number'
-            ? Number((r as any).room_confidence) : 0;
+            ? Number((r as any).room_confidence)
+            : 0;
+        // normalise if someone sent 0–100
+        if (c > 1 && c <= 100) c = c / 100;
         return Math.max(m, c);
       }, 0);
+      
 
       for (const r of matches) images.push(...collectImages(r));
       rep = { ...(matches[0] || {}) };
@@ -719,10 +723,13 @@ function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
 
     const lbl = extractLabelFromAny(est);
     const imgList = collectImages(est);
-    const conf = typeof (est as any).confidence === 'number'
-      ? Number((est as any).confidence)
-      : typeof (est as any).room_confidence === 'number'
-        ? Number((est as any).room_confidence) : null;
+    let conf = typeof (est as any).confidence === 'number'
+  ? Number((est as any).confidence)
+  : typeof (est as any).room_confidence === 'number'
+    ? Number((est as any).room_confidence)
+    : null;
+if (typeof conf === 'number' && conf > 1 && conf <= 100) conf = conf / 100;
+
 
     groups.push({
       key: k,
@@ -785,7 +792,9 @@ const roomTypes = useMemo(() => {
     monthly_rent_gbp:   { label: 'Monthly Rent',   hint: 'Gross scheduled monthly rent', fmt: 'money' },
     ground_rent_gbp:    { label: 'Ground Rent',    hint: 'Annual ground rent (if leasehold)', fmt: 'money' },
     service_charge_gbp: { label: 'Service Charge', hint: 'Annual charge (if applicable)', fmt: 'money' },
-    sdlit_gbp:          { label: 'Stamp Duty',     hint: 'Stamp Duty Land Tax', fmt: 'money' },
+    sdlt_gbp:           { label: 'Stamp Duty',     hint: 'Stamp Duty Land Tax', fmt: 'money' },
+    stamp_duty_gbp:     { label: 'Stamp Duty',     hint: 'Stamp Duty Land Tax', fmt: 'money' },
+
 
     // Exit: Sell
     sale_price_gbp:     { label: 'Sale Price', fmt: 'money' },
@@ -1112,7 +1121,13 @@ const roomTypes = useMemo(() => {
                         <div className="p-2 border-b">
                           <div className="w-full h-40 bg-white rounded-md overflow-hidden flex items-center justify-center">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={g.primaryImage} alt={title} className="w-full h-40 object-cover object-center" loading="lazy" />
+                            <img
+                                src={g.primaryImage}
+                                alt={g.primaryImage === NO_IMAGE_PLACEHOLDER ? `${title} (image unavailable)` : title}
+                                className="w-full h-40 object-cover object-center"
+                                loading="lazy"
+                              />
+
                           </div>
                           {g.images.length > 1 && (
                             <div className="mt-2 grid grid-cols-5 gap-1">
