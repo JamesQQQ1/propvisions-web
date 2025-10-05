@@ -886,8 +886,20 @@ return Array.from(new Set(out));
   }
   
 
-  return groups;
-}
+// --- SUPPRESS GENERIC "type::" CARDS WHEN SPECIFIC LABEL/ID CARDS EXIST ---
+const specificTypes = new Set(
+  groups
+    .filter(g => g.key.includes('::id:') || g.key.includes('::label:'))
+    .map(g => g.room_type)
+);
+
+// Drop generic "type::" groups whenever a specific exists for that type
+const cleaned = groups.filter(
+  g => !(g.key.endsWith('::') && specificTypes.has(g.room_type))
+);
+
+return cleaned;
+
 
 
 // === derive groupedRooms from room_totals (truth) + refurb merges ===
