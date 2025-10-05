@@ -675,6 +675,16 @@ function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
   const totals: any[] = Array.isArray(property?.room_totals) ? property.room_totals : [];
   const refurb: any[] = Array.isArray(refurbRows) ? refurbRows : [];
 
+  // If a type has any floorplan-mapped rows, we should NOT render its generic rollup rows.
+const floorplanByType = new Set<string>();
+for (const t of totals) {
+  if (isOverheadsOrTotalsRow(t)) continue;
+  if (isFloorplanMapped(t)) {
+    const ty = normaliseType(t?.type ?? t?.room_type ?? 'other');
+    floorplanByType.add(ty);
+  }
+}
+
   const refurbByKey = new Map<string, RefurbRoom[]>();
   for (const est of refurb) {
     const k = keyFromRefurb(est);
@@ -693,6 +703,11 @@ function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
 
     const isExterior = EXTERIOR_TYPES.has(t);
     if (!isExterior && t === 'other') continue;
+
+      // Skip generic per-type rollups if this type also has floorplan-mapped rooms.
+  // (These generic rows have totals but no images and cause the duplicate "Room — Kitchen" cards.)
+  if (floorplanByType.has(t) && !isFloorplanMapped(tot)) continue;
+
 
     const matches = refurbByKey.get(k) ?? [];
     let mat = readMaterialsTotal(tot);

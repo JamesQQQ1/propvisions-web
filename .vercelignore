@@ -1,0 +1,21 @@
+# === Ignore large/non-app artifacts ===
+WhitePaper/**
+*.pdf
+*.log
+*.aux
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+*.toc
+*.out
+
+# === Node/Next build output (not needed for upload) ===
+.next/
+dist/
+build/
+coverage/
+
+# === Misc ===
+.DS_Store
+*.swp
+*.tmp
