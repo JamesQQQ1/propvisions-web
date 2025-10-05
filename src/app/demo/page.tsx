@@ -899,7 +899,7 @@ const cleaned = groups.filter(
 );
 
 return cleaned;
-
+}
 
 
 // === derive groupedRooms from room_totals (truth) + refurb merges ===
