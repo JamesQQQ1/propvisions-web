@@ -703,6 +703,11 @@ function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
   // If exterior-type, collapse into a single bucket for the type
 const forceExteriorKey = (ty: string) =>
 (EXTERIOR_TYPES.has(ty) || ty === 'facade') ? `${ty}::` : null;
+  // Global property images (used as a last-resort fallback for rooms with no images)
+  const globalImages: string[] = Array.isArray(property?.listing_images)
+    ? property.listing_images.filter(Boolean)
+    : [];
+
 
 
 
@@ -842,8 +847,9 @@ const forceExteriorKey = (ty: string) =>
     // Respect SHOW_ONLY_FLOORPLAN_MAPPED for non-exteriors
     if (SHOW_ONLY_FLOORPLAN_MAPPED && !a.mapped && !a.isExterior) continue;
 
-    // Ensure a displayable image list
-    const imgs = a.images.length ? a.images : []; // don’t inject placeholder into g.images
+        // Ensure a displayable image list; if none on the room, fall back to property listing images
+        const imgs = a.images.length ? a.images : globalImages;
+
 
 
     // Build the representative row for RoomCard (strip image fields so RoomCard doesn’t try to render its own)
@@ -860,7 +866,7 @@ const forceExteriorKey = (ty: string) =>
       room_total_gbp: a.tot ?? undefined,
       confidence: a.confidence ?? null,
       images: imgs,
-      primaryImage: (a.images[0] ?? NO_IMAGE_PLACEHOLDER),
+      primaryImage: (imgs[0] ?? NO_IMAGE_PLACEHOLDER),
       rep: repForCard as RefurbRoom,
       mergedCount: a.mergedCount,
     });
