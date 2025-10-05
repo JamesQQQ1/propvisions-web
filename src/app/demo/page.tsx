@@ -833,13 +833,6 @@ return Array.from(new Set(out));
     upsert(k, estType, est, { mapped: isFloorplanMapped(est) });
   }
 
-  // 5) Finalise: drop generics when labelled/id’d exist for that type; enforce SHOW_ONLY_FLOORPLAN_MAPPED
-  const hasSpecificByType = new Set<string>();
-  for (const a of acc.values()) {
-    const specific = a.key.includes('::id:') || a.key.includes('::label:');
-    if (specific) hasSpecificByType.add(a.type);
-  }
-
   // Build final list
 for (const a of acc.values()) {
   // 5a) resolve gallery to URLs
@@ -872,39 +865,6 @@ for (const a of acc.values()) {
     mapped: a.mapped,                // <-- NEW: carry mapped flag forward
   });
 }
-
-
-  for (const a of acc.values()) {
-    // 5a) resolve gallery to URLs
-    let gallery = resolveToUrls(a.images);
-  
-    // allow exterior/facade to borrow listing images if still empty
-    if (!gallery.length && a.isExterior) {
-      gallery = globalImages;
-    }
-  
-    const primary = gallery[0] ?? NO_IMAGE_PLACEHOLDER;
-  
-    // Representative row for RoomCard (strip image fields so RoomCard doesn’t double-render)
-    const { image_url: _iu, image_urls: _ius, images: _imgs, ...repForCard } = (a.rep ?? {}) as any;
-  
-    groups.push({
-      key: a.key,
-      room_type: a.type,
-      room_label: a.label ?? null,
-      materials_total_with_vat_gbp: a.mat ?? undefined,
-      materials_total_gbp: a.mat ?? undefined,
-      labour_total_gbp: a.lab ?? undefined,
-      room_total_with_vat_gbp: a.tot ?? undefined,
-      room_total_gbp: a.tot ?? undefined,
-      confidence: a.confidence ?? null,
-      images: gallery,                 // <-- URLs only
-      primaryImage: primary,           // <-- URL or placeholder
-      rep: repForCard as RefurbRoom,
-      mergedCount: a.mergedCount,
-    });
-  }
-  
 
 // --- SUPPRESS GENERIC "type::" CARDS WHEN SPECIFIC LABEL/ID CARDS EXIST ---
 // Determine which types have at least one floorplan-mapped card
