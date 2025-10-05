@@ -304,13 +304,13 @@ function readLabourTotal(t: any) {
 /* ---------- UI micro components ---------- */
 function Badge({ children, tone = 'slate' }: { children: React.ReactNode; tone?: 'green' | 'red' | 'amber' | 'slate' | 'blue' }) {
   const m: Record<string, string> = {
-    green: 'bg-green-50 text-green-700 ring-green-200',
-    red: 'bg-red-50 text-red-700 ring-red-200',
-    amber: 'bg-amber-50 text-amber-800 ring-amber-200',
-    slate: 'bg-slate-50 text-slate-700 ring-slate-200',
-    blue: 'bg-blue-50 text-blue-700 ring-blue-200',
+    green: 'bg-green-50 text-green-800 ring-green-200/60 shadow-sm',
+    red: 'bg-red-50 text-red-800 ring-red-200/60 shadow-sm',
+    amber: 'bg-amber-50 text-amber-800 ring-amber-200/60 shadow-sm',
+    slate: 'bg-slate-50 text-slate-700 ring-slate-200/60 shadow-sm',
+    blue: 'bg-blue-50 text-blue-800 ring-blue-200/60 shadow-sm',
   };
-  return <span className={classNames('inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs ring-1', m[tone])}>{children}</span>;
+  return <span className={classNames('inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ring-1', m[tone])}>{children}</span>;
 }
 function KPI({
   label, value, subtitle, tone, big = true,
@@ -418,13 +418,23 @@ function ProgressBar({ percent, show }: { percent: number; show: boolean }) {
 // Placeholder used when a room has costs but no photos (module-scope so Carousel can use it)
 const NO_IMAGE_PLACEHOLDER =
   'data:image/svg+xml;utf8,' +
-  encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420">
-  <rect width="100%" height="100%" fill="#f8fafc"/>
-  <g fill="#94a3b8" font-family="Verdana" font-size="18">
-    <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">Image unavailable</text>
-  </g>
-  <rect x="2" y="2" width="636" height="416" fill="none" stroke="#cbd5e1" stroke-width="4"/>
-</svg>`);
+  encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420" viewBox="0 0 640 420">
+    <defs>
+      <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style="stop-color:#f8fafc;stop-opacity:1" />
+        <stop offset="100%" style="stop-color:#f1f5f9;stop-opacity:1" />
+      </linearGradient>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#bg)"/>
+    <g transform="translate(320,210)">
+      <circle cx="0" cy="-30" r="24" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="2"/>
+      <path d="M-12,-38 L-12,-30 L-6,-24 L6,-30 L12,-30 L12,-38 Z" fill="#94a3b8"/>
+      <circle cx="-6" cy="-33" r="3" fill="#64748b"/>
+      <text x="0" y="15" font-family="system-ui,-apple-system,sans-serif" font-size="14" font-weight="500" fill="#64748b" text-anchor="middle">No image available</text>
+      <text x="0" y="35" font-family="system-ui,-apple-system,sans-serif" font-size="12" fill="#94a3b8" text-anchor="middle">Costs estimated from room analysis</text>
+    </g>
+    <rect x="1" y="1" width="638" height="418" fill="none" stroke="#e2e8f0" stroke-width="2" stroke-dasharray="8,4"/>
+  </svg>`);
 
 
 function Carousel({ images, title }: { images: string[]; title: string }) {
@@ -433,12 +443,12 @@ function Carousel({ images, title }: { images: string[]; title: string }) {
   const src = list[idx] || NO_IMAGE_PLACEHOLDER;
   const go = (d: number) => setIdx((i) => (list.length ? (i + d + list.length) % list.length : 0));
   return (
-    <div className="relative w-full h-40 bg-white rounded-md overflow-hidden flex items-center justify-center">
+    <div className="relative w-full h-48 bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl overflow-hidden flex items-center justify-center group-hover:scale-[1.02] transition-transform duration-300">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
         alt={src === NO_IMAGE_PLACEHOLDER ? `${title} (image unavailable)` : title}
-        className="w-full h-40 object-cover object-center"
+        className="w-full h-48 object-cover object-center"
         loading="lazy"
       />
       {list.length > 1 && (
@@ -447,7 +457,7 @@ function Carousel({ images, title }: { images: string[]; title: string }) {
             type="button"
             aria-label="Prev image"
             onClick={() => go(-1)}
-            className="absolute left-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-white/80 border text-slate-700 hover:bg-white"
+            className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-white/90 backdrop-blur border border-white/20 text-slate-700 hover:bg-white hover:shadow-md transition-all duration-200 flex items-center justify-center font-medium"
           >
             ‹
           </button>
@@ -455,12 +465,14 @@ function Carousel({ images, title }: { images: string[]; title: string }) {
             type="button"
             aria-label="Next image"
             onClick={() => go(1)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-white/80 border text-slate-700 hover:bg-white"
+            className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-white/90 backdrop-blur border border-white/20 text-slate-700 hover:bg-white hover:shadow-md transition-all duration-200 flex items-center justify-center font-medium"
           >
             ›
           </button>
-          <div className="absolute bottom-1 left-0 right-0 text-center text-[11px] text-slate-600">
-            {idx + 1}/{list.length}
+          <div className="absolute bottom-2 left-0 right-0 text-center">
+            <span className="inline-block bg-black/70 backdrop-blur text-white text-[10px] font-medium px-2 py-0.5 rounded-full">
+              {idx + 1}/{list.length}
+            </span>
           </div>
         </>
       )}
@@ -506,7 +518,7 @@ export default function Page() {
 
   // Filters
   const [filterType, setFilterType] = useState<string>('All');
-  const [sortKey, setSortKey] = useState<'total_desc' | 'total_asc' | 'room_asc'>('total_desc');
+  const [sortKey, setSortKey] = useState<'total_desc' | 'total_asc' | 'room_asc' | 'room_order'>('room_order');
   const [minConfidence, setMinConfidence] = useState<number>(0);
 
   // Run state
@@ -532,7 +544,7 @@ export default function Page() {
       const theRunId = (theRunIdRaw || '').trim();
       setShowDebug(false); setError(undefined); setData(null);
       setSlDerived(null); setSlAssumptions(null);
-      setFilterType('All'); setSortKey('total_desc'); setMinConfidence(0);
+      setFilterType('All'); setSortKey('room_order'); setMinConfidence(0);
 
       if (!theRunId) { setStatus('failed'); setError('No demo run_id provided.'); return; }
       abortRef.current?.abort();
@@ -578,7 +590,7 @@ export default function Page() {
     try {
       setShowDebug(false); setError(undefined); setData(null);
       setSlDerived(null); setSlAssumptions(null);
-      setFilterType('All'); setSortKey('total_desc'); setMinConfidence(0);
+      setFilterType('All'); setSortKey('room_order'); setMinConfidence(0);
 
       if (useDemo) { await loadDemoRun(demoRunId); return; }
 
@@ -939,7 +951,7 @@ return cleaned;
 
 // === derive groupedRooms from room_totals (truth) + refurb merges ===
 const groupedRooms: GroupedRoom[] = useMemo(() => {
-  let list = buildRoomGroups(data?.property, data?.refurb_estimates)
+  let list = buildRoomGroups(data?.property, data?.refurb_estimates ?? [])
   .filter(g => !UNWANTED_TYPES.has(g.room_type));
 
   if (filterType !== 'All') {
@@ -957,6 +969,15 @@ const groupedRooms: GroupedRoom[] = useMemo(() => {
       return (b.room_total_with_vat_gbp || 0) - (a.room_total_with_vat_gbp || 0);
     if (sortKey === 'total_asc')
       return (a.room_total_with_vat_gbp || 0) - (b.room_total_with_vat_gbp || 0);
+    if (sortKey === 'room_order') {
+      // Canonical room ordering matching the API logic
+      const order = ['kitchen', 'bathroom', 'living', 'sitting', 'reception', 'bedroom', 'hall', 'landing'];
+      const ia = order.findIndex((k) => (a.room_type || '').toLowerCase().includes(k));
+      const ib = order.findIndex((k) => (b.room_type || '').toLowerCase().includes(k));
+      const orderDiff = (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+      // If same order index, sort by name
+      return orderDiff !== 0 ? orderDiff : a.key.localeCompare(b.key);
+    }
     return a.key.localeCompare(b.key);
   });
 
@@ -1007,7 +1028,7 @@ const roomTypes = useMemo(() => {
     deposit_gbp:        { label: 'Deposit', fmt: 'money' },
     interest_gbp:       { label: 'Interest', fmt: 'money' },
   };
-  const prettifyKey = (k: string) => labelMap[k]?.label || titleize(k.replace(/_gbp(_per_m)?$/.test(k) ? k.replace(/_gbp(_per_m)?$/,'') : k).replace(/_/g,' '));
+  const prettifyKey = (k: string) => labelMap[k]?.label || titleize(/_gbp(_per_m)?$/.test(k) ? k.replace(/_gbp(_per_m)?$/,'') : k).replace(/_/g,' ');
   const formatCell = (k: string, v: any) => {
     const meta = labelMap[k];
     const fmt = meta?.fmt;
@@ -1278,6 +1299,7 @@ const roomTypes = useMemo(() => {
 
                 <label className="text-xs text-slate-600 ml-2">Sort:</label>
                 <select className="text-sm border rounded-md px-2 py-1" value={sortKey} onChange={(e) => setSortKey(e.target.value as any)}>
+                  <option value="room_order">Room order (logical)</option>
                   <option value="total_desc">Total (high → low)</option>
                   <option value="total_asc">Total (low → high)</option>
                   <option value="room_asc">Room (A → Z)</option>
@@ -1298,7 +1320,7 @@ const roomTypes = useMemo(() => {
             {/* Cards (grouped) */}
             {groupedRooms.length ? (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
                   {groupedRooms.map((g, idx) => {
                     // We’ll pass a representative room to RoomCard but decorate the header + gallery here.
                     const title = prettyRoomNameFromKey(g.key);
@@ -1308,42 +1330,42 @@ const roomTypes = useMemo(() => {
 
 
                     return (
-                      <div key={g.key ?? idx} className="rounded-xl border bg-white overflow-hidden shadow-sm">
+                      <div key={g.key ?? idx} className="group rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300 hover:-translate-y-1">
                         {/* Top media: primary + thumbs */}
                         {/* Top media: single image + tiny arrows */}
-<div className="p-2 border-b">
+<div className="p-3 border-b border-slate-100">
   <Carousel images={[g.primaryImage, ...g.images.slice(1)]} title={title} />
   {g.primaryImage === NO_IMAGE_PLACEHOLDER && (
     <div className="mt-2 text-center text-xs text-slate-500">
-      Image unavailable (priced from other signals)
+      Room costs estimated from analysis signals
     </div>
   )}
 </div>
 
 
                         {/* Title + tag row */}
-                        <div className="px-3 pt-2 pb-0.5 flex items-center justify-between">
-                          <div className="text-sm font-medium">{title}</div>
-                          <div className="flex items-center gap-2">
+                        <div className="px-4 pt-3 pb-2 flex items-start justify-between">
+                          <div className="text-base font-semibold text-slate-900 leading-tight">{title}</div>
+                          <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
                             {g.room_label && <Badge tone="slate">{g.room_label}</Badge>}
                             {conf != null && <Badge tone={conf >= 80 ? 'green' : conf >= 50 ? 'amber' : 'red'}>{conf}%</Badge>}
                           </div>
                         </div>
 
                         {/* Body: totals + existing RoomCard breakdown (keeps your per-item UI) */}
-                        <div className="p-3">
-                          <div className="mb-2 grid grid-cols-3 gap-2 text-xs">
-                            <div className="rounded border p-2 bg-slate-50">
-                              <div className="text-slate-500">Materials</div>
-                              <div className="font-medium">{money0(g.materials_total_with_vat_gbp ?? g.materials_total_gbp)}</div>
+                        <div className="px-4 pb-4">
+                          <div className="mb-3 grid grid-cols-3 gap-3 text-xs">
+                            <div className="rounded-lg border border-emerald-200 p-3 bg-emerald-50/50">
+                              <div className="text-emerald-700 font-medium">Materials</div>
+                              <div className="font-semibold text-emerald-900 mt-1">{money0(g.materials_total_with_vat_gbp ?? g.materials_total_gbp)}</div>
                             </div>
-                            <div className="rounded border p-2 bg-slate-50">
-                              <div className="text-slate-500">Labour</div>
-                              <div className="font-medium">{money0(g.labour_total_gbp)}</div>
+                            <div className="rounded-lg border border-purple-200 p-3 bg-purple-50/50">
+                              <div className="text-purple-700 font-medium">Labour</div>
+                              <div className="font-semibold text-purple-900 mt-1">{money0(g.labour_total_gbp)}</div>
                             </div>
-                            <div className="rounded border p-2 bg-slate-50">
-                              <div className="text-slate-500">Total</div>
-                              <div className="font-semibold">{money0(g.room_total_with_vat_gbp ?? g.room_total_gbp)}</div>
+                            <div className="rounded-lg border border-blue-200 p-3 bg-blue-50/50">
+                              <div className="text-blue-700 font-medium">Total</div>
+                              <div className="font-semibold text-blue-900 mt-1">{money0(g.room_total_with_vat_gbp ?? g.room_total_gbp)}</div>
                             </div>
                           </div>
 
@@ -1527,7 +1549,7 @@ const roomTypes = useMemo(() => {
               />
               <div className="mt-2 flex items-center gap-3">
                 {/* SINGLE feedback bar only (no duplicate thumbs in this section) */}
-                <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="financials" targetKey="summary" variant="yesno" compact />
+                <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="financials" targetKey="summary" compact />
               </div>
             </div>
 
@@ -1719,7 +1741,7 @@ function DetailsDrawer({ label, children }: { label: string; children: React.Rea
   );
 }
 
-function ScenariosTabs({ scenarios, ScenarioKV }: { scenarios: any; ScenarioKV: ({ obj }: { obj: any }) => JSX.Element }) {
+function ScenariosTabs({ scenarios, ScenarioKV }: { scenarios: any; ScenarioKV: ({ obj }: { obj: any }) => React.ReactElement }) {
   const [tab, setTab] = useState<'inputs'|'sell'|'refi'|'period'>('inputs');
   const TabBtn = ({ id, children }: { id: typeof tab; children: React.ReactNode }) => (
     <button

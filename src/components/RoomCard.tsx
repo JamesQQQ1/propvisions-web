@@ -72,12 +72,22 @@ export type RefurbRoom = {
 ========================= */
 const NO_IMAGE_PLACEHOLDER =
   'data:image/svg+xml;utf8,' +
-  encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420">
-    <rect width="100%" height="100%" fill="#f8fafc"/>
-    <g fill="#94a3b8" font-family="Verdana" font-size="18">
-      <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">Image unavailable</text>
+  encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420" viewBox="0 0 640 420">
+    <defs>
+      <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style="stop-color:#f8fafc;stop-opacity:1" />
+        <stop offset="100%" style="stop-color:#f1f5f9;stop-opacity:1" />
+      </linearGradient>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#bg)"/>
+    <g transform="translate(320,210)">
+      <circle cx="0" cy="-30" r="24" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="2"/>
+      <path d="M-12,-38 L-12,-30 L-6,-24 L6,-30 L12,-30 L12,-38 Z" fill="#94a3b8"/>
+      <circle cx="-6" cy="-33" r="3" fill="#64748b"/>
+      <text x="0" y="15" font-family="system-ui,-apple-system,sans-serif" font-size="14" font-weight="500" fill="#64748b" text-anchor="middle">No image available</text>
+      <text x="0" y="35" font-family="system-ui,-apple-system,sans-serif" font-size="12" fill="#94a3b8" text-anchor="middle">Costs estimated from room analysis</text>
     </g>
-    <rect x="2" y="2" width="636" height="416" fill="none" stroke="#cbd5e1" stroke-width="4"/>
+    <rect x="1" y="1" width="638" height="418" fill="none" stroke="#e2e8f0" stroke-width="2" stroke-dasharray="8,4"/>
   </svg>`);
 
 function toNum(n: unknown): number {
