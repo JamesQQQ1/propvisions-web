@@ -1,27 +1,12 @@
-// IMPORTANT: This module uses ONLY the properties payload. Do not query labour/material tables.
+// IMPORTANT: Uses ONLY the properties payload. No queries to labour/material tables.
 
-export interface FloorplanMin {
-  floor: string | null;
-  room_name: string;
-  room_type: string | null;
-  area_sqm: number | null;
-  area_sq_ft: number | null;
-  window_count: number | null;
+// Safe string utilities
+export function safeLower(s?: string | null): string {
+  return (s && typeof s === 'string') ? s.toLowerCase() : '';
 }
 
-export interface RoomTotal {
-  room_name: string;
-  total_with_vat: number | null;
-  total_without_vat: number | null;
-  labour_total_gbp?: number | null;
-  materials_total_gbp?: number | null;
-}
-
-export interface RoomGroup {
-  room_name: string;
-  floor: string | null;
-  route: string | null;
-  image_urls: string[];
+export function normalizeLabel(s?: string | null): string {
+  return safeLower(s).trim().replace(/\s+/g, ' ');
 }
 
 export interface UiRoom {
@@ -42,158 +27,123 @@ export interface UiRoom {
   is_exterior: boolean;
 }
 
-// Synonym mapping for room matching
-const ROOM_SYNONYMS: Record<string, string[]> = {
-  'sitting room': ['living room', 'lounge'],
-  'living room': ['sitting room', 'lounge'],
-  'lounge': ['sitting room', 'living room'],
-  'wc': ['cloakroom', 'toilet'],
-  'cloakroom': ['wc', 'toilet'],
-  'toilet': ['wc', 'cloakroom'],
-  'hall': ['hallway'],
-  'hallway': ['hall'],
-};
-
-export function normaliseLabel(label: string): string {
-  return label.toLowerCase().trim().replace(/\s+/g, ' ');
-}
-
-export function isSameRoom(a: string, b: string): boolean {
-  const normA = normaliseLabel(a);
-  const normB = normaliseLabel(b);
-
-  if (normA === normB) return true;
-
-  // Check synonyms
-  const synonymsA = ROOM_SYNONYMS[normA] || [];
-  const synonymsB = ROOM_SYNONYMS[normB] || [];
-
-  return synonymsA.includes(normB) || synonymsB.includes(normA);
-}
-
-export function findMatchingRoomTotal(roomName: string, roomTotals: RoomTotal[]): RoomTotal | null {
-  // First try exact match
-  let match = roomTotals.find(rt => normaliseLabel(rt.room_name) === normaliseLabel(roomName));
-  if (match) return match;
-
-  // Then try synonym match
-  match = roomTotals.find(rt => isSameRoom(rt.room_name, roomName));
-  return match || null;
-}
-
-export function buildRooms(properties: any): UiRoom[] {
+export function buildRoomsFromProperties(properties: any): UiRoom[] {
   if (!properties) return [];
 
-  const floorplanMin: FloorplanMin[] = properties.floorplan_min || [];
-  const roomTotals: RoomTotal[] = properties.room_totals || [];
-  const roomGroups: RoomGroup[] = properties.room_groups || [];
+  const floorplanMin = properties.floorplan_min || [];
+  const roomTotals = properties.room_totals || [];
+  const roomGroups = properties.room_groups || [];
   const notInFloorplan: any[] = properties.not_in_floorplan || [];
-
   const primaryImageByRoom: Record<string, string> = properties.primary_image_url_by_room || {};
   const imagesByRoom: Record<string, string[]> = properties.image_urls_by_room || {};
-  const imagesMap: Record<string, string> = properties.images_map || {};
+
+  // Synonym mapping for room matching
+  const synonyms: Record<string, string[]> = {
+    'sitting room': ['living room', 'lounge'],
+    'living room': ['sitting room', 'lounge'],
+    'lounge': ['sitting room', 'living room'],
+    'wc': ['cloakroom', 'toilet'],
+    'cloakroom': ['wc', 'toilet'],
+    'toilet': ['wc', 'cloakroom'],
+    'hall': ['hallway'],
+    'hallway': ['hall'],
+  };
+
+  function findMatchingTotal(roomName: string) {
+    const normName = normalizeLabel(roomName);
+
+    // Exact match first
+    let match = roomTotals.find((rt: any) => normalizeLabel(rt.room_name) === normName);
+    if (match) return match;
+
+    // Synonym match
+    const roomSynonyms = synonyms[normName] || [];
+    match = roomTotals.find((rt: any) => {
+      const rtNorm = normalizeLabel(rt.room_name);
+      return roomSynonyms.includes(rtNorm) || (synonyms[rtNorm] || []).includes(normName);
+    });
+
+    return match || null;
+  }
 
   const rooms: UiRoom[] = [];
   const processedRoomNames = new Set<string>();
 
-  // Process floorplan rooms first (canonical order)
-  for (const fp of floorplanMin) {
+  // Process floorplan rooms (canonical order)
+  for (const fp of floorplanMin || []) {
     const roomName = fp.room_name;
-    if (processedRoomNames.has(normaliseLabel(roomName))) continue;
+    if (!roomName || processedRoomNames.has(normalizeLabel(roomName))) continue;
 
-    // Find matching cost data
-    const roomTotal = findMatchingRoomTotal(roomName, roomTotals);
-
-    // Collect images for this room
+    const roomTotal = findMatchingTotal(roomName);
     let primaryImage = primaryImageByRoom[roomName] || null;
     let imageUrls = [...(imagesByRoom[roomName] || [])];
 
-    // Add room_groups images that match this room
-    for (const group of roomGroups) {
-      if (isSameRoom(group.room_name, roomName)) {
+    // Merge room_groups images
+    for (const group of roomGroups || []) {
+      if (normalizeLabel(group.room_name) === normalizeLabel(roomName)) {
         imageUrls.push(...(group.image_urls || []));
       }
     }
 
-    // Dedupe images and set primary if not already set
+    // Dedupe and set primary
     imageUrls = Array.from(new Set(imageUrls));
-    if (!primaryImage && imageUrls.length > 0) {
-      primaryImage = imageUrls[0];
-    }
-
-    // Build room object
-    const totalWithVat = roomTotal?.total_with_vat || 0;
-    const totalWithoutVat = roomTotal?.total_without_vat || null;
-    const labourTotal = roomTotal?.labour_total_gbp || null;
-    const materialsTotal = roomTotal?.materials_total_gbp || null;
+    if (!primaryImage && imageUrls.length > 0) primaryImage = imageUrls[0];
 
     rooms.push({
       room_name: roomName,
       display_name: roomName,
       floor: fp.floor,
-      room_type: fp.room_type || null,
+      room_type: fp.room_type,
       area_sqm: fp.area_sqm,
       area_sq_ft: fp.area_sq_ft,
       window_count: fp.window_count,
       primary_image: primaryImage,
       image_urls: imageUrls,
-      total_with_vat: totalWithVat,
-      total_without_vat: totalWithoutVat,
-      labour_total_gbp: labourTotal,
-      materials_total_gbp: materialsTotal,
-      has_cost_split: labourTotal !== null || materialsTotal !== null,
+      total_with_vat: roomTotal?.total_with_vat || roomTotal?.total_without_vat || 0,
+      total_without_vat: roomTotal?.total_without_vat || null,
+      labour_total_gbp: roomTotal?.labour_total_gbp || null,
+      materials_total_gbp: roomTotal?.materials_total_gbp || null,
+      has_cost_split: !!(roomTotal?.labour_total_gbp || roomTotal?.materials_total_gbp),
       is_exterior: false,
     });
 
-    processedRoomNames.add(normaliseLabel(roomName));
+    processedRoomNames.add(normalizeLabel(roomName));
   }
 
-  // Process exterior/other rooms from not_in_floorplan and room_groups
-  const exteriorSources = [
-    ...notInFloorplan,
-    ...roomGroups.filter(g =>
-      g.floor === null ||
-      ['facade', 'garden', 'other'].includes(g.route || '')
-    )
-  ];
+  // Process exterior rooms
+  for (const ext of notInFloorplan || []) {
+    const roomName = ext.room_name || 'Exterior';
+    if (!ext.image_urls?.length || processedRoomNames.has(normalizeLabel(roomName))) continue;
 
-  for (const ext of exteriorSources) {
-    const roomName = ext.room_name || ext.name || 'Exterior';
-    if (processedRoomNames.has(normaliseLabel(roomName))) continue;
+    const roomTotal = findMatchingTotal(roomName);
 
-    const roomTotal = findMatchingRoomTotal(roomName, roomTotals);
-    let imageUrls = ext.image_urls || [];
-    let primaryImage = imageUrls[0] || null;
+    rooms.push({
+      room_name: roomName,
+      display_name: roomName,
+      floor: null,
+      room_type: null,
+      area_sqm: null,
+      area_sq_ft: null,
+      window_count: null,
+      primary_image: ext.image_urls[0] || null,
+      image_urls: ext.image_urls || [],
+      total_with_vat: roomTotal?.total_with_vat || roomTotal?.total_without_vat || 0,
+      total_without_vat: roomTotal?.total_without_vat || null,
+      labour_total_gbp: roomTotal?.labour_total_gbp || null,
+      materials_total_gbp: roomTotal?.materials_total_gbp || null,
+      has_cost_split: !!(roomTotal?.labour_total_gbp || roomTotal?.materials_total_gbp),
+      is_exterior: true,
+    });
 
-    if (imageUrls.length > 0) {
-      const totalWithVat = roomTotal?.total_with_vat || 0;
-      const totalWithoutVat = roomTotal?.total_without_vat || null;
-      const labourTotal = roomTotal?.labour_total_gbp || null;
-      const materialsTotal = roomTotal?.materials_total_gbp || null;
-
-      rooms.push({
-        room_name: roomName,
-        display_name: roomName === 'Exterior' ? 'Exterior' : roomName,
-        floor: null,
-        room_type: null,
-        area_sqm: null,
-        area_sq_ft: null,
-        window_count: null,
-        primary_image: primaryImage,
-        image_urls: imageUrls,
-        total_with_vat: totalWithVat,
-        total_without_vat: totalWithoutVat,
-        labour_total_gbp: labourTotal,
-        materials_total_gbp: materialsTotal,
-        has_cost_split: labourTotal !== null || materialsTotal !== null,
-        is_exterior: true,
-      });
-
-      processedRoomNames.add(normaliseLabel(roomName));
-    }
+    processedRoomNames.add(normalizeLabel(roomName));
   }
 
   return rooms;
+}
+
+// Legacy export for compatibility
+export function buildRooms(properties: any): UiRoom[] {
+  return buildRoomsFromProperties(properties);
 }
 
 export function formatCurrency(amount: number | null | undefined, decimals = 0): string {
@@ -206,7 +156,6 @@ export function formatCurrency(amount: number | null | undefined, decimals = 0):
   }).format(amount);
 }
 
-// Chart helper: get top rooms by cost
 export function getTopRoomsByCost(rooms: UiRoom[], maxRooms = 5): UiRoom[] {
   return rooms
     .filter(r => r.total_with_vat > 0)
@@ -214,7 +163,6 @@ export function getTopRoomsByCost(rooms: UiRoom[], maxRooms = 5): UiRoom[] {
     .slice(0, maxRooms);
 }
 
-// Chart helper: check if any rooms have cost split data
 export function hasAnyCostSplit(rooms: UiRoom[]): boolean {
   return rooms.some(r => r.has_cost_split);
 }

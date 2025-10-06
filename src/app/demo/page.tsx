@@ -9,7 +9,7 @@ import RoomCard from '@/components/RoomCard';
 import FeedbackBar from '@/components/FeedbackBar';
 import type { RefurbRoom } from '@/types/refurb';
 import type { UiRoom } from '@/lib/rooms';
-import { buildRooms, formatCurrency } from '@/lib/rooms';
+import { buildRoomsFromProperties, safeLower, normalizeLabel, formatCurrency } from '@/lib/rooms';
 import PDFViewer from '@/components/PDFViewer';
 import FinancialSliders, {
   type Derived as SliderDerived,
@@ -78,8 +78,8 @@ function computeRefurbRollup(property: any, refurb_estimates: RefurbRoom[] | und
   const byType = (t: string) => rows.find((r: any) => r.type === t);
   const findOH = rows.find(
     (r: any) =>
-      (r.room_name || '').toLowerCase().includes('overheads') ||
-      (r.room_name || '').toLowerCase().includes('whole-house'),
+      safeLower(r.room_name).includes('overheads') ||
+      safeLower(r.room_name).includes('whole-house'),
   );
 
   const epc = byType('epc_totals');
@@ -126,7 +126,7 @@ function computeRefurbRollup(property: any, refurb_estimates: RefurbRoom[] | und
 /* ---------- room grouping: constants & canonical helpers (STRICT) ---------- */
 // infer a room type from a free-text label (used when backend says type: "room")
 function inferTypeFromLabel(lbl?: string | null) {
-  const s = (lbl || '').toLowerCase();
+  const s = safeLower(lbl);
   if (!s) return null;
   if (s.includes('kitchen')) return 'kitchen';
   if (s.includes('bed')) return 'bedroom';
@@ -142,8 +142,8 @@ function inferTypeFromLabel(lbl?: string | null) {
 // true when the label is basically just the type name (e.g., label "Bedroom" with type "bedroom")
 // -> smells like a per-type rollup rather than a specific mapped room
 function isTypeLabelOnly(type: string, label?: string | null) {
-  const t = (type || '').trim().toLowerCase();
-  const l = (label || '').trim().toLowerCase();
+  const t = safeLower(type).trim();
+  const l = safeLower(label).trim();
   if (!t || !l) return false;
   const canon = (x: string) => x.replace(/_/g, ' ').replace(/\s+/g, ' ').replace(/s\b/, '').trim();
   return canon(l) === canon(t);
@@ -165,8 +165,8 @@ const EXTERIOR_TYPES = new Set(['facade', 'exterior', 'garden', 'front', 'rear',
 
 // Robust detection of totals/overheads/epc rows
 function isOverheadsOrTotalsRow(t: any) {
-  const type = String(t?.type ?? t?.room_type ?? '').toLowerCase();
-  const name = String(t?.room_name ?? t?.label ?? '').toLowerCase();
+  const type = safeLower(String(t?.type ?? t?.room_type ?? ''));
+  const name = safeLower(String(t?.room_name ?? t?.label ?? ''));
   if (UNWANTED_TYPES.has(type)) return true;
   if (name.includes('overhead') || name.includes('whole-house') || name.includes('whole house')) return true;
   return false;
@@ -193,7 +193,7 @@ function isFloorplanMapped(row: any, typeHint?: string) {
 // Normalise a room “type” to canonical tokens
 function normaliseType(x?: string | null) {
   if (!x || typeof x !== 'string') return 'other';
-  const raw = x.trim().toLowerCase();
+  const raw = safeLower(x).trim();
   const map: Record<string, string> = {
     lounge: 'living_room', reception: 'living_room', receptions: 'living_room', living: 'living_room', 'living room': 'living_room',
     wc: 'bathroom', cloakroom: 'bathroom', ensuite: 'bathroom', 'en-suite': 'bathroom', bath: 'bathroom',
@@ -257,7 +257,7 @@ function canonicalMatchKey(payload: any, fallbackType?: string) {
   }
 
   const id = extractIndexFromAny(payload);     // floorplan_room_id if present
-  const lbl = (labelRaw || '').toString().trim().toLowerCase();
+  const lbl = safeLower(labelRaw?.toString()).trim();
   if (id != null) return `${t}::id:${id}`;
   if (lbl)       return `${t}::label:${lbl}`;
   return `${t}::`; // generic (later suppressed when labelled/id’d rooms exist)
@@ -271,7 +271,7 @@ function prettyRoomNameFromKey(key: string) {
   if (rest.startsWith('label:')) {
     const label = rest.slice('label:'.length).replace(/_/g, ' ');
     const labelPretty = label.replace(/\b([a-z])/g, (m) => m.toUpperCase());
-    if (labelPretty.toLowerCase().startsWith(title.toLowerCase())) return labelPretty;
+    if (safeLower(labelPretty).startsWith(safeLower(title))) return labelPretty;
     return `${title} — ${labelPretty}`;
   }
   if (rest.startsWith('id:')) return `${title} ${rest.slice('id:'.length)}`;
@@ -489,7 +489,7 @@ export default function Page() {
   /* ---------- New Helpers ---------- */
   function normName(s?: string | null): string {
     if (!s || typeof s !== 'string') return '';
-    let norm = s.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^\w_]/g, '');
+    let norm = safeLower(s).trim().replace(/\s+/g, '_').replace(/[^\w_]/g, '');
 
     const synonyms: Record<string, string> = {
       'sitting_room': 'living_room',
@@ -515,14 +515,14 @@ export default function Page() {
   }
 
   function logicalKey(type?: string | null, name?: string | null): string {
-    return `${normName(type || name || '')}::${(name || '').toLowerCase()}`;
+    return `${normName(type || name || '')}::${safeLower(name)}`;
   }
 
   function dedupeUrls(urls: string[]): string[] {
     const seen = new Set<string>();
     return urls.filter(url => {
       if (!url) return false;
-      const norm = url.toLowerCase().trim().replace(/\/+$/, '');
+      const norm = safeLower(url).trim().replace(/\/+$/, '');
       if (seen.has(norm)) return false;
       seen.add(norm);
       return true;
@@ -698,7 +698,7 @@ export default function Page() {
   // New refurb data processing using properties-only approach
   const uiRooms = useMemo(() => {
     if (!data?.property) return [];
-    return buildRooms(data.property);
+    return buildRoomsFromProperties(data.property);
   }, [data?.property]);
 
   const hasRefurbData = uiRooms.length > 0;
@@ -1007,7 +1007,7 @@ return cleaned;
         if (type === 'bedroom') {
           const idx = extractIndex(label);
           if (idx !== null) {
-            bedIndexByLabel.set(label.toLowerCase(), idx);
+            bedIndexByLabel.set(safeLower(label), idx);
           }
         }
       }
@@ -1056,7 +1056,7 @@ return cleaned;
         const matchesRoute = normName(group.route) === room.type;
         const matchesName = group.room_name && normName(group.room_name) === normName(room.label);
         const isBedroomMatch = room.type === 'bedroom' && normName(group.route) === 'bedroom' &&
-                              group.room_name && group.room_name.toLowerCase() === room.label.toLowerCase();
+                              group.room_name && safeLower(group.room_name) === safeLower(room.label);
 
         if (matchesRoute || matchesName || isBedroomMatch) {
           (group.image_urls || []).forEach((url: string) => images.push(url));
@@ -1085,7 +1085,7 @@ return cleaned;
 
       // Build bedroom image maps
       if (room.type === 'bedroom') {
-        const bedIdx = bedIndexByLabel.get(room.label.toLowerCase());
+        const bedIdx = bedIndexByLabel.get(safeLower(room.label));
         if (bedIdx !== null && bedIdx !== undefined) {
           // Map image IDs and URLs to this bedroom index
           (data.property.images_by_room?.[room.label] || []).forEach((id: string) => {
