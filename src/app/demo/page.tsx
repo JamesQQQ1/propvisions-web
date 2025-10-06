@@ -35,7 +35,10 @@ const money0 = (x?: unknown) => (x == null || x === '' ? '—' : nfGBP0.format(N
 const money2 = (x?: unknown) => (x == null || x === '' ? '—' : nfGBP2.format(Number(x)));
 
 const classNames = (...xs: (string | false | null | undefined)[]) => xs.filter(Boolean).join(' ');
-const titleize = (k: string) => k.replace(/_/g, ' ').replace(/\b([a-z])/g, (m) => m.toUpperCase());
+const titleize = (k: string | null | undefined) => {
+  if (!k || typeof k !== 'string') return '';
+  return k.replace(/_/g, ' ').replace(/\b([a-z])/g, (m) => m.toUpperCase());
+};
 
 const tryParseJSON = (v: unknown) => {
   if (typeof v === 'string' && v.trim().length && /^[\[{]/.test(v.trim())) {
@@ -189,8 +192,8 @@ function isFloorplanMapped(row: any, typeHint?: string) {
 
 // Normalise a room “type” to canonical tokens
 function normaliseType(x?: string | null) {
-  if (!x) return 'other';
-  const raw = x.toString().trim().toLowerCase();
+  if (!x || typeof x !== 'string') return 'other';
+  const raw = x.trim().toLowerCase();
   const map: Record<string, string> = {
     lounge: 'living_room', reception: 'living_room', receptions: 'living_room', living: 'living_room', 'living room': 'living_room',
     wc: 'bathroom', cloakroom: 'bathroom', ensuite: 'bathroom', 'en-suite': 'bathroom', bath: 'bathroom',
@@ -485,7 +488,7 @@ export default function Page() {
 
   /* ---------- New Helpers ---------- */
   function normName(s?: string | null): string {
-    if (!s) return '';
+    if (!s || typeof s !== 'string') return '';
     let norm = s.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^\w_]/g, '');
 
     const synonyms: Record<string, string> = {
@@ -1242,7 +1245,7 @@ return cleaned;
     list = list.filter(room => !UNWANTED_TYPES.has(room.room_type || ''));
 
     if (filterType !== 'All') {
-      list = list.filter((room) => titleize(room.room_type || '') === filterType);
+      list = list.filter((room) => titleize(room.room_type) === filterType);
     }
 
     // Note: confidence filtering removed as new UiRoom doesn't have confidence scores
@@ -1260,7 +1263,10 @@ return cleaned;
 // === roomTypes for the filter dropdown (unchanged logic) ===
 const roomTypes = useMemo(() => {
   const set = new Set<string>();
-  filteredRooms.forEach((room) => set.add(titleize(room.room_type || '')));
+  filteredRooms.forEach((room) => {
+    const roomType = titleize(room.room_type);
+    if (roomType) set.add(roomType);
+  });
   return ['All', ...Array.from(set).sort()];
 }, [filteredRooms]);
 

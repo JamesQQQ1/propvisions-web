@@ -131,7 +131,7 @@ export function buildRooms(properties: any): UiRoom[] {
       room_name: roomName,
       display_name: roomName,
       floor: fp.floor,
-      room_type: fp.room_type,
+      room_type: fp.room_type || null,
       area_sqm: fp.area_sqm,
       area_sq_ft: fp.area_sq_ft,
       window_count: fp.window_count,
