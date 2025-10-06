@@ -143,10 +143,23 @@ export default function ChatBox({ propertyId, initialRunId, onRunId, className =
         return;
       }
 
-      const data: ChatbotResponseItem[] = await response.json();
+      let rawData: any = await response.json();
       const duration = Date.now() - startTime;
+
+      // Handle both array and object responses (n8n may return either)
+      let data: ChatbotResponseItem[];
+      if (Array.isArray(rawData)) {
+        data = rawData;
+      } else if (rawData && typeof rawData === 'object') {
+        // n8n returned a single object, wrap it in an array
+        console.log('[chatbot] Response is object, wrapping in array');
+        data = [rawData];
+      } else {
+        data = [];
+      }
+
       console.log('[chatbot] Response received in', duration, 'ms, items:', data.length);
-      console.log('[chatbot] Raw response data:', JSON.stringify(data, null, 2));
+      console.log('[chatbot] Raw response data:', JSON.stringify(rawData, null, 2));
 
       // Handle response
       if (!Array.isArray(data) || data.length === 0) {

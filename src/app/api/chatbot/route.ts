@@ -166,9 +166,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse and return response verbatim
-    const responseData: ChatbotResponseItem[] = await response.json();
+    let responseData: any = await response.json();
+
+    // Handle both array and object responses from n8n
+    if (!Array.isArray(responseData) && responseData && typeof responseData === 'object') {
+      console.log('[chatbot] n8n returned object, wrapping in array');
+      responseData = [responseData];
+    }
+
     const duration = Date.now() - startTime;
-    console.log('[chatbot] Success in', duration, 'ms, items:', responseData.length);
+    const itemCount = Array.isArray(responseData) ? responseData.length : 'N/A';
+    console.log('[chatbot] Success in', duration, 'ms, items:', itemCount);
     console.log('[chatbot] Response data:', JSON.stringify(responseData, null, 2));
 
     return NextResponse.json(responseData);
