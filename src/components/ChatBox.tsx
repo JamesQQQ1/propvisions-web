@@ -146,9 +146,11 @@ export default function ChatBox({ propertyId, initialRunId, onRunId, className =
       const data: ChatbotResponseItem[] = await response.json();
       const duration = Date.now() - startTime;
       console.log('[chatbot] Response received in', duration, 'ms, items:', data.length);
+      console.log('[chatbot] Raw response data:', JSON.stringify(data, null, 2));
 
       // Handle response
       if (!Array.isArray(data) || data.length === 0) {
+        console.warn('[chatbot] Empty or invalid array response');
         addMessage('bot', 'No actionable response.');
         setIsPending(false);
         textareaRef.current?.focus();
@@ -156,12 +158,18 @@ export default function ChatBox({ propertyId, initialRunId, onRunId, className =
       }
 
       // Display all messages (support both 'message' and 'user_message' formats)
+      let messageDisplayed = false;
       for (const item of data) {
         const messageText = item.message || item.user_message;
-        if (messageText) {
-          addMessage('bot', messageText);
+        console.log('[chatbot] Processing item:', { has_message: !!item.message, has_user_message: !!item.user_message, messageText: messageText?.substring(0, 50) });
+        if (messageText && messageText.trim()) {
+          // Message exists and is not empty
+          addMessage('bot', messageText.trim());
+          messageDisplayed = true;
         }
       }
+
+      console.log('[chatbot] Message displayed:', messageDisplayed);
 
       // Use first item's run_id for refresh
       const firstItem = data[0];

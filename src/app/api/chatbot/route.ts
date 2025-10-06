@@ -169,6 +169,7 @@ export async function POST(request: NextRequest) {
     const responseData: ChatbotResponseItem[] = await response.json();
     const duration = Date.now() - startTime;
     console.log('[chatbot] Success in', duration, 'ms, items:', responseData.length);
+    console.log('[chatbot] Response data:', JSON.stringify(responseData, null, 2));
 
     return NextResponse.json(responseData);
 
