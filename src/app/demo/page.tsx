@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { pollUntilDone, type RunStatus, startAnalyze, POLL_BUILD } from '@/lib/api';
 import RoomCard from '@/components/RoomCard';
 import FeedbackBar from '@/components/FeedbackBar';
+import ChatBox from '@/components/ChatBox';
 import type { RefurbRoom } from '@/types/refurb';
 import type { UiRoom } from '@/lib/rooms';
 import { buildRoomsFromProperties, safeLower, normalizeLabel, formatCurrency } from '@/lib/rooms';
@@ -1886,6 +1887,29 @@ const roomTypes = useMemo(() => {
             )}
           </section>
         </div>
+      )}
+
+      {/* Chatbot - only show when we have property data */}
+      {data?.property_id && (
+        <section className="mt-8">
+          <ChatBox
+            propertyId={data.property_id}
+            initialRunId={runIdRef.current}
+            onRunId={(newRunId) => {
+              console.log('[demo-page] ChatBox triggered run_id refresh:', newRunId);
+              // Update URL to trigger data refresh
+              const url = new URL(window.location.href);
+              url.searchParams.set('run', newRunId);
+              window.history.replaceState({}, '', url.toString());
+              // Update demo state to load the new run
+              setDemoRunId(newRunId);
+              setUseDemo(true);
+              // Trigger loadDemoRun with the new run_id
+              loadDemoRun(newRunId);
+            }}
+            className="max-w-2xl mx-auto"
+          />
+        </section>
       )}
     </main>
   );
