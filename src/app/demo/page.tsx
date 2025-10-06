@@ -5,8 +5,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 
 import { pollUntilDone, type RunStatus, startAnalyze, POLL_BUILD } from '@/lib/api';
-import RoomCard, { type RefurbRoom } from '@/components/RoomCard';
+import RoomCard from '@/components/RoomCard';
 import FeedbackBar from '@/components/FeedbackBar';
+import type { RefurbRoom, AggregatedRoom } from '@/types/refurb';
+import { extractRefurbData, groupRoomsByIdentity, formatCurrency } from '@/lib/rooms';
 import PDFViewer from '@/components/PDFViewer';
 import FinancialSliders, {
   type Derived as SliderDerived,
@@ -688,6 +690,15 @@ export default function Page() {
   const baseRent   = useMemo(() => Number((data?.financials as any)?.monthly_rent_gbp ?? 0) || 0, [data?.financials]);
   const baseRefurb = useMemo(() => sumV2Totals(data?.refurb_estimates), [data?.refurb_estimates]);
   const rollup     = useMemo(() => computeRefurbRollup(data?.property, data?.refurb_estimates), [data?.property, data?.refurb_estimates]);
+
+  // New refurb data processing
+  const refurbRooms = useMemo(() => {
+    if (!data?.property) return new Map<string, AggregatedRoom>();
+    const roomData = extractRefurbData(data.property);
+    return groupRoomsByIdentity(roomData);
+  }, [data?.property]);
+
+  const hasRefurbData = refurbRooms.size > 0;
 
   const epc = data?.property ? {
     current: data.property.epc_rating_current ?? data.property.epc_rating ?? null,
@@ -1615,13 +1626,20 @@ const roomTypes = useMemo(() => {
             </div>
 
             {/* Cards (grouped) */}
-            {groupedRooms.length ? (
+            {hasRefurbData ? (
               <>
                 {/* Room Cards Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {groupedRooms.map((group) => (
-                    <RoomCard key={group.key} room={group.rep} />
-                  ))}
+                  {Array.from(refurbRooms.values())
+                    .sort((a, b) => b.total_gbp - a.total_gbp)
+                    .map((room) => (
+                      <RoomCard
+                        key={room.identity}
+                        room={room}
+                        showMiniCharts={true}
+                        allRooms={Array.from(refurbRooms.values())}
+                      />
+                    ))}
                 </div>
 
                 {/* Rollup strip */}
@@ -1650,30 +1668,29 @@ const roomTypes = useMemo(() => {
                       </tr>
                     </thead>
                     <tbody>
-                      {groupedRooms.map((g, i) => {
-                        const conf = typeof g.confidence === 'number' ? Math.round(g.confidence * 100) : null;
-                        return (
-                          <tr key={g.key ?? `row-${i}`} className="border-t">
-                            <td className="p-2 capitalize">{prettyRoomNameFromKey(g.key)}</td>
-                            <td className="p-2 text-right">{money0(g.materials_total_with_vat_gbp ?? g.materials_total_gbp)}</td>
-                            <td className="p-2 text-right">{money0(g.labour_total_gbp)}</td>
-                            <td className="p-2 text-right font-semibold">{money0(g.room_total_with_vat_gbp ?? g.room_total_gbp)}</td>
-                            <td className="p-2 text-right">{conf != null ? `${conf}%` : '—'}</td>
+                      {Array.from(refurbRooms.values())
+                        .sort((a, b) => b.total_gbp - a.total_gbp)
+                        .map((room, i) => (
+                          <tr key={room.identity} className="border-t">
+                            <td className="p-2 capitalize">{room.displayName}</td>
+                            <td className="p-2 text-right">{formatCurrency(room.materials_total_gbp)}</td>
+                            <td className="p-2 text-right">{formatCurrency(room.labour_total_gbp)}</td>
+                            <td className="p-2 text-right font-semibold">{formatCurrency(room.total_gbp)}</td>
+                            <td className="p-2 text-right">—</td>
                           </tr>
-                        );
-                      })}
+                        ))}
                     </tbody>
                     <tfoot>
                       <tr className="border-t bg-slate-50">
                         <td className="p-2 text-right font-medium">Totals</td>
                         <td className="p-2 text-right font-medium">
-                          {money0(groupedRooms.reduce((a, r) => a + toInt(r.materials_total_with_vat_gbp ?? r.materials_total_gbp), 0))}
+                          {formatCurrency(Array.from(refurbRooms.values()).reduce((a, r) => a + r.materials_total_gbp, 0))}
                         </td>
                         <td className="p-2 text-right font-medium">
-                          {money0(groupedRooms.reduce((a, r) => a + toInt(r.labour_total_gbp), 0))}
+                          {formatCurrency(Array.from(refurbRooms.values()).reduce((a, r) => a + r.labour_total_gbp, 0))}
                         </td>
                         <td className="p-2 text-right font-semibold">
-                          {money0(groupedRooms.reduce((a, r) => a + toInt(r.room_total_with_vat_gbp ?? r.room_total_gbp), 0))}
+                          {formatCurrency(Array.from(refurbRooms.values()).reduce((a, r) => a + r.total_gbp, 0))}
                         </td>
                         <td className="p-2" />
                       </tr>

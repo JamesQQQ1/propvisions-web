@@ -105,4 +105,34 @@ export type MaterialLine = {
       gross_yield_on_value_percent?: number | null;
     };
   };
+
+// New types for properties-only data sourcing
+export interface RoomData {
+  room_label?: string | null;
+  floor?: string | null;
+  floorplan_room_label?: string | null;
+  labour_total_gbp?: number | null;
+  materials_total_gbp?: number | null;
+  total_gbp?: number | null;
+  image_urls?: string[] | null;
+  room_type?: string | null;
+}
+
+export interface AggregatedRoom {
+  identity: string;
+  displayName: string;
+  floor?: string | null;
+  room_type?: string | null;
+  labour_total_gbp: number;
+  materials_total_gbp: number;
+  total_gbp: number;
+  image_urls: string[];
+  primary_image?: string | null;
+}
+
+export interface RefurbData {
+  refurb_totals_by_room?: RoomData[];
+  results?: { refurb_totals_by_room?: RoomData[] };
+  refurb_estimates?: RoomData[];
+}
   
