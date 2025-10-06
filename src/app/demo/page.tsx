@@ -1234,70 +1234,35 @@ return cleaned;
     });
   }, [data?.property, data?.refurb_estimates]);
 
-  // Apply filters to logical rooms (keeping existing filter logic)
-  const groupedRooms: GroupedRoom[] = useMemo(() => {
-    let list = logicalRooms.map(room => ({
-      key: room.key,
-      room_type: room.type,
-      room_label: room.label,
-      materials_total_with_vat_gbp: room.costs.materialsWithVat,
-      materials_total_gbp: room.costs.materialsWithVat,
-      labour_total_gbp: room.costs.labour,
-      room_total_with_vat_gbp: room.costs.totalWithVat,
-      room_total_gbp: room.costs.totalWithVat,
-      confidence: null,
-      images: room.images,
-      primaryImage: room.images[0] || NO_IMAGE_PLACEHOLDER,
-      rep: {
-        id: room.key,
-        room_type: room.type,
-        detected_room_type: room.type,
-        room_label: room.label,
-        materials: null,
-        labour: null,
-        materials_total_gbp: room.costs.materialsWithVat,
-        materials_total_with_vat_gbp: room.costs.materialsWithVat,
-        labour_total_gbp: room.costs.labour,
-        room_total_gbp: room.costs.totalWithVat,
-        room_total_with_vat_gbp: room.costs.totalWithVat,
-        images: room.images,
-        primaryImage: room.images[0] || NO_IMAGE_PLACEHOLDER,
-        ...(room.extrasCount > 0 && { extrasCount: room.extrasCount })
-      },
-      mergedCount: 1,
-      mapped: true
-    }));
+  // Apply filters to UI rooms (properties-only data)
+  const filteredRooms = useMemo(() => {
+    let list = [...uiRooms];
 
     // Apply existing filters
-    list = list.filter(g => !UNWANTED_TYPES.has(g.room_type));
+    list = list.filter(room => !UNWANTED_TYPES.has(room.room_type || ''));
 
     if (filterType !== 'All') {
-      list = list.filter((g) => titleize(g.room_type) === filterType);
+      list = list.filter((room) => titleize(room.room_type || '') === filterType);
     }
 
-    list = list.filter((g) =>
-      typeof g.confidence === 'number'
-        ? Math.round(g.confidence * 100) >= minConfidence
-        : true
-    );
+    // Note: confidence filtering removed as new UiRoom doesn't have confidence scores
 
     // Apply sorting
     if (sortKey === 'total_desc') {
-      list = [...list].sort((a, b) => (b.room_total_with_vat_gbp || 0) - (a.room_total_with_vat_gbp || 0));
+      list = [...list].sort((a, b) => b.total_with_vat - a.total_with_vat);
     } else if (sortKey === 'total_asc') {
-      list = [...list].sort((a, b) => (a.room_total_with_vat_gbp || 0) - (b.room_total_with_vat_gbp || 0));
+      list = [...list].sort((a, b) => a.total_with_vat - b.total_with_vat);
     }
-    // room_order already applied in logicalRooms
 
     return list;
-  }, [logicalRooms, filterType, minConfidence, sortKey]);
+  }, [uiRooms, filterType, sortKey]);
 
 // === roomTypes for the filter dropdown (unchanged logic) ===
 const roomTypes = useMemo(() => {
   const set = new Set<string>();
-  groupedRooms.forEach((g) => set.add(titleize(g.room_type)));
+  filteredRooms.forEach((room) => set.add(titleize(room.room_type || '')));
   return ['All', ...Array.from(set).sort()];
-}, [groupedRooms]);
+}, [filteredRooms]);
 
 /* ---------- scenarios helpers (labels & render) ---------- */
 
@@ -1631,7 +1596,7 @@ const roomTypes = useMemo(() => {
               <>
                 {/* Room Cards Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {uiRooms.map((room) => (
+                  {filteredRooms.map((room) => (
                     <RoomCard
                       key={room.room_name}
                       room={room}

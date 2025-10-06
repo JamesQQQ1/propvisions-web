@@ -149,22 +149,22 @@ function buildRooms(mats: RoomMaterialsRow[], labs: RoomLabourRow[], property: P
     let materials_net = 0, materials_vat = 0, materials_gross = 0;
 
     for (const m of group.materials_rows) {
-      const st = obj(m.subtotals, {});
-      const all = obj(st.all, {});
+      const st = obj(m.subtotals, { all: null, by_category: null });
+      const all = obj(st.all, { net: 0, vat: 0, gross: 0 });
       materials_net += N(all.net);
       materials_vat += N(all.vat);
       materials_gross += N(all.gross);
 
       const cats = obj(st.by_category, {} as NonNullable<RoomMaterialsRow['subtotals']>['by_category']);
-      for (const [catKey, vals] of Object.entries(cats)) {
-        const v = obj(vals, {});
+      for (const [catKey, vals] of Object.entries(cats || {})) {
+        const v = obj(vals, { net: 0, vat: 0, gross: 0, lines: 0 });
         materials.push({
           item_key: catKey,
           net_gbp: N(v.net) || null,
           vat_gbp: N(v.vat) || null,
           gross_gbp: N(v.gross) || null,
           subtotal_gbp: N(v.gross) || N(v.net) || null,
-          lines: (v as any)?.lines ?? null,
+          lines: v.lines ?? null,
         });
       }
     }
@@ -243,14 +243,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (run_id) {
       // (Optional) demo fallback: interpret run_id as property_id ONLY if demo allowed and it's a UUID
       if (!property_id && allowDemo && UUID_RE.test(run_id)) {
-        const probe = await supabase.from<{ property_id: string }>('properties')
+        const probe = await supabase.from('properties')
           .select('property_id').eq('property_id', run_id).maybeSingle();
         if (probe.data?.property_id) property_id = probe.data.property_id;
       }
 
       // Fetch the run row
       const r = await supabase
-        .from<RunsRow>(RUNS_TABLE)
+        .from(RUNS_TABLE)
         .select('run_id,property_id,status,error')
         .eq('run_id', run_id)
         .maybeSingle();
@@ -289,9 +289,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // ── Now (and only now) fetch the heavy tables ─────────────────────────────
     const [propResp, matsResp, labsResp] = await Promise.all([
-      supabase.from<PropertiesRow>('properties').select('*').eq('property_id', property_id).maybeSingle(),
-      supabase.from<RoomMaterialsRow>('property_room_materials').select('*').eq('property_id', property_id),
-      supabase.from<RoomLabourRow>('property_room_labour').select('*').eq('property_id', property_id),
+      supabase.from('properties').select('*').eq('property_id', property_id).maybeSingle(),
+      supabase.from('property_room_materials').select('*').eq('property_id', property_id),
+      supabase.from('property_room_labour').select('*').eq('property_id', property_id),
     ]);
 
     if (propResp.error) {
