@@ -5,8 +5,6 @@ import { useState, useRef, useEffect } from 'react';
 
 export interface ChatBoxProps {
   propertyId: string;
-  initialRunId?: string | null;
-  onRunId?: (runId: string) => void;
   className?: string;
 }
 
@@ -25,13 +23,13 @@ interface ChatbotRequest {
 interface ChatbotResponseItem {
   property_id?: string;
   run_id?: string;
-  user_message?: string;  // Legacy format
-  message?: string;       // New format
+  user_message?: string;
+  message?: string;
 }
 
 const REQUEST_TIMEOUT_MS = 45000;
 
-export default function ChatBox({ propertyId, initialRunId, onRunId, className = '' }: ChatBoxProps) {
+export default function ChatBox({ propertyId, className = '' }: ChatBoxProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isPending, setIsPending] = useState(false);
@@ -69,7 +67,7 @@ export default function ChatBox({ propertyId, initialRunId, onRunId, className =
     }
 
     if (trimmedMessage === '') {
-      return; // Silent ignore for empty messages
+      return;
     }
 
     if (trimmedMessage.length > 10000) {
@@ -78,13 +76,13 @@ export default function ChatBox({ propertyId, initialRunId, onRunId, className =
     }
 
     if (isPending) {
-      return; // Prevent duplicate sends
+      return;
     }
 
     // Start request
     setIsPending(true);
     const userMessageContent = trimmedMessage;
-    setInputValue(''); // Clear immediately for better UX
+    setInputValue('');
 
     // Optimistically add user message
     addMessage('user', userMessageContent);
@@ -94,7 +92,7 @@ export default function ChatBox({ propertyId, initialRunId, onRunId, className =
     const workingMessage: Message = {
       id: workingMessageId,
       role: 'system',
-      content: 'Working…',
+      content: 'Thinking...',
       timestamp: new Date(),
     };
     setMessages((prev) => [...prev, workingMessage]);
@@ -146,12 +144,11 @@ export default function ChatBox({ propertyId, initialRunId, onRunId, className =
       let rawData: any = await response.json();
       const duration = Date.now() - startTime;
 
-      // Handle both array and object responses (n8n may return either)
+      // Handle both array and object responses
       let data: ChatbotResponseItem[];
       if (Array.isArray(rawData)) {
         data = rawData;
       } else if (rawData && typeof rawData === 'object') {
-        // n8n returned a single object, wrap it in an array
         console.log('[chatbot] Response is object, wrapping in array');
         data = [rawData];
       } else {
@@ -159,7 +156,6 @@ export default function ChatBox({ propertyId, initialRunId, onRunId, className =
       }
 
       console.log('[chatbot] Response received in', duration, 'ms, items:', data.length);
-      console.log('[chatbot] Raw response data:', JSON.stringify(rawData, null, 2));
 
       // Handle response
       if (!Array.isArray(data) || data.length === 0) {
@@ -170,29 +166,18 @@ export default function ChatBox({ propertyId, initialRunId, onRunId, className =
         return;
       }
 
-      // Display all messages (support both 'message' and 'user_message' formats)
+      // Display all messages
       let messageDisplayed = false;
       for (const item of data) {
         const messageText = item.message || item.user_message;
-        console.log('[chatbot] Processing item:', { has_message: !!item.message, has_user_message: !!item.user_message, messageText: messageText?.substring(0, 50) });
         if (messageText && messageText.trim()) {
-          // Message exists and is not empty
           addMessage('bot', messageText.trim());
           messageDisplayed = true;
         }
       }
 
-      console.log('[chatbot] Message displayed:', messageDisplayed);
-
-      // Use first item's run_id for refresh
-      const firstItem = data[0];
-      if (firstItem.run_id && onRunId) {
-        console.log('[chatbot] Triggering refresh with run_id:', firstItem.run_id);
-        onRunId(firstItem.run_id);
-      }
-
       // If no message was present, show generic success
-      if (!data.some((item) => item.message || item.user_message)) {
+      if (!messageDisplayed) {
         addMessage('bot', '✓ Request processed successfully.');
       }
 
@@ -228,45 +213,65 @@ export default function ChatBox({ propertyId, initialRunId, onRunId, className =
   };
 
   return (
-    <div className={`flex flex-col bg-white border border-slate-200 rounded-xl shadow-sm ${className}`}>
+    <div className={`flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 border-2 border-slate-200 rounded-2xl shadow-xl overflow-hidden ${className}`}>
       {/* Header */}
-      <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 rounded-t-xl">
-        <h3 className="text-sm font-semibold text-slate-900">Property Assistant</h3>
-        {initialRunId && (
-          <p className="text-xs text-slate-500 mt-0.5">Current run: {initialRunId.substring(0, 8)}...</p>
-        )}
+      <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 border-b-2 border-blue-800">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-white">Property Assistant</h3>
+            <p className="text-xs text-blue-100">Ask me anything about this property</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${isPending ? 'bg-yellow-400 animate-pulse' : 'bg-green-400'}`}></div>
+            <span className="text-xs text-white/80">{isPending ? 'Working...' : 'Online'}</span>
+          </div>
+        </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[300px] max-h-[500px]" role="log" aria-live="polite">
+      <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-[400px] max-h-[600px] bg-white/50" role="log" aria-live="polite">
         {messages.length === 0 && (
-          <div className="text-center text-sm text-slate-400 mt-8">
-            Ask me anything about this property...
+          <div className="flex flex-col items-center justify-center h-full text-center py-12">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </div>
+            <p className="text-slate-600 font-medium mb-2">Start a conversation</p>
+            <p className="text-sm text-slate-400 max-w-xs">Ask me about ROI, yields, cashflow, or request changes to property details</p>
           </div>
         )}
 
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
           >
             <div
-              className={`max-w-[80%] rounded-lg px-3 py-2 ${
+              className={`max-w-[85%] rounded-2xl px-4 py-3 shadow-md ${
                 msg.role === 'user'
-                  ? 'bg-blue-500 text-white'
+                  ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-tr-sm'
                   : msg.role === 'error'
-                  ? 'bg-red-50 text-red-800 border border-red-200'
+                  ? 'bg-gradient-to-br from-red-50 to-red-100 text-red-900 border-2 border-red-300 rounded-tl-sm'
                   : msg.role === 'system'
-                  ? 'bg-amber-50 text-amber-800 border border-amber-200 italic'
-                  : 'bg-slate-100 text-slate-900'
+                  ? 'bg-gradient-to-br from-amber-50 to-amber-100 text-amber-900 border-2 border-amber-300 italic rounded-tl-sm'
+                  : 'bg-gradient-to-br from-slate-100 to-slate-200 text-slate-900 border-2 border-slate-300 rounded-tl-sm'
               }`}
             >
-              <div className="text-sm whitespace-pre-wrap break-words">{msg.content}</div>
+              <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.content}</div>
               <div
-                className={`text-xs mt-1 ${
-                  msg.role === 'user' ? 'text-blue-100' : 'text-slate-500'
+                className={`text-xs mt-2 flex items-center gap-1 ${
+                  msg.role === 'user' ? 'text-blue-200' : 'text-slate-500'
                 }`}
               >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
                 {formatTimestamp(msg.timestamp)}
               </div>
             </div>
@@ -277,36 +282,77 @@ export default function ChatBox({ propertyId, initialRunId, onRunId, className =
       </div>
 
       {/* Input Area */}
-      <div className="px-4 py-3 border-t border-slate-200 bg-slate-50 rounded-b-xl">
-        <div className="flex gap-2">
-          <textarea
-            ref={textareaRef}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
-            className="flex-1 px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-            rows={2}
-            disabled={isPending}
-            aria-label="Chat message input"
-          />
+      <div className="px-6 py-4 bg-white border-t-2 border-slate-200">
+        <div className="flex gap-3 items-end">
+          <div className="flex-1">
+            <textarea
+              ref={textareaRef}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Type your message here..."
+              className="w-full px-4 py-3 text-sm bg-slate-50 border-2 border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all placeholder:text-slate-400"
+              rows={2}
+              disabled={isPending}
+              aria-label="Chat message input"
+            />
+            <div className="flex items-center justify-between mt-2 px-1">
+              <div className="text-xs text-slate-500 flex items-center gap-1">
+                <kbd className="px-1.5 py-0.5 bg-slate-200 border border-slate-300 rounded text-xs">Enter</kbd>
+                <span>to send •</span>
+                <kbd className="px-1.5 py-0.5 bg-slate-200 border border-slate-300 rounded text-xs">Shift+Enter</kbd>
+                <span>for new line</span>
+              </div>
+              <div className="text-xs text-slate-400">
+                {inputValue.length}/10,000
+              </div>
+            </div>
+          </div>
           <button
             onClick={handleSend}
             disabled={isPending || inputValue.trim() === ''}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+            className={`px-6 py-3 rounded-xl font-medium text-sm transition-all shadow-md flex items-center gap-2 ${
               isPending || inputValue.trim() === ''
                 ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
-                : 'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700'
+                : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 active:scale-95 shadow-lg hover:shadow-xl'
             }`}
             aria-label="Send message"
           >
-            {isPending ? 'Sending...' : 'Send'}
+            {isPending ? (
+              <>
+                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Sending...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                Send
+              </>
+            )}
           </button>
         </div>
-        <div className="text-xs text-slate-500 mt-2">
-          Enter to send • Shift+Enter for new line
-        </div>
       </div>
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 }
