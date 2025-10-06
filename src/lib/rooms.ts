@@ -21,9 +21,6 @@ export interface UiRoom {
   image_urls: string[];
   total_with_vat: number;
   total_without_vat: number | null;
-  labour_total_gbp: number | null;
-  materials_total_gbp: number | null;
-  has_cost_split: boolean;
   is_exterior: boolean;
 }
 
@@ -101,9 +98,6 @@ export function buildRoomsFromProperties(properties: any): UiRoom[] {
       image_urls: imageUrls,
       total_with_vat: roomTotal?.total_with_vat || roomTotal?.total_without_vat || 0,
       total_without_vat: roomTotal?.total_without_vat || null,
-      labour_total_gbp: roomTotal?.labour_total_gbp || null,
-      materials_total_gbp: roomTotal?.materials_total_gbp || null,
-      has_cost_split: !!(roomTotal?.labour_total_gbp || roomTotal?.materials_total_gbp),
       is_exterior: false,
     });
 
@@ -129,9 +123,6 @@ export function buildRoomsFromProperties(properties: any): UiRoom[] {
       image_urls: ext.image_urls || [],
       total_with_vat: roomTotal?.total_with_vat || roomTotal?.total_without_vat || 0,
       total_without_vat: roomTotal?.total_without_vat || null,
-      labour_total_gbp: roomTotal?.labour_total_gbp || null,
-      materials_total_gbp: roomTotal?.materials_total_gbp || null,
-      has_cost_split: !!(roomTotal?.labour_total_gbp || roomTotal?.materials_total_gbp),
       is_exterior: true,
     });
 
@@ -161,8 +152,4 @@ export function getTopRoomsByCost(rooms: UiRoom[], maxRooms = 5): UiRoom[] {
     .filter(r => r.total_with_vat > 0)
     .sort((a, b) => b.total_with_vat - a.total_with_vat)
     .slice(0, maxRooms);
-}
-
-export function hasAnyCostSplit(rooms: UiRoom[]): boolean {
-  return rooms.some(r => r.has_cost_split);
 }

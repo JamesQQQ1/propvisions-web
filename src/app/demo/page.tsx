@@ -16,6 +16,18 @@ import FinancialSliders, {
   type Assumptions as SliderAssumptions,
 } from '@/components/FinancialSliders';
 
+/* ---------- Tooltip component ---------- */
+function Tooltip({ children, text }: { children: React.ReactNode; text: string }) {
+  return (
+    <span className="group relative inline-block cursor-help">
+      {children}
+      <span className="invisible group-hover:visible absolute z-10 w-64 p-2 mt-2 text-xs text-white bg-slate-800 rounded-lg shadow-lg -left-24 top-full">
+        {text}
+      </span>
+    </span>
+  );
+}
+
 /* ---------- demo mode config (REQUIRED) ---------- */
 const DEFAULT_DEMO_RUN_ID = 'cb58fc95-6901-4463-8daf-984f45f680a7';
 console.debug('[demo-page] POLL_BUILD =', POLL_BUILD);
@@ -62,11 +74,7 @@ function toInt(v: unknown) {
   return Number.isFinite(x) && x > 0 ? x : 0;
 }
 function roomV2Total(r: RefurbRoom): number {
-  const direct = toInt((r as any).room_total_with_vat_gbp) || toInt((r as any).room_total_gbp);
-  if (direct) return direct;
-  const mat = toInt((r as any).materials_total_with_vat_gbp ?? (r as any).materials_total_gbp);
-  const lab = toInt((r as any).labour_total_gbp);
-  return mat + lab;
+  return toInt((r as any).room_total_with_vat_gbp) || toInt((r as any).room_total_gbp);
 }
 function sumV2Totals(rows?: RefurbRoom[] | null) {
   if (!Array.isArray(rows)) return 0;
@@ -295,17 +303,6 @@ function readTotalWithVat(t: any) {
     toInt(t?.total)
   );
 }
-function readMaterialsTotal(t: any) {
-  return (
-    toInt(t?.materials_total_with_vat_gbp) ||
-    toInt(t?.materials_total_with_vat) ||
-    toInt(t?.materials_total_gbp) ||
-    toInt(t?.materials_total)
-  );
-}
-function readLabourTotal(t: any) {
-  return toInt(t?.labour_total_gbp ?? t?.labour_total);
-}
 
 
 /* ---------- UI micro components ---------- */
@@ -321,7 +318,7 @@ function Badge({ children, tone = 'slate' }: { children: React.ReactNode; tone?:
 }
 function KPI({
   label, value, subtitle, tone, big = true,
-}: { label: string; value: React.ReactNode; subtitle?: React.ReactNode; tone?: 'green'|'red'|'amber'|'slate'|'blue'; big?: boolean; }) {
+}: { label: React.ReactNode; value: React.ReactNode; subtitle?: React.ReactNode; tone?: 'green'|'red'|'amber'|'slate'|'blue'; big?: boolean; }) {
   return (
     <div className="rounded-xl border border-slate-200 p-3 bg-white shadow-sm">
       <div className="flex items-center justify-between">
@@ -371,7 +368,11 @@ function DSCRGauge({ value }: { value?: number }) {
         </text>
       </svg>
       <div className="text-sm">
-        <div className="font-medium">DSCR (Month-1)</div>
+        <div className="font-medium">
+          <Tooltip text="Measures how comfortably rental income covers mortgage payments. DSCR > 1.25 is generally considered safe by lenders.">
+            <span>DSCR (Month-1)</span>
+          </Tooltip>
+        </div>
         <div className="text-slate-600">≥ 1.25 preferred by lenders</div>
       </div>
     </div>
@@ -756,9 +757,6 @@ type GroupedRoom = {
   room_type: string;
   room_label?: string | null;
   // merged numbers
-  materials_total_with_vat_gbp?: number;
-  materials_total_gbp?: number;
-  labour_total_gbp?: number;
   room_total_with_vat_gbp?: number;
   room_total_gbp?: number;
   confidence?: number | null;
@@ -821,8 +819,6 @@ return Array.from(new Set(out));
     type: string;
     label?: string | null;
     images: string[];
-    mat?: number;
-    lab?: number;
     tot?: number;
     confidence?: number | null;
     rep?: any;
@@ -842,8 +838,6 @@ return Array.from(new Set(out));
         type,
         label: extractLabelFromAny(src),
         images: [],
-        mat: undefined,
-        lab: undefined,
         tot: undefined,
         confidence: null,
         rep: null,
@@ -855,11 +849,7 @@ return Array.from(new Set(out));
     const a = acc.get(key)!;
 
     // Merge numbers (sum from refurb rows; prefer explicit totals from room_totals when present)
-    const mat = readMaterialsTotal(src);
-    const lab = readLabourTotal(src);
     const tot = readTotalWithVat(src);
-    if (mat) a.mat = (a.mat ?? 0) + mat;
-    if (lab) a.lab = (a.lab ?? 0) + lab;
     if (tot) a.tot = (a.tot ?? 0) + tot;
 
     // Confidence: keep max
@@ -937,9 +927,6 @@ for (const a of acc.values()) {
     key: a.key,
     room_type: a.type,
     room_label: a.label ?? null,
-    materials_total_with_vat_gbp: a.mat ?? undefined,
-    materials_total_gbp: a.mat ?? undefined,
-    labour_total_gbp: a.lab ?? undefined,
     room_total_with_vat_gbp: a.tot ?? undefined,
     room_total_gbp: a.tot ?? undefined,
     confidence: a.confidence ?? null,
@@ -978,7 +965,7 @@ return cleaned;
       floor?: string | null;
       images: string[];
       extras: string[];
-      costs: { materialsWithVat?: number; labour?: number; totalWithVat?: number };
+      costs: { totalWithVat?: number };
     }> = [];
 
     // Index maps for bedrooms
@@ -1163,14 +1150,8 @@ return cleaned;
       estimateCounts.set(roomKey, (estimateCounts.get(roomKey) || 0) + 1);
 
       // Merge costs with null-safe math
-      const m_sub = est.materials_total_with_vat_gbp ??
-                    (est.materials?.reduce((sum: number, m: any) => sum + (m.gross_gbp ?? 0), 0)) ?? 0;
-      const l_sub = est.labour_total_gbp ??
-                    (est.labour?.reduce((sum: number, l: any) => sum + (l.labour_cost_gbp ?? 0), 0)) ?? 0;
-      const t_sub = est.room_total_with_vat_gbp ?? (m_sub + l_sub);
+      const t_sub = est.room_total_with_vat_gbp ?? est.room_total_gbp ?? 0;
 
-      room.costs.materialsWithVat = (room.costs.materialsWithVat ?? 0) + m_sub;
-      room.costs.labour = (room.costs.labour ?? 0) + l_sub;
       room.costs.totalWithVat = (room.costs.totalWithVat ?? 0) + t_sub;
 
       // Check for extra images
@@ -1539,10 +1520,10 @@ const roomTypes = useMemo(() => {
             desc="Backend-calculated metrics are authoritative. Sliders model sensitivities only. Yield on Cost uses stabilised rent and all-in project costs. DSCR shows month-one headroom post-refi."
           >
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              <KPI label="Yield on cost" value={period?.yield_on_cost_percent != null ? `${Number(period.yield_on_cost_percent).toFixed(2)}%` : '—'} subtitle="At stabilised reference" />
-              <KPI label="DSCR (Month-1)" value={exitRefi?.dscr_month1 != null ? exitRefi.dscr_month1.toFixed(2) : '—'} />
+              <KPI label={<Tooltip text="Net annual rent divided by total project cost (purchase + refurb). Indicates annual return percentage."><span>Yield on cost</span></Tooltip>} value={period?.yield_on_cost_percent != null ? `${Number(period.yield_on_cost_percent).toFixed(2)}%` : '—'} subtitle="At stabilised reference" />
+              <KPI label={<Tooltip text="Measures how comfortably rental income covers mortgage payments. DSCR > 1.25 is generally considered safe by lenders."><span>DSCR (Month-1)</span></Tooltip>} value={exitRefi?.dscr_month1 != null ? exitRefi.dscr_month1.toFixed(2) : '—'} />
               <KPI label="Sell: Net profit" value={exitSell?.net_profit_gbp != null ? money0(exitSell.net_profit_gbp) : '—'} />
-              <KPI label="Sell: ROI" value={exitSell?.roi_percent != null ? `${Number(exitSell.roi_percent).toFixed(2)}%` : '—'} />
+              <KPI label={<Tooltip text="Net profit relative to total cash invested (purchase + refurb - refinance proceeds)."><span>Sell: ROI</span></Tooltip>} value={exitSell?.roi_percent != null ? `${Number(exitSell.roi_percent).toFixed(2)}%` : '—'} />
               <KPI label="Refi: Cash left in" value={exitRefi?.net_cash_left_in_after_refi_gbp != null ? money0(exitRefi.net_cash_left_in_after_refi_gbp) : '—'} />
             </div>
 
@@ -1553,7 +1534,7 @@ const roomTypes = useMemo(() => {
                 <KPI label="Stabilised NOI (annual)" value={period?.rent_collected_gbp != null ? money0(period.rent_collected_gbp) : '—'} big={false} />
                 <KPI label="Total cash in (period)" value={period?.total_cash_in_gbp != null ? money0(period.total_cash_in_gbp) : '—'} big={false} />
                 <KPI
-                  label="ROI (period / annualised)"
+                  label={<Tooltip text="Net profit relative to total cash invested (purchase + refurb - refinance proceeds)."><span>ROI (period / annualised)</span></Tooltip>}
                   value={
                     period?.roi_period_percent != null
                       ? `${Number(period.roi_period_percent).toFixed(1)}% / ${Number(period.roi_annualised_percent ?? 0).toFixed(1)}%`
@@ -1569,7 +1550,7 @@ const roomTypes = useMemo(() => {
           {/* IMPORTANT: This section uses ONLY the properties payload. Do not query labour/material tables. */}
           <Section
             title="Refurbishment Estimates"
-            desc="Rooms from floorplan with costs matched by room name. Labour/materials split shown when available in the properties payload. VAT-inclusive totals displayed using en-GB formatting."
+            desc="Refurbishment costs by room with VAT-inclusive totals displayed using en-GB formatting."
             right={
               <div className="flex flex-wrap items-center gap-2 ml-auto">
                 <label className="text-xs text-slate-600">Filter:</label>
@@ -1631,9 +1612,8 @@ const roomTypes = useMemo(() => {
                     <thead>
                       <tr className="bg-slate-50">
                         <th className="p-2 text-left">Room</th>
-                        <th className="p-2 text-right">Materials (gross)</th>
-                        <th className="p-2 text-right">Labour</th>
-                        <th className="p-2 text-right">Room Total</th>
+                        <th className="p-2 text-right">Total (with VAT)</th>
+                        <th className="p-2 text-right">Total (ex VAT)</th>
                         <th className="p-2 text-right">Conf.</th>
                       </tr>
                     </thead>
@@ -1641,24 +1621,20 @@ const roomTypes = useMemo(() => {
                       {uiRooms.map((room) => (
                         <tr key={room.room_name} className="border-t">
                           <td className="p-2 capitalize">{room.display_name}</td>
-                          <td className="p-2 text-right">{formatCurrency(room.materials_total_gbp || 0)}</td>
-                          <td className="p-2 text-right">{formatCurrency(room.labour_total_gbp || 0)}</td>
                           <td className="p-2 text-right font-semibold">{formatCurrency(room.total_with_vat)}</td>
-                          <td className="p-2 text-right">{room.has_cost_split ? '✓' : '—'}</td>
+                          <td className="p-2 text-right">{formatCurrency(room.total_without_vat || 0)}</td>
+                          <td className="p-2 text-right">{room.confidence != null ? `${Math.round(room.confidence * 100)}%` : '—'}</td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
                       <tr className="border-t bg-slate-50">
                         <td className="p-2 text-right font-medium">Totals</td>
-                        <td className="p-2 text-right font-medium">
-                          {formatCurrency(uiRooms.reduce((a, r) => a + (r.materials_total_gbp || 0), 0))}
-                        </td>
-                        <td className="p-2 text-right font-medium">
-                          {formatCurrency(uiRooms.reduce((a, r) => a + (r.labour_total_gbp || 0), 0))}
-                        </td>
                         <td className="p-2 text-right font-semibold">
                           {formatCurrency(uiRooms.reduce((a, r) => a + r.total_with_vat, 0))}
+                        </td>
+                        <td className="p-2 text-right font-medium">
+                          {formatCurrency(uiRooms.reduce((a, r) => a + (r.total_without_vat || 0), 0))}
                         </td>
                         <td className="p-2" />
                       </tr>
@@ -1784,9 +1760,17 @@ const roomTypes = useMemo(() => {
                   <dd className="text-right">{period ? money0(period.rent_collected_gbp) : '—'}</dd>
                   <dt className="text-slate-600">Cashflow (period)</dt>
                   <dd className="text-right">{period ? money0(period.period_cashflow_gbp) : '—'}</dd>
-                  <dt className="text-slate-600">Yield on cost</dt>
+                  <dt className="text-slate-600">
+                    <Tooltip text="Net annual rent divided by total project cost (purchase + refurb). Indicates annual return percentage.">
+                      <span>Yield on cost</span>
+                    </Tooltip>
+                  </dt>
                   <dd className="text-right">{period?.yield_on_cost_percent != null ? `${Number(period.yield_on_cost_percent).toFixed(2)}%` : '—'}</dd>
-                  <dt className="text-slate-600">ROI (period / annualised)</dt>
+                  <dt className="text-slate-600">
+                    <Tooltip text="Net profit relative to total cash invested (purchase + refurb - refinance proceeds).">
+                      <span>ROI (period / annualised)</span>
+                    </Tooltip>
+                  </dt>
                   <dd className="text-right">{period?.roi_period_percent != null ? `${Number(period.roi_period_percent).toFixed(2)}% / ${Number(period.roi_annualised_percent ?? 0).toFixed(2)}%` : '—'}</dd>
                 </dl>
               </div>
@@ -1806,7 +1790,11 @@ const roomTypes = useMemo(() => {
                   <dd className="text-right">{exitSell ? money0(exitSell.repay_bridge_gbp) : '—'}</dd>
                   <dt className="text-slate-600">Net profit</dt>
                   <dd className="text-right">{exitSell ? money0(exitSell.net_profit_gbp) : '—'}</dd>
-                  <dt className="text-slate-600">ROI</dt>
+                  <dt className="text-slate-600">
+                    <Tooltip text="Net profit relative to total cash invested (purchase + refurb - refinance proceeds).">
+                      <span>ROI</span>
+                    </Tooltip>
+                  </dt>
                   <dd className="text-right">{exitSell?.roi_percent != null ? `${Number(exitSell.roi_percent).toFixed(2)}%` : '—'}</dd>
                 </dl>
               </div>
@@ -1827,7 +1815,11 @@ const roomTypes = useMemo(() => {
                 <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
                   <dt className="text-slate-600">Refi value</dt>
                   <dd className="text-right">{exitRefi ? money0(exitRefi.refi_value_gbp) : '—'}</dd>
-                  <dt className="text-slate-600">Final BTL loan</dt>
+                  <dt className="text-slate-600">
+                    <Tooltip text="Loan-to-Value after remortgage. 75% LTV means borrowing 75% of post-refurb value.">
+                      <span>Final BTL loan</span>
+                    </Tooltip>
+                  </dt>
                   <dd className="text-right">{exitRefi ? money0(exitRefi.final_btl_loan_gbp) : '—'}</dd>
                   <dt className="text-slate-600">Cash from refi after repay</dt>
                   <dd className="text-right">{exitRefi ? money0(exitRefi.cash_from_refi_after_repay_gbp) : '—'}</dd>
@@ -1837,7 +1829,11 @@ const roomTypes = useMemo(() => {
                   <dd className="text-right">{exitRefi ? money0(exitRefi.net_cashflow_24m_gbp) : '—'}</dd>
                   <dt className="text-slate-600">Cash-on-Cash (24m)</dt>
                   <dd className="text-right">{exitRefi?.roi_cash_on_cash_percent_24m != null ? `${Number(exitRefi.roi_cash_on_cash_percent_24m).toFixed(2)}%` : '—'}</dd>
-                  <dt className="text-slate-600">DSCR (Month-1)</dt>
+                  <dt className="text-slate-600">
+                    <Tooltip text="Measures how comfortably rental income covers mortgage payments. DSCR > 1.25 is generally considered safe by lenders.">
+                      <span>DSCR (Month-1)</span>
+                    </Tooltip>
+                  </dt>
                   <dd className="text-right">{exitRefi?.dscr_month1 != null ? exitRefi.dscr_month1.toFixed(2) : '—'}</dd>
                 </dl>
 
