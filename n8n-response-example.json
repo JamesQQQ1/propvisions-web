@@ -1,0 +1,189 @@
+{
+  "description": "n8n Chatbot Webhook - Required Response Format",
+  "url": "Set as N8N_CHATBOT_WEBHOOK environment variable",
+  "method": "POST",
+
+  "request_example": {
+    "property_id": "abc-123-def-456",
+    "message": "Change the purchase price to £350,000"
+  },
+
+  "response_format": {
+    "description": "MUST be a JSON array with 1 or more objects",
+    "required_fields": ["message", "property_id"],
+    "optional_fields": ["run_id"],
+
+    "example_1_question_no_update": [
+      {
+        "message": "The current ROI for this property is 18.5% over 24 months based on the purchase price of £325,000 and monthly rent of £1,450",
+        "property_id": "abc-123-def-456"
+      }
+    ],
+
+    "example_2_update_with_refresh": [
+      {
+        "message": "Purchase price updated to £350,000. Analysis refreshed with new ROI of 16.2%",
+        "run_id": "new-run-xyz-789",
+        "property_id": "abc-123-def-456"
+      }
+    ],
+
+    "example_3_multi_step": [
+      {
+        "message": "Step 1: Updated purchase price to £350,000",
+        "property_id": "abc-123-def-456"
+      },
+      {
+        "message": "Step 2: Updated refurb budget to £50,000",
+        "property_id": "abc-123-def-456"
+      },
+      {
+        "message": "Analysis complete. All metrics refreshed",
+        "run_id": "new-run-xyz-789",
+        "property_id": "abc-123-def-456"
+      }
+    ],
+
+    "example_4_unable_to_process": [
+      {
+        "message": "I wasn't able to understand that request. Could you clarify? For example, you can ask about ROI, update purchase price, or adjust refurb budget",
+        "property_id": "abc-123-def-456"
+      }
+    ],
+
+    "example_5_error_handling": [
+      {
+        "message": "I encountered an error processing your request. Please try again or contact support if this persists",
+        "property_id": "abc-123-def-456"
+      }
+    ]
+  },
+
+  "field_descriptions": {
+    "message": {
+      "type": "string",
+      "required": true,
+      "description": "Plain text response shown to the user. NO markdown, NO asterisks, NO escaped newlines",
+      "max_length": "Recommended <500 chars for good UX",
+      "formatting_rules": [
+        "Remove **bold** markdown",
+        "Remove *italic* markdown",
+        "Remove `code` backticks",
+        "Replace \\n with spaces",
+        "Use plain English",
+        "Be concise and clear"
+      ]
+    },
+
+    "run_id": {
+      "type": "string (uuid)",
+      "required": false,
+      "description": "If provided, triggers automatic page refresh with new data. ONLY include if you actually created a new analysis run",
+      "when_to_include": [
+        "User updated purchase price",
+        "User updated refurb budget",
+        "User updated rent estimate",
+        "User updated any financial assumption",
+        "Any change that requires recalculating metrics"
+      ],
+      "when_to_omit": [
+        "User asked a question",
+        "User requested information",
+        "No data was changed",
+        "Same run, just providing info"
+      ]
+    },
+
+    "property_id": {
+      "type": "string (uuid)",
+      "required": true,
+      "description": "MUST match the property_id from the incoming request. Used for validation and tracking"
+    }
+  },
+
+  "common_mistakes": {
+    "mistake_1": {
+      "wrong": {
+        "message": "**Purchase price** updated to `£350,000`"
+      },
+      "correct": {
+        "message": "Purchase price updated to £350,000"
+      }
+    },
+
+    "mistake_2": {
+      "wrong": {
+        "message": "Updated successfully",
+        "run_id": "abc-123"
+      },
+      "correct": {
+        "message": "Updated successfully",
+        "run_id": "abc-123",
+        "property_id": "xyz-789"
+      }
+    },
+
+    "mistake_3": {
+      "wrong": "Returning an object instead of array",
+      "example_wrong": {
+        "message": "...",
+        "property_id": "..."
+      },
+      "correct": [
+        {
+          "message": "...",
+          "property_id": "..."
+        }
+      ]
+    },
+
+    "mistake_4": {
+      "wrong": "Including run_id for a simple question",
+      "example_wrong": [
+        {
+          "message": "The ROI is 18.5%",
+          "run_id": "same-as-before",
+          "property_id": "abc-123"
+        }
+      ],
+      "correct": [
+        {
+          "message": "The ROI is 18.5%",
+          "property_id": "abc-123"
+        }
+      ]
+    }
+  },
+
+  "n8n_function_node_example": "// Final node in your n8n workflow\n\n// Get AI response\nconst aiResponse = $json.choices?.[0]?.message?.content || 'Unable to process';\n\n// Get context\nconst propertyId = $('Webhook').item.json.body.property_id;\nconst runId = $json.new_run_id || null; // Only if you created a new run\n\n// Clean message\nconst cleanMessage = aiResponse\n  .replace(/\\*\\*/g, '')\n  .replace(/\\*/g, '')\n  .replace(/`/g, '')\n  .replace(/\\n+/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\n// Return formatted response\nreturn [{\n  json: {\n    message: cleanMessage,\n    run_id: runId,\n    property_id: propertyId\n  }\n}];",
+
+  "test_with_curl": "curl -X POST https://your-n8n-instance.com/webhook/chatbot \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"property_id\": \"test-123\",\n    \"message\": \"What is the ROI?\"\n  }'",
+
+  "expected_frontend_behavior": {
+    "if_run_id_present": [
+      "Display message in chat",
+      "Update URL to ?run=<run_id>",
+      "Trigger loadDemoRun(run_id)",
+      "All metrics/charts refresh with new data",
+      "Re-enable send button"
+    ],
+    "if_run_id_absent": [
+      "Display message in chat",
+      "No URL update",
+      "No page refresh",
+      "Re-enable send button",
+      "User can continue chatting"
+    ]
+  },
+
+  "legacy_support": {
+    "note": "Frontend also accepts 'user_message' for backward compatibility",
+    "example": [
+      {
+        "user_message": "This also works",
+        "property_id": "abc-123"
+      }
+    ],
+    "priority": "If both 'message' and 'user_message' present, 'message' takes priority"
+  }
+}

@@ -66,17 +66,20 @@ Your n8n webhook should:
 [
   {
     "property_id": "same-uuid",
-    "run_id": "new-run-uuid",        // ← Triggers auto-refresh
-    "user_message": "Reply message"  // ← Displayed to user
+    "run_id": "new-run-uuid",  // ← Triggers auto-refresh (optional)
+    "message": "Reply message"  // ← Displayed to user
   }
 ]
 ```
 
 **Notes:**
 - `run_id` is optional - if present, page will refresh with new run
-- `user_message` is optional - if present, shown as bot reply
+- `message` is required - shown as bot reply (plain text, no markdown)
+- Legacy `user_message` also supported for backward compatibility
 - Can return multiple objects in array
 - Empty array `[]` is valid (shows "No actionable response")
+
+**⚠️ Important:** See `N8N_WEBHOOK_GUIDE.md` for detailed n8n configuration instructions.
 
 ---
 
@@ -128,8 +131,8 @@ Bot:  "The gross yield is 5.2% based on current rent"
 ```
 n8n returns:
 [
-  { "user_message": "Step 1: Updated price", "run_id": "abc-123" },
-  { "user_message": "Step 2: Recalculated refurb" }
+  { "message": "Step 1: Updated price", "run_id": "abc-123", "property_id": "xyz" },
+  { "message": "Step 2: Recalculated refurb", "property_id": "xyz" }
 ]
 
 → Both messages shown

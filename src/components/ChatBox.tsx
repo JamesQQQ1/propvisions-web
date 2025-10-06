@@ -25,7 +25,8 @@ interface ChatbotRequest {
 interface ChatbotResponseItem {
   property_id?: string;
   run_id?: string;
-  user_message?: string;
+  user_message?: string;  // Legacy format
+  message?: string;       // New format
 }
 
 const REQUEST_TIMEOUT_MS = 45000;
@@ -154,10 +155,11 @@ export default function ChatBox({ propertyId, initialRunId, onRunId, className =
         return;
       }
 
-      // Display all user_message entries
+      // Display all messages (support both 'message' and 'user_message' formats)
       for (const item of data) {
-        if (item.user_message) {
-          addMessage('bot', item.user_message);
+        const messageText = item.message || item.user_message;
+        if (messageText) {
+          addMessage('bot', messageText);
         }
       }
 
@@ -168,8 +170,8 @@ export default function ChatBox({ propertyId, initialRunId, onRunId, className =
         onRunId(firstItem.run_id);
       }
 
-      // If no user_message was present, show generic success
-      if (!data.some((item) => item.user_message)) {
+      // If no message was present, show generic success
+      if (!data.some((item) => item.message || item.user_message)) {
         addMessage('bot', '✓ Request processed successfully.');
       }
 
