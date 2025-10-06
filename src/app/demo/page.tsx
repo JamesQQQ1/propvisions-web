@@ -29,7 +29,7 @@ function Tooltip({ children, text }: { children: React.ReactNode; text: string }
 }
 
 /* ---------- demo mode config (REQUIRED) ---------- */
-const DEFAULT_DEMO_RUN_ID = 'cb58fc95-6901-4463-8daf-984f45f680a7';
+const DEFAULT_DEMO_RUN_ID = 'd0498368-4be1-4b06-9700-2f935c186e6e';
 console.debug('[demo-page] POLL_BUILD =', POLL_BUILD);
 
 /* ---------- branding ---------- */
