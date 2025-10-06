@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import type { AggregatedRoom } from '@/types/refurb';
-import { formatCurrency } from '@/lib/rooms';
+import { useState } from 'react';
+import type { UiRoom } from '@/lib/rooms';
+import { formatCurrency, getTopRoomsByCost, hasAnyCostSplit } from '@/lib/rooms';
 
 interface RoomCardProps {
-  room: AggregatedRoom;
-  showMiniCharts?: boolean;
-  allRooms?: AggregatedRoom[];
+  room: UiRoom;
+  allRooms?: UiRoom[];
+  showCharts?: boolean;
 }
 
 const PLACEHOLDER_SVG = `data:image/svg+xml;utf8,${encodeURIComponent(`
@@ -22,34 +22,27 @@ const PLACEHOLDER_SVG = `data:image/svg+xml;utf8,${encodeURIComponent(`
   </svg>
 `)}`;
 
-function MiniBarChart({ rooms, maxRooms = 5 }: { rooms: AggregatedRoom[]; maxRooms?: number }) {
-  const topRooms = useMemo(() =>
-    rooms
-      .filter(r => r.total_gbp > 0)
-      .sort((a, b) => b.total_gbp - a.total_gbp)
-      .slice(0, maxRooms),
-    [rooms, maxRooms]
-  );
-
-  const maxValue = Math.max(...topRooms.map(r => r.total_gbp));
+function MiniBarChart({ rooms, maxRooms = 5 }: { rooms: UiRoom[]; maxRooms?: number }) {
+  const topRooms = getTopRoomsByCost(rooms, maxRooms);
+  const maxValue = Math.max(...topRooms.map(r => r.total_with_vat));
 
   if (topRooms.length === 0) return null;
 
   return (
     <div className="space-y-1">
       <div className="text-xs font-medium text-slate-700 mb-2">Top Rooms by Cost</div>
-      {topRooms.map((room, i) => {
-        const width = maxValue > 0 ? (room.total_gbp / maxValue) * 100 : 0;
+      {topRooms.map((room) => {
+        const width = maxValue > 0 ? (room.total_with_vat / maxValue) * 100 : 0;
         return (
-          <div key={room.identity} className="flex items-center gap-2 text-xs">
-            <div className="w-16 truncate text-slate-600">{room.displayName}</div>
+          <div key={room.room_name} className="flex items-center gap-2 text-xs">
+            <div className="w-16 truncate text-slate-600">{room.display_name}</div>
             <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
               <div
                 className="h-full bg-blue-500 transition-all duration-300"
                 style={{ width: `${width}%` }}
               />
             </div>
-            <div className="w-12 text-right tabular-nums">{formatCurrency(room.total_gbp)}</div>
+            <div className="w-12 text-right tabular-nums">{formatCurrency(room.total_with_vat)}</div>
           </div>
         );
       })}
@@ -57,14 +50,16 @@ function MiniBarChart({ rooms, maxRooms = 5 }: { rooms: AggregatedRoom[]; maxRoo
   );
 }
 
-function MiniDonutChart({ labour, materials }: { labour: number; materials: number }) {
-  const total = labour + materials;
+function MiniDonutChart({ labour, materials }: { labour: number | null; materials: number | null }) {
+  const labourVal = labour || 0;
+  const materialsVal = materials || 0;
+  const total = labourVal + materialsVal;
+
   if (total === 0) return null;
 
-  const labourPerc = (labour / total) * 100;
-  const materialsPerc = (materials / total) * 100;
+  const labourPerc = (labourVal / total) * 100;
+  const materialsPerc = (materialsVal / total) * 100;
 
-  // Simple donut using conic-gradient
   const gradientStyle = {
     background: `conic-gradient(from 0deg, #3b82f6 0% ${labourPerc}%, #10b981 ${labourPerc}% 100%)`
   };
@@ -92,7 +87,7 @@ function MiniDonutChart({ labour, materials }: { labour: number; materials: numb
   );
 }
 
-export default function RoomCard({ room, showMiniCharts = false, allRooms = [] }: RoomCardProps) {
+export default function RoomCard({ room, allRooms = [], showCharts = false }: RoomCardProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const images = room.image_urls;
@@ -112,15 +107,32 @@ export default function RoomCard({ room, showMiniCharts = false, allRooms = [] }
     }
   };
 
+  // Format room subtitle with area and windows
+  const subtitle = [
+    room.area_sqm ? `${room.area_sqm.toFixed(1)} m²` : null,
+    room.area_sq_ft ? `${room.area_sq_ft.toFixed(1)} ft²` : null,
+    room.window_count ? `${room.window_count} window${room.window_count !== 1 ? 's' : ''}` : null,
+  ].filter(Boolean).join(' · ');
+
   return (
     <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-lg hover:border-slate-300 transition-all duration-300 group">
+      {/* Header */}
+      <div className="p-4 pb-0">
+        <h3 className="text-lg font-semibold text-slate-900">
+          {room.display_name}
+          {room.floor && <span className="text-sm font-normal text-slate-600 ml-1">({room.floor} Floor)</span>}
+        </h3>
+        {subtitle && (
+          <p className="text-sm text-slate-600 mt-1">{subtitle}</p>
+        )}
+      </div>
+
       {/* Image Section */}
-      <div className="relative w-full h-48 bg-slate-50 overflow-hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
+      <div className="relative w-full h-48 bg-slate-50 overflow-hidden mx-4 mt-3 rounded-lg">
         <img
           className="w-full h-48 object-cover object-center group-hover:scale-105 transition-transform duration-300"
           src={currentImage || PLACEHOLDER_SVG}
-          alt={currentImage ? `${room.displayName}` : 'No image available'}
+          alt={currentImage ? `${room.display_name}` : 'No image available'}
           loading="lazy"
         />
 
@@ -152,20 +164,11 @@ export default function RoomCard({ room, showMiniCharts = false, allRooms = [] }
             </button>
           </>
         )}
-
-        {/* Floor badge */}
-        {room.floor && (
-          <div className="absolute top-3 left-3">
-            <span className="bg-white/90 backdrop-blur text-slate-700 text-xs px-2 py-1 rounded-full font-medium">
-              {room.floor} Floor
-            </span>
-          </div>
-        )}
       </div>
 
       {/* Thumbnail strip */}
       {thumbnails.length > 0 && (
-        <div className="p-3 border-b border-slate-100">
+        <div className="p-3 mx-1">
           <div className="flex gap-2 overflow-x-auto">
             {thumbnails.map((url, i) => (
               <button
@@ -173,10 +176,9 @@ export default function RoomCard({ room, showMiniCharts = false, allRooms = [] }
                 onClick={() => setCurrentImageIndex(i + 1)}
                 className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 border-transparent hover:border-blue-500 transition-colors"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={url}
-                  alt={`${room.displayName} view ${i + 2}`}
+                  alt={`${room.display_name} view ${i + 2}`}
                   className="w-full h-full object-cover"
                   loading="lazy"
                 />
@@ -186,47 +188,55 @@ export default function RoomCard({ room, showMiniCharts = false, allRooms = [] }
         </div>
       )}
 
-      <div className="p-4">
-        {/* Title */}
-        <div className="mb-3">
-          <h3 className="text-lg font-semibold text-slate-900">
-            {room.displayName}
-          </h3>
+      <div className="p-4 pt-2">
+        {/* Cost Information */}
+        <div className="space-y-3">
+          {/* Total Cost */}
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+            <div className="text-sm font-medium text-slate-800 mb-1">Total (incl. VAT)</div>
+            <div className="text-lg font-bold text-slate-900">
+              {formatCurrency(room.total_with_vat)}
+            </div>
+            {room.total_without_vat && (
+              <div className="text-xs text-slate-600 mt-1">
+                Ex VAT: {formatCurrency(room.total_without_vat)}
+              </div>
+            )}
+          </div>
+
+          {/* Labour/Materials Split */}
+          {room.has_cost_split ? (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                <div className="text-xs font-medium text-blue-800 mb-1">Labour</div>
+                <div className="text-sm font-bold text-blue-900">
+                  {formatCurrency(room.labour_total_gbp || 0)}
+                </div>
+              </div>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
+                <div className="text-xs font-medium text-emerald-800 mb-1">Materials</div>
+                <div className="text-sm font-bold text-emerald-900">
+                  {formatCurrency(room.materials_total_gbp || 0)}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-center">
+              <div
+                className="text-xs text-amber-800 cursor-help"
+                title="Granular labour/materials split was not included in the properties payload for this room."
+              >
+                Split unavailable
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Cost Pills */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
-            <div className="text-xs font-medium text-emerald-800 mb-1" title="Material costs including fixtures, fittings, and consumables">
-              Materials
-            </div>
-            <div className="text-sm font-bold text-emerald-900">
-              {formatCurrency(room.materials_total_gbp)}
-            </div>
-          </div>
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
-            <div className="text-xs font-medium text-blue-800 mb-1" title="Labour costs including contractor fees and project management">
-              Labour
-            </div>
-            <div className="text-sm font-bold text-blue-900">
-              {formatCurrency(room.labour_total_gbp)}
-            </div>
-          </div>
-          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-center">
-            <div className="text-xs font-medium text-slate-800 mb-1" title="Total refurbishment cost for this room">
-              Total
-            </div>
-            <div className="text-sm font-bold text-slate-900">
-              {formatCurrency(room.total_gbp)}
-            </div>
-          </div>
-        </div>
-
-        {/* Mini charts */}
-        {showMiniCharts && (room.total_gbp > 0) && (
+        {/* Charts */}
+        {showCharts && allRooms.length > 1 && (
           <div className="mt-4 pt-4 border-t border-slate-100 space-y-4">
-            {allRooms.length > 1 && <MiniBarChart rooms={allRooms} />}
-            {(room.labour_total_gbp > 0 || room.materials_total_gbp > 0) && (
+            <MiniBarChart rooms={allRooms} />
+            {hasAnyCostSplit(allRooms) && (
               <MiniDonutChart
                 labour={room.labour_total_gbp}
                 materials={room.materials_total_gbp}

@@ -7,8 +7,9 @@ import Image from 'next/image';
 import { pollUntilDone, type RunStatus, startAnalyze, POLL_BUILD } from '@/lib/api';
 import RoomCard from '@/components/RoomCard';
 import FeedbackBar from '@/components/FeedbackBar';
-import type { RefurbRoom, AggregatedRoom } from '@/types/refurb';
-import { extractRefurbData, groupRoomsByIdentity, formatCurrency } from '@/lib/rooms';
+import type { RefurbRoom } from '@/types/refurb';
+import type { UiRoom } from '@/lib/rooms';
+import { buildRooms, formatCurrency } from '@/lib/rooms';
 import PDFViewer from '@/components/PDFViewer';
 import FinancialSliders, {
   type Derived as SliderDerived,
@@ -691,14 +692,13 @@ export default function Page() {
   const baseRefurb = useMemo(() => sumV2Totals(data?.refurb_estimates), [data?.refurb_estimates]);
   const rollup     = useMemo(() => computeRefurbRollup(data?.property, data?.refurb_estimates), [data?.property, data?.refurb_estimates]);
 
-  // New refurb data processing
-  const refurbRooms = useMemo(() => {
-    if (!data?.property) return new Map<string, AggregatedRoom>();
-    const roomData = extractRefurbData(data.property);
-    return groupRoomsByIdentity(roomData);
+  // New refurb data processing using properties-only approach
+  const uiRooms = useMemo(() => {
+    if (!data?.property) return [];
+    return buildRooms(data.property);
   }, [data?.property]);
 
-  const hasRefurbData = refurbRooms.size > 0;
+  const hasRefurbData = uiRooms.length > 0;
 
   const epc = data?.property ? {
     current: data.property.epc_rating_current ?? data.property.epc_rating ?? null,
@@ -1595,9 +1595,10 @@ const roomTypes = useMemo(() => {
           </Section>
 
           {/* Refurbishment */}
+          {/* IMPORTANT: This section uses ONLY the properties payload. Do not query labour/material tables. */}
           <Section
             title="Refurbishment Estimates"
-            desc="Rooms are grouped (materials + labour merged) and tagged by floorplan labels (e.g., Bedroom 1). If a room has costs but no photos, we show a clear placeholder. Extra photos appear as a small gallery."
+            desc="Rooms from floorplan with costs matched by room name. Labour/materials split shown when available in the properties payload. VAT-inclusive totals displayed using en-GB formatting."
             right={
               <div className="flex flex-wrap items-center gap-2 ml-auto">
                 <label className="text-xs text-slate-600">Filter:</label>
@@ -1625,21 +1626,19 @@ const roomTypes = useMemo(() => {
               {period?.months_refurb != null ? <> Current assumption: <strong>{Number(period.months_refurb)} months</strong>.</> : ' If not shown, the backend hasn’t provided a refurb duration for this run.'}
             </div>
 
-            {/* Cards (grouped) */}
+            {/* Cards (floorplan-ordered) */}
             {hasRefurbData ? (
               <>
                 {/* Room Cards Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {Array.from(refurbRooms.values())
-                    .sort((a, b) => b.total_gbp - a.total_gbp)
-                    .map((room) => (
-                      <RoomCard
-                        key={room.identity}
-                        room={room}
-                        showMiniCharts={true}
-                        allRooms={Array.from(refurbRooms.values())}
-                      />
-                    ))}
+                  {uiRooms.map((room) => (
+                    <RoomCard
+                      key={room.room_name}
+                      room={room}
+                      showCharts={true}
+                      allRooms={uiRooms}
+                    />
+                  ))}
                 </div>
 
                 {/* Rollup strip */}
@@ -1668,29 +1667,27 @@ const roomTypes = useMemo(() => {
                       </tr>
                     </thead>
                     <tbody>
-                      {Array.from(refurbRooms.values())
-                        .sort((a, b) => b.total_gbp - a.total_gbp)
-                        .map((room, i) => (
-                          <tr key={room.identity} className="border-t">
-                            <td className="p-2 capitalize">{room.displayName}</td>
-                            <td className="p-2 text-right">{formatCurrency(room.materials_total_gbp)}</td>
-                            <td className="p-2 text-right">{formatCurrency(room.labour_total_gbp)}</td>
-                            <td className="p-2 text-right font-semibold">{formatCurrency(room.total_gbp)}</td>
-                            <td className="p-2 text-right">—</td>
-                          </tr>
-                        ))}
+                      {uiRooms.map((room) => (
+                        <tr key={room.room_name} className="border-t">
+                          <td className="p-2 capitalize">{room.display_name}</td>
+                          <td className="p-2 text-right">{formatCurrency(room.materials_total_gbp || 0)}</td>
+                          <td className="p-2 text-right">{formatCurrency(room.labour_total_gbp || 0)}</td>
+                          <td className="p-2 text-right font-semibold">{formatCurrency(room.total_with_vat)}</td>
+                          <td className="p-2 text-right">{room.has_cost_split ? '✓' : '—'}</td>
+                        </tr>
+                      ))}
                     </tbody>
                     <tfoot>
                       <tr className="border-t bg-slate-50">
                         <td className="p-2 text-right font-medium">Totals</td>
                         <td className="p-2 text-right font-medium">
-                          {formatCurrency(Array.from(refurbRooms.values()).reduce((a, r) => a + r.materials_total_gbp, 0))}
+                          {formatCurrency(uiRooms.reduce((a, r) => a + (r.materials_total_gbp || 0), 0))}
                         </td>
                         <td className="p-2 text-right font-medium">
-                          {formatCurrency(Array.from(refurbRooms.values()).reduce((a, r) => a + r.labour_total_gbp, 0))}
+                          {formatCurrency(uiRooms.reduce((a, r) => a + (r.labour_total_gbp || 0), 0))}
                         </td>
                         <td className="p-2 text-right font-semibold">
-                          {formatCurrency(Array.from(refurbRooms.values()).reduce((a, r) => a + r.total_gbp, 0))}
+                          {formatCurrency(uiRooms.reduce((a, r) => a + r.total_with_vat, 0))}
                         </td>
                         <td className="p-2" />
                       </tr>
@@ -1700,10 +1697,8 @@ const roomTypes = useMemo(() => {
               </>
             ) : (
               <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-slate-700">
-                <p className="font-medium">No refurbishment rows were saved for this property.</p>
-                {data?.refurb_debug && (
-                  <p className="text-sm mt-1">Materials rows: <strong>{data.refurb_debug.materials_count ?? 0}</strong> · Labour rows: <strong>{data.refurb_debug.labour_count ?? 0}</strong></p>
-                )}
+                <p className="font-medium">No refurbishment data found in properties payload.</p>
+                <p className="text-sm mt-1">Check that floorplan_min and room_totals are included in the properties object.</p>
               </div>
             )}
           </Section>
