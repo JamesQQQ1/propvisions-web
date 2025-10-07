@@ -900,11 +900,13 @@ function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
   const renderableRooms: any[] = [];
   const seenImageIds = new Set<string>();
 
-  // 1) Process interior rooms from room_groups
-  const roomGroups: any[] = Array.isArray(property?.room_groups) ? property.room_groups : [];
-  for (const group of roomGroups) {
-    const imageIds = group.image_ids || [];
-    const imageUrls = group.image_urls || [];
+  // 1) Process interior rooms from floorplan_min
+  const floorplanMin: any[] = Array.isArray(property?.floorplan_min) ? property.floorplan_min : [];
+  console.log('[buildRoomGroups] floorplan_min items:', floorplanMin.length);
+
+  for (const fp of floorplanMin) {
+    const imageIds = fp.image_ids || [];
+    const imageUrls = fp.image_urls || [];
     const images = resolveImages(imageIds, imageUrls);
 
     // Skip if we've already seen this image
@@ -912,8 +914,9 @@ function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
     if (firstImageId && seenImageIds.has(firstImageId)) continue;
     if (firstImageId) seenImageIds.add(firstImageId);
 
-    const price = findPrice(imageIds, group.route || group.predicted_room);
-    const displayName = price?.room_name || titleize(group.route || group.predicted_room || 'Unknown');
+    const roomName = fp.room_name || fp.label || fp.room_type;
+    const price = findPrice(imageIds, roomName);
+    const displayName = price?.room_name || roomName || 'Unknown';
 
     if (images.length > 0 || (price && readTotalWithVat(price) > 0)) {
       renderableRooms.push({
@@ -922,8 +925,8 @@ function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
         imageIds,
         images,
         price,
-        route: group.route,
-        predicted_room: group.predicted_room,
+        route: fp.route || null,
+        predicted_room: fp.room_type,
       });
     }
   }
