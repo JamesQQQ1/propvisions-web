@@ -3,11 +3,14 @@
 import { useState } from 'react';
 import type { UiRoom } from '@/lib/rooms';
 import { formatCurrency, getTopRoomsByCost } from '@/lib/rooms';
+import RoomUploadButton from './RoomUploadButton';
+import type { PendingUpload } from './MissingRoomRequestsCard';
 
 interface RoomCardProps {
   room: UiRoom;
   allRooms?: UiRoom[];
   showCharts?: boolean;
+  pendingUploads?: PendingUpload[];
 }
 
 const PLACEHOLDER_SVG = `data:image/svg+xml;utf8,${encodeURIComponent(`
@@ -50,7 +53,7 @@ function MiniBarChart({ rooms, maxRooms = 5 }: { rooms: UiRoom[]; maxRooms?: num
   );
 }
 
-export default function RoomCard({ room, allRooms = [], showCharts = false }: RoomCardProps) {
+export default function RoomCard({ room, allRooms = [], showCharts = false, pendingUploads = [] }: RoomCardProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const images = room.image_urls;
@@ -187,6 +190,9 @@ export default function RoomCard({ room, allRooms = [], showCharts = false }: Ro
             <MiniBarChart rooms={allRooms} />
           </div>
         )}
+
+        {/* Upload buttons for missing photos */}
+        <RoomUploadButton pendingUploads={pendingUploads} />
       </div>
     </div>
   );

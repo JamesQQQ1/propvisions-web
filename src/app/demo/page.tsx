@@ -8,7 +8,7 @@ import { pollUntilDone, type RunStatus, startAnalyze, POLL_BUILD } from '@/lib/a
 import RoomCard from '@/components/RoomCard';
 import FeedbackBar from '@/components/FeedbackBar';
 import FloatingChatButton from '@/components/FloatingChatButton';
-import MissingRoomRequestsCard from '@/components/MissingRoomRequestsCard';
+import MissingRoomRequestsCard, { useMissingRoomRequests, type PendingUpload } from '@/components/MissingRoomRequestsCard';
 import type { RefurbRoom } from '@/types/refurb';
 import type { UiRoom } from '@/lib/rooms';
 import { buildRoomsFromProperties, safeLower, normalizeLabel, formatCurrency } from '@/lib/rooms';
@@ -705,6 +705,37 @@ export default function Page() {
   }, [data?.property]);
 
   const hasRefurbData = uiRooms.length > 0;
+
+  // Missing room requests (realtime)
+  const { requests: missingRoomRequests } = useMissingRoomRequests(data?.property_id || '');
+
+  // Map missing room requests to tiles
+  const roomUploadsMap = useMemo(() => {
+    const map = new Map<string, PendingUpload[]>();
+
+    missingRoomRequests.forEach((req) => {
+      // Try exact match on room_label + floor
+      const labelKey = `${req.room_label?.toLowerCase() || ''}|${req.floor?.toLowerCase() || ''}`;
+
+      // Find matching room
+      const matchingRoom = uiRooms.find(room => {
+        const roomKey = `${room.display_name.toLowerCase()}|${room.floor?.toLowerCase() || ''}`;
+        if (roomKey === labelKey) return true;
+
+        // Fallback: match by normalized label
+        const normLabel = normalizeLabel(room.display_name);
+        const normReq = normalizeLabel(req.room_label || '');
+        return normLabel === normReq;
+      });
+
+      if (matchingRoom) {
+        const existing = map.get(matchingRoom.room_name) || [];
+        map.set(matchingRoom.room_name, [...existing, req]);
+      }
+    });
+
+    return map;
+  }, [missingRoomRequests, uiRooms]);
 
   const epc = data?.property ? {
     current: data.property.epc_rating_current ?? data.property.epc_rating ?? null,
@@ -1605,6 +1636,7 @@ const roomTypes = useMemo(() => {
                       room={room}
                       showCharts={true}
                       allRooms={uiRooms}
+                      pendingUploads={roomUploadsMap.get(room.room_name) || []}
                     />
                   ))}
                 </div>
