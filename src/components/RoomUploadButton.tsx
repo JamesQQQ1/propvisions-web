@@ -31,14 +31,19 @@ export default function RoomUploadButton({ pendingUploads }: RoomUploadButtonPro
           <div key={upload.id} className="bg-amber-50 border border-amber-300 rounded-lg p-2">
             <div className="text-xs text-amber-800 font-medium mb-1">Missing photo</div>
             {hasUrl && !expired ? (
-              <a
-                href={upload.upload_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full px-3 py-2 bg-amber-500 text-white text-sm font-medium rounded-md hover:bg-amber-600 transition-colors text-center"
-              >
-                Upload photo
-              </a>
+              <>
+                <a
+                  href={upload.upload_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full px-3 py-2 bg-amber-500 text-white text-sm font-medium rounded-md hover:bg-amber-600 transition-colors text-center"
+                >
+                  Upload photo
+                </a>
+                <p className="text-xs text-amber-700 mt-2 leading-tight">
+                  Price shown is an estimate from our model. Upload a photo to reprice for higher accuracy.
+                </p>
+              </>
             ) : (
               <button
                 disabled

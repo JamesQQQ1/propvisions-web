@@ -1011,6 +1011,188 @@ function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
   return groups;
 }
 
+// OLD CODE TO DELETE STARTS HERE - REMOVE EVERYTHING BELOW UNTIL "return visible"
+const OLD_TYPE_Acc = {
+    key: string;
+    type: string;
+    label?: string | null;
+    images: string[];
+    tot?: number;
+    confidence?: number | null;
+    rep?: any;
+    mergedCount: number;
+    // marks to decide mapping/eligibility
+    mapped: boolean;
+    isExterior: boolean;
+  };
+
+  const acc = new Map<string, Acc>();
+
+  // Helper to upsert/merge into the accumulator
+  function upsert(key: string, type: string, src: any, opts?: { mapped?: boolean }) {
+    if (!acc.has(key)) {
+      acc.set(key, {
+        key,
+        type,
+        label: extractLabelFromAny(src),
+        images: [],
+        tot: undefined,
+        confidence: null,
+        rep: null,
+        mergedCount: 0,
+        mapped: !!opts?.mapped,
+        isExterior: EXTERIOR_TYPES.has(type),
+      });
+    }
+    const a = acc.get(key)!;
+
+    // Merge numbers (sum from refurb rows; prefer explicit totals from room_totals when present)
+    const tot = readTotalWithVat(src);
+    if (tot) a.tot = (a.tot ?? 0) + tot;
+
+    // Confidence: keep max
+    let conf: number | null = null;
+    if (typeof src?.confidence === 'number') conf = Number(src.confidence);
+    else if (typeof src?.room_confidence === 'number') conf = Number(src.room_confidence);
+    if (typeof conf === 'number') {
+      if (conf > 1 && conf <= 100) conf = conf / 100;
+      a.confidence = Math.max(a.confidence ?? 0, conf);
+    }
+
+    // Images
+    const imgs = collectImages(src);
+    if (imgs.length) a.images = Array.from(new Set(a.images.concat(imgs)));
+
+    // Representative row for RoomCard (strip images later to avoid double image rendering)
+    if (!a.rep) a.rep = { ...src };
+
+    a.mergedCount += 1;
+    if (opts?.mapped) a.mapped = true;
+  }
+
+  // 3) Ingest floorplan-mapped totals first (these are the “truth”)
+  for (const tot of totals) {
+    if (isOverheadsOrTotalsRow(tot)) continue;
+    const type = normaliseType(tot?.type ?? tot?.room_type ?? 'other');
+    const maybeLabel = extractLabelFromAny(tot);
+    if (SHOW_ONLY_FLOORPLAN_MAPPED && !isFloorplanMapped(tot, type) && !EXTERIOR_TYPES.has(type)) {
+      // Unmapped totals are allowed ONLY if exterior.
+      continue;
+    }
+    // If this looks like a per-type rollup (e.g., label "Bedroom") and we already
+// have floorplan-mapped rooms of this type, skip it.
+if (floorplanByType.has(type) && isTypeLabelOnly(type, maybeLabel)) continue;
+
+
+    const key = forceExteriorKey(type) ?? canonicalMatchKey(tot, type);
+    upsert(key, key.split('::')[0], tot, { mapped: isFloorplanMapped(tot, type) });
+
+
+  }
+
+  // 4) Merge refurb rows into the best matching key
+  for (const est of refurb) {
+    // Skip obvious non-rooms (defensive)
+    const estType = normaliseType(est?.detected_room_type ?? est?.room_type ?? 'other');
+    if (UNWANTED_TYPES.has(estType)) continue;
+
+    // If there is a clear floorplan id/label, use it; otherwise we create/merge into generic,
+    // but later we'll suppress generic cards when labelled/id'd exist for that type.
+    const k = canonicalMatchKey(est, estType);
+    upsert(k, k.split('::')[0], est, { mapped: isFloorplanMapped(est, estType) });
+
+
+  }
+
+  // 5) Process not_in_floorplan array for exterior items (facade, garden, etc.)
+  const notInFloorplan: any[] = Array.isArray(property?.not_in_floorplan) ? property.not_in_floorplan : [];
+  console.log('[buildRoomGroups] not_in_floorplan items:', notInFloorplan.length, notInFloorplan);
+  for (const item of notInFloorplan) {
+    if (!item) continue;
+
+    // Extract room info from the item
+    const predicted = item.predicted_room || item.room_type || 'other';
+    const itemType = normaliseType(predicted);
+    const itemLabel = item.room_label || item.label || null;
+
+    // Create a key for this item
+    const key = itemLabel ? `${itemType}::label:${safeLower(itemLabel).trim()}` : `${itemType}::`;
+
+    // Build a synthetic object with images and any cost data
+    const syntheticItem = {
+      type: itemType,
+      room_type: itemType,
+      room_label: itemLabel,
+      label: itemLabel,
+      route: item.route,
+      image_urls: item.image_urls || [],
+      images: item.image_urls || [],
+      floorplan_image_urls: item.floorplan_image_urls || [],
+      // Include any cost data if present
+      room_total_with_vat_gbp: item.room_total_with_vat_gbp || 0,
+      room_total_gbp: item.room_total_gbp || 0,
+    };
+
+    // Only add if it has images or cost
+    const hasImages = (item.image_urls && item.image_urls.length > 0) ||
+                      (item.floorplan_image_urls && item.floorplan_image_urls.length > 0);
+    const hasCost = syntheticItem.room_total_with_vat_gbp > 0 || syntheticItem.room_total_gbp > 0;
+
+    if (hasImages || hasCost) {
+      upsert(key, itemType, syntheticItem, { mapped: false });
+    }
+  }
+
+  const groups: GroupedRoom[] = [];
+
+  // Build final list
+for (const a of acc.values()) {
+  // 5a) resolve gallery to URLs
+  let gallery = resolveToUrls(a.images);
+
+  // allow exterior/facade to borrow listing images if still empty
+  if (!gallery.length && a.isExterior) {
+    gallery = globalImages;
+  }
+
+  const primary = gallery[0] ?? NO_IMAGE_PLACEHOLDER;
+
+  // Representative row for RoomCard (strip image fields so RoomCard doesn’t double-render)
+  const { image_url: _iu, image_urls: _ius, images: _imgs, ...repForCard } = (a.rep ?? {}) as any;
+
+  groups.push({
+    key: a.key,
+    room_type: a.type,
+    room_label: a.label ?? null,
+    room_total_with_vat_gbp: a.tot ?? undefined,
+    room_total_gbp: a.tot ?? undefined,
+    confidence: a.confidence ?? null,
+    images: gallery,                 // URLs only
+    primaryImage: primary,           // URL or placeholder
+    rep: repForCard as RefurbRoom,
+    mergedCount: a.mergedCount,
+    mapped: a.mapped,                // <-- NEW: carry mapped flag forward
+  });
+}
+
+// --- SUPPRESS GENERIC "type::" CARDS WHEN SPECIFIC LABEL/ID CARDS EXIST ---
+// Determine which types have at least one floorplan-mapped card
+const hasMappedByType = new Set(
+  groups.filter(g => g.mapped === true).map(g => g.room_type)
+);
+
+// Drop any UNMAPPED card for a type that already has a MAPPED card
+const cleaned = groups.filter(g => !(g.mapped === false && hasMappedByType.has(g.room_type)));
+
+// Apply visibility rules: show only rooms with images OR non-zero cost
+const visible = cleaned.filter(g => {
+  const hasImages = g.images.length > 0;
+  const hasCost = g.room_total_with_vat && g.room_total_with_vat > 0;
+  return hasImages || hasCost;
+});
+
+return visible;
+}
 
 
 // === derive groupedRooms from floorplan only (no unmapped) ===
