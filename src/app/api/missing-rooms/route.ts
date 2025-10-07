@@ -1,10 +1,11 @@
 // app/api/missing-rooms/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { getMissingRoomRequests } from '@/lib/supabase/queries';
+import { getMissingRoomRequests } from '@/server/repo/supabase';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const propertyId = searchParams.get('property_id');
+  const status = searchParams.get('status');
 
   if (!propertyId || typeof propertyId !== 'string' || propertyId.trim() === '') {
     return NextResponse.json(
@@ -13,14 +14,8 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  try {
-    const requests = await getMissingRoomRequests(propertyId);
-    return NextResponse.json(requests);
-  } catch (error) {
-    console.error('[api/missing-rooms] Error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch missing room requests' },
-      { status: 500 }
-    );
-  }
+  const onlyPending = status === 'pending' || !status;
+  const items = await getMissingRoomRequests(propertyId, onlyPending);
+
+  return NextResponse.json({ items });
 }

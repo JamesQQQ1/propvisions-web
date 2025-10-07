@@ -2,9 +2,29 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { isTokenExpired, type MissingRoomRequest } from '@/lib/supabase/queries';
 import { subscribeMissingRoomRequests } from '@/lib/realtime/subscribe';
 import { mergeRowUpsert, mergeRowDelete } from '@/lib/realtime/merge';
+
+interface MissingRoomRequest {
+  id: string;
+  property_id: string;
+  room_name: string;
+  upload_url?: string | null;
+  token?: string | null;
+  token_expires_at?: string | null;
+  status?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+function isTokenExpired(tokenExpiresAt: string | null): boolean {
+  if (!tokenExpiresAt) return true;
+  try {
+    return new Date(tokenExpiresAt) <= new Date();
+  } catch {
+    return true;
+  }
+}
 
 export interface MissingRoomRequestsCardProps {
   propertyId: string;
@@ -25,10 +45,10 @@ export default function MissingRoomRequestsCard({ propertyId }: MissingRoomReque
   useEffect(() => {
     async function fetchRequests() {
       try {
-        const response = await fetch(`/api/missing-rooms?property_id=${encodeURIComponent(propertyId)}`);
+        const response = await fetch(`/api/missing-rooms?property_id=${encodeURIComponent(propertyId)}&status=pending`);
         if (response.ok) {
           const data = await response.json();
-          setRequests(data || []);
+          setRequests(data.items || []);
         }
       } catch (error) {
         console.error('[MissingRoomRequestsCard] Error:', error);
