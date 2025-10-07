@@ -170,8 +170,8 @@ const UNWANTED_TYPES = new Set([
 ]);
 
 
-// Exterior bucket we allow even without floorplan mapping (often no labelled rooms)
-const EXTERIOR_TYPES = new Set(['facade', 'exterior', 'garden', 'front', 'rear', 'outside']);
+// Exterior types - keep separate, don't merge
+const EXTERIOR_TYPES = new Set(['facade', 'exterior', 'garden', 'front', 'rear', 'outside', 'roof']);
 
 // Robust detection of totals/overheads/epc rows
 function isOverheadsOrTotalsRow(t: any) {
@@ -200,7 +200,8 @@ function isFloorplanMapped(row: any, typeHint?: string) {
 }
 
 
-// Normalise a room “type” to canonical tokens
+// Normalise a room "type" to canonical tokens
+// Note: Keep exterior types (facade, garden, roof, etc.) distinct - do NOT merge them
 function normaliseType(x?: string | null) {
   if (!x || typeof x !== 'string') return 'other';
   const raw = safeLower(x).trim();
@@ -209,7 +210,8 @@ function normaliseType(x?: string | null) {
     wc: 'bathroom', cloakroom: 'bathroom', ensuite: 'bathroom', 'en-suite': 'bathroom', bath: 'bathroom',
     beds: 'bedroom', bed: 'bedroom', 'bed room': 'bedroom',
     hallway: 'hall', landing: 'hall', corridor: 'hall', stair: 'hall', stairs: 'hall',
-    exterior: 'facade', front: 'facade', garden: 'facade',
+    // Keep exterior types distinct
+    outside: 'exterior',
   };
   if (map[raw]) return map[raw];
   const t = raw.replace(/\s+/g, '_');
@@ -221,8 +223,10 @@ function normaliseType(x?: string | null) {
   if (t.includes('utility')) return 'utility';
   if (t.includes('store') || t.includes('cupboard')) return 'store';
   if (t.includes('garage')) return 'garage';
-  if (t.includes('facade') || t.includes('exterior') || t.includes('front') || t.includes('garden')) return 'facade';
-  if (t.includes('facade exterior')) return 'facade';
+  // Keep exterior types distinct - don't merge
+  if (t.includes('roof')) return 'roof';
+  if (t.includes('garden')) return 'garden';
+  if (t.includes('facade')) return 'facade';
   if (t === '(unmapped)' || t === 'unmapped') return 'unmapped';
   return t;
 }
@@ -293,6 +297,7 @@ function collectImages(est: any): string[] {
   if (est?.image_url) imgs.push(est.image_url);
   if (Array.isArray(est?.image_urls)) imgs.push(...est.image_urls.filter(Boolean));
   if (Array.isArray(est?.images)) imgs.push(...est.images.filter(Boolean));
+  if (Array.isArray(est?.floorplan_image_urls)) imgs.push(...est.floorplan_image_urls.filter(Boolean));
   return Array.from(new Set(imgs.filter(Boolean)));
 }
 
@@ -841,10 +846,9 @@ type GroupedRoom = {
 function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
   const totals: any[] = Array.isArray(property?.room_totals) ? property.room_totals : [];
   const refurb: any[] = Array.isArray(refurbRows) ? refurbRows : [];
-  // If exterior-type, collapse into a single bucket for the type
-  // If exterior-type, collapse into a single bucket for the type
-const forceExteriorKey = (ty: string) =>
-(EXTERIOR_TYPES.has(ty) || ty === 'facade') ? `${ty}::` : null;
+  // Don't collapse exterior types - keep them separate
+  // Each exterior type (facade, garden, roof, etc.) gets its own tile
+const forceExteriorKey = (ty: string) => null; // Disabled: keep exterior types distinct
   // Global property images (used as a last-resort fallback for rooms with no images)
   const globalImages: string[] = Array.isArray(property?.listing_images)
     ? property.listing_images.filter(Boolean)
@@ -1013,8 +1017,14 @@ const hasMappedByType = new Set(
 // Drop any UNMAPPED card for a type that already has a MAPPED card
 const cleaned = groups.filter(g => !(g.mapped === false && hasMappedByType.has(g.room_type)));
 
+// Apply visibility rules: show only rooms with images OR non-zero cost
+const visible = cleaned.filter(g => {
+  const hasImages = g.images.length > 0;
+  const hasCost = g.room_total_with_vat && g.room_total_with_vat > 0;
+  return hasImages || hasCost;
+});
 
-return cleaned;
+return visible;
 }
 
 
