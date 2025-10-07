@@ -8,12 +8,17 @@ import { mergeRowUpsert, mergeRowDelete } from '@/lib/realtime/merge';
 export interface PendingUpload {
   id: string;
   property_id: string;
+  room_key?: string | null;
+  room_type?: string | null;
   room_label?: string | null;
   floor?: string | null;
-  room_type?: string | null;
+  status?: string | null;
   upload_url?: string | null;
   token_expires_at?: string | null;
   summary?: any;
+  route?: string | null;
+  room_index?: number | null;
+  fingerprint_key?: string | null;
 }
 
 function isTokenExpired(tokenExpiresAt: string | null): boolean {

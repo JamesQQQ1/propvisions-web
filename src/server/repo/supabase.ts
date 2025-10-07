@@ -53,11 +53,18 @@ export interface RunRow {
 export interface MissingRoomRequestRow {
   id: string;
   property_id: string;
-  room_name: string;
-  upload_url?: string | null;
-  token?: string | null;
-  token_expires_at?: string | null;
+  room_key?: string | null;
+  room_type?: string | null;
+  room_label?: string | null;
+  floor?: string | null;
   status?: string | null;
+  upload_url?: string | null;
+  token_expires_at?: string | null;
+  summary?: any;
+  floorplan_image_urls?: string[] | null;
+  route?: string | null;
+  room_index?: number | null;
+  fingerprint_key?: string | null;
   created_at: string;
   updated_at: string;
 }

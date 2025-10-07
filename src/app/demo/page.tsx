@@ -714,18 +714,51 @@ export default function Page() {
     const map = new Map<string, PendingUpload[]>();
 
     missingRoomRequests.forEach((req) => {
-      // Try exact match on room_label + floor
-      const labelKey = `${req.room_label?.toLowerCase() || ''}|${req.floor?.toLowerCase() || ''}`;
+      // Priority matching as per spec:
+      // 1. fingerprint_key exact match (if available)
+      // 2. room_type + room_index match
+      // 3. Normalized room_label + floor match
+      // 4. Route fallback
 
-      // Find matching room
       const matchingRoom = uiRooms.find(room => {
-        const roomKey = `${room.display_name.toLowerCase()}|${room.floor?.toLowerCase() || ''}`;
-        if (roomKey === labelKey) return true;
+        // 1. fingerprint_key exact match
+        if (req.fingerprint_key && room.room_name === req.fingerprint_key) {
+          return true;
+        }
 
-        // Fallback: match by normalized label
-        const normLabel = normalizeLabel(room.display_name);
-        const normReq = normalizeLabel(req.room_label || '');
-        return normLabel === normReq;
+        // 2. room_type + room_index match (construct key like "bedroom::id:2")
+        if (req.room_type && req.room_index != null) {
+          const typeKey = `${normaliseType(req.room_type)}::id:${req.room_index}`;
+          if (room.room_name === typeKey) {
+            return true;
+          }
+        }
+
+        // 3. Normalized room_label + floor match (key like "bedroom::label:master bedroom")
+        if (req.room_label) {
+          const normLabel = safeLower(req.room_label).trim();
+          const labelKey = `${normaliseType(req.room_type || 'room')}::label:${normLabel}`;
+          if (room.room_name === labelKey) {
+            return true;
+          }
+
+          // Also try matching by display_name for rooms that might not have exact key match
+          const roomDisplayNorm = safeLower(room.display_name).trim();
+          if (normLabel === roomDisplayNorm) {
+            // Check floor match if specified
+            if (req.floor) {
+              return safeLower(room.floor).trim() === safeLower(req.floor).trim();
+            }
+            return true;
+          }
+        }
+
+        // 4. Route fallback
+        if (req.route && room.room_name === req.route) {
+          return true;
+        }
+
+        return false;
       });
 
       if (matchingRoom) {
