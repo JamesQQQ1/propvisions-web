@@ -1984,6 +1984,24 @@ const roomTypes = useMemo(() => {
                 <pre className="bg-slate-50 p-3 rounded border overflow-auto"><code>{JSON.stringify({ status, run: data?.run }, null, 2)}</code></pre>
                 <pre className="bg-slate-50 p-3 rounded border overflow-auto"><code>{JSON.stringify({ property: data?.property, financials: data?.financials }, null, 2)}</code></pre>
                 <pre className="bg-slate-50 p-3 rounded border overflow-auto md:col-span-2"><code>{JSON.stringify({ refurb_estimates: data?.refurb_estimates }, null, 2)}</code></pre>
+                <pre className="bg-amber-50 p-3 rounded border border-amber-300 overflow-auto md:col-span-2">
+                  <div className="font-bold text-amber-900 mb-2">Missing Room Requests (from Supabase):</div>
+                  <code>{JSON.stringify({
+                    missing_room_requests: missingRoomRequests,
+                    roomUploadsMap_size: roomUploadsMap.size,
+                    roomUploadsMap_entries: Array.from(roomUploadsMap.entries()).map(([key, uploads]) => ({
+                      room_key: key,
+                      uploads: uploads.map(u => ({ id: u.id, room_label: u.room_label, room_type: u.room_type, floor: u.floor, fingerprint_key: u.fingerprint_key, status: u.status, upload_url: u.upload_url }))
+                    }))
+                  }, null, 2)}</code>
+                </pre>
+                <pre className="bg-blue-50 p-3 rounded border border-blue-300 overflow-auto md:col-span-2">
+                  <div className="font-bold text-blue-900 mb-2">UI Rooms (for matching):</div>
+                  <code>{JSON.stringify({
+                    uiRooms_count: uiRooms.length,
+                    uiRooms: uiRooms.map(r => ({ room_name: r.room_name, display_name: r.display_name, floor: r.floor, room_type: r.room_type }))
+                  }, null, 2)}</code>
+                </pre>
               </div>
             )}
           </section>
