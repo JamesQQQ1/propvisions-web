@@ -16,6 +16,8 @@
 
 % ---------------- Branding ----------------
 \definecolor{Accent}{HTML}{0A7AA6}
+\pdfstringdefDisableCommands{\def\&{and }}
+
 \hypersetup{
   colorlinks=true,
   linkcolor=Accent,
@@ -23,35 +25,35 @@
   citecolor=Accent,
   pdftitle={PropVisions Client Brief},
   pdfauthor={PropVisions},
-  pdfsubject={AI Deal Analysis & Investment Automation for Property Professionals}
+  pdfsubject={AI Investment Analysis and Automation for Property Professionals}
 }
 
 \newcommand{\product}{PropVisions}
-\newcommand{\tagline}{AI Deal Analysis \& Investment Automation for Property Professionals}
-\newcommand{\logoPath}{/Users/jamesquessy/Desktop/property-scout-ui/PropVisions_Logo.png}
+\newcommand{\tagline}{AI Investment Analysis and Automation for Property Professionals}
 
+\graphicspath{{/Users/jamesquessy/Desktop/property-scout-ui/public/}}
+\newcommand{\logoPath}{propvisions_logo_croped.png}
+
+% ---------------- Lists ----------------
 \setlist[itemize]{nosep,left=0pt,label=\textbullet}
 \setlist[enumerate]{nosep,left=0pt}
 
 \begin{document}
 
 % ---------------- Cover Page ----------------
+\pagenumbering{gobble}
 \begin{titlepage}
   \centering
   \vspace*{1.5cm}
-
   \includegraphics[width=0.55\textwidth]{\logoPath}\par
   \vspace{2cm}
-
   {\Huge\bfseries\color{Accent} \product \par}
   \vspace{0.5em}
   {\Large \tagline \par}
-
   \vspace{2cm}
   {\Large Product Overview \& Roadmap \par}
   \vspace{0.4em}
   {\normalsize \today \par}
-
   \vfill
   \color{gray}
   \rule{\textwidth}{0.6pt}\par
@@ -60,9 +62,11 @@
 \end{titlepage}
 
 % ---------------- Header ----------------
+\clearpage
+\pagenumbering{arabic}
 \pagestyle{fancy}
 \fancyhf{}
-\setlength{\headheight}{20pt}
+\setlength{\headheight}{42pt}
 \renewcommand{\headrulewidth}{0pt}
 \fancyhead[L]{\textbf{\color{Accent}\product}\\\small Client Brief}
 \fancyhead[R]{\raisebox{-0.2\height}{\includegraphics[height=14mm]{\logoPath}}}
@@ -71,86 +75,76 @@
 % ---------------- Main Content ----------------
 
 \section*{Overview}
-\textbf{\product} transforms any property listing or postcode search into a full investment snapshot—refurbishment costs, rental estimates, yield, ROI, EPC data, and comparables—all powered by AI vision and market data.  
-It saves investors and agents hours of analysis, automating due diligence and surfacing the best opportunities in seconds.
+\textbf{\product} is an AI platform that turns any property listing into a complete investment snapshot in seconds.  
+It calculates refurbishment costs, rent potential, ROI, yield and EPC uplift—automatically and transparently.  
+What once took hours of spreadsheets and manual research now happens instantly, powered by computer vision and live market data.
 
-\section*{What it does today}
+\section*{What it delivers today}
 \begin{itemize}
-  \item \textbf{Instant deal analysis:} Paste a property URL or upload photos—PropVisions builds a full cost, rent, and ROI model automatically.
-  \item \textbf{AI refurbishment estimates:} Each room is scanned for condition and priced using real trade rates for that region.
-  \item \textbf{Rent \& yield insights:} Local rent history, property type, and floor area combine to project realistic yields and ROI.
-  \item \textbf{EPC matching \& upgrades:} Pulls live EPC data to show current and potential ratings, with smart suggestions for improvement.
-  \item \textbf{Comparables \& valuations:} Recent sales, local price trends, and £/sqft benchmarks flag over- or under-priced listings.
-  \item \textbf{Interactive chatbot:} A built-in assistant explains assumptions, edits numbers, uploads images, and instantly recalculates everything—acting as your live analyst.
-  \item \textbf{Exports \& alerts:} Generate investor-ready PDF packs, track ROI changes, and get email or Slack alerts for new or returning deals.
+  \item \textbf{Instant deal analysis:} Paste a property URL or upload photos—\product{} extracts the key data and builds a full investment model automatically.
+  \item \textbf{AI refurbishment pricing:} Each photo is analysed room-by-room, identifying the space and estimating costs using verified regional builder rates.
+  \item \textbf{Rental and yield modelling:} Local rent data, floor area and property type combine to estimate achievable monthly and annual rents.
+  \item \textbf{Valuation forecasting:} Generates a data-driven post-refurbishment valuation to project ROI and yield uplift.
+  \item \textbf{EPC analysis:} Connects to official EPC records to display current and potential ratings, highlighting likely upgrade gains.
+  \item \textbf{Interactive chatbot:} Lets users query results, adjust figures, upload new photos and get instant explanations of every assumption.  
+        (Automatic recalculation and workflow control are being added soon.)
+  \item \textbf{Reporting and alerts:} Export investor-ready PDF reports and receive alerts when property prices change or new listings match your filters.
 \end{itemize}
 
-\section*{End-to-end workflow}
+\section*{How it fits your workflow}
 \begin{enumerate}
-  \item \textbf{Discovery:} Pull properties from portals or upload your own.
-  \item \textbf{Analysis:} AI extracts prices, layouts, photos, EPCs, and condition.
-  \item \textbf{Costing:} Room-by-room refurb cost is estimated using regional builder data.
-  \item \textbf{Valuation:} Rent, yield, and ROI metrics are auto-computed.
-  \item \textbf{Action:} Email or call agents automatically for viewings or missing details.
-  \item \textbf{Monitoring:} Dashboards track live valuations and highlight when deals become attractive.
+  \item \textbf{Import:} Drop in property URLs from any portal or upload direct listings.
+  \item \textbf{Analyse:} AI extracts layout, images, EPCs and key property data.
+  \item \textbf{Refurb:} Room-by-room costs are calculated using regional builder pricing.
+  \item \textbf{Evaluate:} Rents, ROI, and overall investment metrics are produced automatically.
+  \item \textbf{Decide:} Generate reports, share insights, or request further info from agents.
+  \item \textbf{Integrate:} Seamlessly embed \product{} into your existing systems and workflows.  
+        Connect it to your CRM, spreadsheets, email, or reporting tools to create fully automated deal flows.  
+        Configure alerts to your criteria, set daily or weekly analysis runs, and link results directly to your own dashboards or databases.  
+        \textbf{Use it your way}—as a plug-in, an API, or a full white-label module that adapts to your tech stack.
+  \item \textbf{Track:} Dashboards show every analysed property and trigger alerts as metrics change.
 \end{enumerate}
 
-\section*{How it saves time}
+\section*{Why clients use it}
 \begin{itemize}
-  \item Converts hours of manual analysis into seconds.
-  \item Standardises reports across your portfolio or client base.
-  \item Flags missing data (e.g. photos or EPCs) and requests them automatically.
-  \item Helps investors focus only on high-potential deals.
+  \item \textbf{Investors:} Assess deals in minutes and standardise reports across markets.
+  \item \textbf{Sourcing agents:} Analyse 50+ listings per day with consistent, data-backed insights.
+  \item \textbf{Developers:} Forecast refurb budgets and expected resale values with AI-driven accuracy.
+  \item \textbf{Estate agents:} Use clear visuals and cost models to strengthen valuations and win instructions.
+  \item \textbf{Teams with existing systems:} Integrate PropVisions directly into your tech stack for a seamless, branded experience.
 \end{itemize}
 
-\section*{Core intelligence under the hood}
+\section*{Roadmap: what’s coming next}
 \begin{itemize}
-  \item \textbf{Smarter Room Scopes:} Continuous confidence scores per trade (painting, plastering, electrics, plumbing).
-  \item \textbf{Image condition detection:} Detects mould, damp, cracks, and damage to auto-raise refurb scope.
-  \item \textbf{Listing text analysis:} Reads “needs modernisation” or “no heating” cues to boost cost factors automatically.
-  \item \textbf{Building context:} Adjusts prices by property type and era (Victorian vs. 1970s vs. new build).
-  \item \textbf{Regional learning:} Learns local builder rates and fine-tunes regional cost indices automatically.
-  \item \textbf{Uncertainty bands:} Displays low / mid / high refurb ranges to show confidence.
-  \item \textbf{Feedback loop:} User edits and feedback recalibrate the model continuously for personalised accuracy.
-\end{itemize}
-
-\section*{Upcoming roadmap}
-\begin{itemize}
-  \item \textbf{Mortgage trigger with forward rates:} Simulate rate changes and alerts when DSCR or ROI conditions are optimal to buy or refinance.
-  \item \textbf{Multiple scenario modes:} Instantly compare Buy-to-Let, HMO, Airbnb, or Social Housing strategies.
-  \item \textbf{Live builder pricing:} Pull quotes and material costs from verified local builders in real time.
-  \item \textbf{Valuation module:} Add recent sales data, price indices, and area growth forecasts for stronger appraisals.
-  \item \textbf{Management dashboards:}  
+  \item \textbf{Mortgage trigger with forward rates:} Real-time alerts when rate shifts make a deal or refinance viable.
+  \item \textbf{Multiple scenario modes:} Instantly compare Buy-to-Let, HMO, Airbnb or Social Housing returns.
+  \item \textbf{Live builder pricing:} Stream quotes and materials costs from verified local builders.
+  \item \textbf{Valuation module:} Add recent sales and area price indices for richer market context.
+  \item \textbf{Off-market sourcing:} Integrate probate, distress and stale listings to surface hidden deals.
+  \item \textbf{Portfolio dashboards:}
     \begin{itemize}
-      \item \textit{Investment dashboard:} Track all properties you’ve analysed—monitor changes, valuations, and triggers.  
-      \item \textit{Portfolio dashboard:} Manage owned or client properties with live rental and maintenance data.
+      \item \textit{Investment view:} Track all analysed properties, valuations, and deal triggers.
+      \item \textit{Management view:} Manage owned or client portfolios with live rental and maintenance data.
     \end{itemize}
-  \item \textbf{Off-market sourcing:} Integrate probate, distress, and stale listings to surface hidden opportunities.
-  \item \textbf{Portal integrations:} Direct API access to Rightmove, Zoopla, OnTheMarket, and auction feeds.
-  \item \textbf{Fuzzy EPC \& overhead logic:} Reads listing text for signs like “no central heating” or “requires renovation” to adjust EPC costs.
-  \item \textbf{Nano Banna image API:} Turn any photo into a realistic “post-refurb” image for standard buy-to-let condition.
-  \item \textbf{Agent automations:} Auto-send emails or voice calls requesting extra photos or viewings when analysis finds missing data.
-  \item \textbf{Feedback-driven learning:} Each user interaction (chat edits, uploads, corrections) fine-tunes model weights and prompt logic automatically.
+  \item \textbf{Listing text intelligence:} Read phrases like “needs modernisation” or “no heating” to adjust refurb assumptions automatically.
+  \item \textbf{Confidence scoring:} Make the internal uncertainty bands visible to users as low–mid–high ranges.
+  \item \textbf{Feedback learning:} Use user edits and chatbot feedback to continuously fine-tune model performance.
+  \item \textbf{Nano Banana image API:} Instantly create a “post-refurb” visual for standard buy-to-let condition from any uploaded photo.
+  \item \textbf{Smart agent automation:} Auto-email or voice call agents to request missing data or viewing bookings.
+  \item \textbf{Chatbot automation:} Full workflow integration—chat commands will soon trigger recalculations and update metrics live.
 \end{itemize}
 
-\section*{How clients use PropVisions}
-\begin{itemize}
-  \item \textbf{Deal sourcers:} Run 50+ listings daily; PropVisions handles analysis, saving 90\% of time.
-  \item \textbf{Investors:} Compare ROI across markets and manage all properties in one dashboard.
-  \item \textbf{Agents:} Use the reports to pre-qualify leads and pitch data-backed refurb estimates.
-  \item \textbf{Developers:} Test multiple exit strategies before bidding or buying.
-\end{itemize}
+\section*{Vision}
+\textbf{PropVisions} aims to be the control centre for modern property investment—combining sourcing, analysis, valuation, and live portfolio management in one connected system.  
+It reduces analysis time from hours to minutes, increases confidence in every decision, and helps investors act faster when the right opportunities appear.
 
-\section*{Example outputs}
-\begin{itemize}
-  \item Room-by-room refurb table with total cost and confidence range.
-  \item Rent, yield, ROI, and DSCR summaries for each scenario.
-  \item EPC and valuation overview with suggested upgrades.
-  \item PDF or Excel export for investors or finance partners.
-\end{itemize}
+\section*{Book a demo and free trial}
+Experience \textbf{PropVisions} firsthand.  
+Book a 30-minute walkthrough to see how the full analysis flow works—how refurb pricing, rent, valuation and ROI fit together—and explore the upcoming roadmap features.  
+Every demo participant receives a \textbf{free trial analysis credit} to test their own property listing.
 
-\section*{The vision}
-\textbf{PropVisions} aims to become the central command centre for property investment decisions — from sourcing and analysis to funding and management — combining AI, live data, and automation in one platform.
+\vspace{0.5em}
+\textcolor{Accent}{\textbf{\href{https://calendly.com/hello-propvisions/30min}{Click here to book your demo.}}}
 
 \section*{Contact}
 \textit{Website:} \href{https://www.propvisions.com}{propvisions.com} \\
