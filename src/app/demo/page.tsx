@@ -8,6 +8,7 @@ import { pollUntilDone, type RunStatus, startAnalyze, POLL_BUILD } from '@/lib/a
 import RoomCard from '@/components/RoomCard';
 import FeedbackBar from '@/components/FeedbackBar';
 import FloatingChatButton from '@/components/FloatingChatButton';
+import MissingRoomRequestsCard from '@/components/MissingRoomRequestsCard';
 import type { RefurbRoom } from '@/types/refurb';
 import type { UiRoom } from '@/lib/rooms';
 import { buildRoomsFromProperties, safeLower, normalizeLabel, formatCurrency } from '@/lib/rooms';
@@ -1525,6 +1526,9 @@ const roomTypes = useMemo(() => {
               </div>
             </div>
           </Section>
+
+          {/* Missing Room Requests Card */}
+          {data.property_id && <MissingRoomRequestsCard propertyId={data.property_id} />}
 
           {/* Investor metrics headline */}
           <Section
