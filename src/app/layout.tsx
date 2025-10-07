@@ -77,9 +77,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/terms" className="hover:text-brand-700">Terms</Link>
               <Link href="/cookies" className="hover:text-brand-700">Cookies</Link>
               <Link href="/contact" className="hover:text-brand-700">Contact</Link>
-              <Link href="/whitepaper-client.pdf" target="_blank" rel="noopener" className="hover:text-brand-700">
+              <a href="/whitepaper-client.pdf" target="_blank" rel="noopener" className="hover:text-brand-700">
                 White Paper (PDF)
-              </Link>
+              </a>
             </div>
           </div>
         </footer>
