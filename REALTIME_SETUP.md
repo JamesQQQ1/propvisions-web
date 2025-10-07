@@ -85,11 +85,25 @@ Enable Realtime for tables:
 
 ## Vercel Deploy
 
-Add to Environment Variables:
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `NEXT_PUBLIC_REALTIME_ENABLED=true` (optional)
+### Required Environment Variables
+Add to **all environments** (Production, Preview, Development):
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbG...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbG...
+```
+
+### Optional
+```
+NEXT_PUBLIC_REALTIME_ENABLED=true
+```
+
+### Steps:
+1. Go to Vercel Dashboard → Project Settings → Environment Variables
+2. Add each variable above
+3. Select all environments (Production, Preview, Development)
+4. Redeploy after adding variables
 
 ## Safety
 - Graceful degradation if realtime fails (shows stale data)
