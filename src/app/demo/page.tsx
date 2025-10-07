@@ -969,11 +969,50 @@ if (floorplanByType.has(type) && isTypeLabelOnly(type, maybeLabel)) continue;
     if (UNWANTED_TYPES.has(estType)) continue;
 
     // If there is a clear floorplan id/label, use it; otherwise we create/merge into generic,
-    // but later we’ll suppress generic cards when labelled/id’d exist for that type.
+    // but later we'll suppress generic cards when labelled/id'd exist for that type.
     const k = canonicalMatchKey(est, estType);
     upsert(k, k.split('::')[0], est, { mapped: isFloorplanMapped(est, estType) });
 
 
+  }
+
+  // 5) Process not_in_floorplan array for exterior items (facade, garden, etc.)
+  const notInFloorplan: any[] = Array.isArray(property?.not_in_floorplan) ? property.not_in_floorplan : [];
+  console.log('[buildRoomGroups] not_in_floorplan items:', notInFloorplan.length, notInFloorplan);
+  for (const item of notInFloorplan) {
+    if (!item) continue;
+
+    // Extract room info from the item
+    const predicted = item.predicted_room || item.room_type || 'other';
+    const itemType = normaliseType(predicted);
+    const itemLabel = item.room_label || item.label || null;
+
+    // Create a key for this item
+    const key = itemLabel ? `${itemType}::label:${safeLower(itemLabel).trim()}` : `${itemType}::`;
+
+    // Build a synthetic object with images and any cost data
+    const syntheticItem = {
+      type: itemType,
+      room_type: itemType,
+      room_label: itemLabel,
+      label: itemLabel,
+      route: item.route,
+      image_urls: item.image_urls || [],
+      images: item.image_urls || [],
+      floorplan_image_urls: item.floorplan_image_urls || [],
+      // Include any cost data if present
+      room_total_with_vat_gbp: item.room_total_with_vat_gbp || 0,
+      room_total_gbp: item.room_total_gbp || 0,
+    };
+
+    // Only add if it has images or cost
+    const hasImages = (item.image_urls && item.image_urls.length > 0) ||
+                      (item.floorplan_image_urls && item.floorplan_image_urls.length > 0);
+    const hasCost = syntheticItem.room_total_with_vat_gbp > 0 || syntheticItem.room_total_gbp > 0;
+
+    if (hasImages || hasCost) {
+      upsert(key, itemType, syntheticItem, { mapped: false });
+    }
   }
 
   const groups: GroupedRoom[] = [];
@@ -2002,6 +2041,12 @@ const roomTypes = useMemo(() => {
                   <code>{JSON.stringify({
                     uiRooms_count: uiRooms.length,
                     uiRooms: uiRooms.map(r => ({ room_name: r.room_name, display_name: r.display_name, floor: r.floor, room_type: r.room_type }))
+                  }, null, 2)}</code>
+                </pre>
+                <pre className="bg-green-50 p-3 rounded border border-green-300 overflow-auto md:col-span-2">
+                  <div className="font-bold text-green-900 mb-2">Not In Floorplan (exterior items):</div>
+                  <code>{JSON.stringify({
+                    not_in_floorplan: data?.property?.not_in_floorplan || []
                   }, null, 2)}</code>
                 </pre>
               </div>
