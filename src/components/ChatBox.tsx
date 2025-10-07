@@ -213,9 +213,9 @@ export default function ChatBox({ propertyId, className = '' }: ChatBoxProps) {
   };
 
   return (
-    <div className={`flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 border-2 border-slate-200 rounded-2xl shadow-xl overflow-hidden ${className}`}>
+    <div className={`flex flex-col h-full bg-gradient-to-br from-slate-50 to-slate-100 overflow-hidden ${className}`}>
       {/* Header */}
-      <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 border-b-2 border-blue-800">
+      <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 border-b-2 border-blue-800 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -234,7 +234,7 @@ export default function ChatBox({ propertyId, className = '' }: ChatBoxProps) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-[400px] max-h-[600px] bg-white/50" role="log" aria-live="polite">
+      <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-white/50" role="log" aria-live="polite">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
             <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mb-4">
@@ -282,7 +282,7 @@ export default function ChatBox({ propertyId, className = '' }: ChatBoxProps) {
       </div>
 
       {/* Input Area */}
-      <div className="px-6 py-4 bg-white border-t-2 border-slate-200">
+      <div className="px-6 py-4 bg-white border-t-2 border-slate-200 flex-shrink-0">
         <div className="flex gap-3 items-end">
           <div className="flex-1">
             <textarea

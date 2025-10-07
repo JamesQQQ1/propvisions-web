@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { pollUntilDone, type RunStatus, startAnalyze, POLL_BUILD } from '@/lib/api';
 import RoomCard from '@/components/RoomCard';
 import FeedbackBar from '@/components/FeedbackBar';
-import ChatBox from '@/components/ChatBox';
+import FloatingChatButton from '@/components/FloatingChatButton';
 import type { RefurbRoom } from '@/types/refurb';
 import type { UiRoom } from '@/lib/rooms';
 import { buildRoomsFromProperties, safeLower, normalizeLabel, formatCurrency } from '@/lib/rooms';
@@ -1911,16 +1911,12 @@ const roomTypes = useMemo(() => {
         </div>
       )}
 
-      {/* Chatbot - only show when we have property data */}
-      {data?.property_id && (
-        <section className="mt-8">
-          <ChatBox
-            propertyId={data.property_id}
-            className="max-w-4xl mx-auto"
-          />
-        </section>
-      )}
       </div>
+
+      {/* Floating Chatbot - only show when we have property data */}
+      {data?.property_id && (
+        <FloatingChatButton propertyId={data.property_id} />
+      )}
     </main>
   );
 }
