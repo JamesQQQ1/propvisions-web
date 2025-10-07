@@ -321,25 +321,25 @@ function KPI({
   label, value, subtitle, tone, big = true,
 }: { label: React.ReactNode; value: React.ReactNode; subtitle?: React.ReactNode; tone?: 'green'|'red'|'amber'|'slate'|'blue'; big?: boolean; }) {
   return (
-    <div className="rounded-xl border border-slate-200 p-3 bg-white shadow-sm">
-      <div className="flex items-center justify-between">
-        <span className="text-xs uppercase tracking-wide text-slate-500">{label}</span>
+    <div className="rounded-xl border-2 border-slate-200 p-4 bg-gradient-to-br from-white to-slate-50 shadow-md hover:shadow-lg transition-all">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">{label}</div>
         {tone && <Badge tone={tone}>{tone.toUpperCase()}</Badge>}
       </div>
-      <div className={classNames('mt-1 font-semibold', big ? 'text-2xl' : 'text-lg')}>{value}</div>
-      {subtitle && <div className="mt-1 text-xs text-slate-500">{subtitle}</div>}
+      <div className={classNames('font-bold text-slate-900', big ? 'text-3xl' : 'text-xl')}>{value}</div>
+      {subtitle && <div className="mt-2 text-xs text-slate-600 leading-relaxed">{subtitle}</div>}
     </div>
   );
 }
 function Section({ title, children, right, desc }: { title: string; children: React.ReactNode; right?: React.ReactNode; desc?: string }) {
   return (
-    <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-      <div className="flex items-center justify-between mb-2">
-        <div>
-          <h3 className="text-xl font-semibold">{title}</h3>
-          {desc && <p className="text-sm text-slate-600 mt-0.5">{desc}</p>}
+    <section className="bg-white border-2 border-slate-200 rounded-2xl shadow-lg p-6 md:p-8 hover:shadow-xl transition-shadow">
+      <div className="flex items-start md:items-center justify-between mb-4 pb-4 border-b-2 border-slate-100">
+        <div className="flex-1">
+          <h3 className="text-2xl font-bold text-slate-900 mb-1">{title}</h3>
+          {desc && <p className="text-sm text-slate-600 leading-relaxed max-w-3xl">{desc}</p>}
         </div>
-        {right}
+        {right && <div className="ml-4">{right}</div>}
       </div>
       {children}
     </section>
@@ -1328,26 +1328,37 @@ const roomTypes = useMemo(() => {
 
   /* ---------- UI ---------- */
   return (
-    <main className="p-6 max-w-6xl mx-auto space-y-8">
-      {/* Protected banner + logout */}
-      <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-2">
-        <p className="text-sm text-slate-700">
-          <span className="font-medium">Protected demo.</span> Use your <code>run_id</code> to preview a completed analysis.
-        </p>
-        <button onClick={handleLogout} className="text-sm rounded-md border px-3 py-1.5 hover:bg-white" title="Remove access cookie and go to unlock page">
-          Logout
-        </button>
-      </div>
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+        {/* Protected banner + logout */}
+        <div className="flex items-center justify-between rounded-xl border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 px-5 py-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <p className="text-sm text-slate-700">
+              <span className="font-semibold">Protected Demo</span> – Use your unique <code className="px-1.5 py-0.5 bg-white/60 rounded text-xs font-mono">run_id</code> to preview completed property analysis
+            </p>
+          </div>
+          <button onClick={handleLogout} className="text-sm font-medium rounded-lg border-2 border-slate-300 bg-white px-4 py-2 hover:bg-slate-50 hover:border-slate-400 transition-all shadow-sm" title="Sign out and return to access page">
+            Sign Out
+          </button>
+        </div>
 
       {/* Sticky header */}
-      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b border-slate-200 pb-3 pt-4 -mt-4">
-        <div className="flex items-start md:items-center justify-between gap-4 max-w-6xl mx-auto">
+      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b-2 border-slate-200 shadow-sm rounded-b-xl mx-4 px-6 py-4">
+        <div className="flex items-start md:items-center justify-between gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-3">
-              <Image src={LOGO_SRC} alt="PropVisions" width={120} height={32} priority className="h-9 w-auto md:h-10" />
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">PropVisions Demo</h1>
+              <Image src={LOGO_SRC} alt="PropVisions Logo" width={120} height={32} priority className="h-10 w-auto md:h-12" />
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">PropVisions Demo</h1>
+                <p className="text-xs text-slate-500 mt-0.5">AI-Powered Property Investment Analysis</p>
+              </div>
             </div>
-            <p className="text-slate-600 mt-1">Paste a listing URL to start a new run, or toggle demo to load an existing <code>run_id</code>.</p>
+            <p className="text-sm text-slate-600 mt-2 max-w-2xl">Paste a property listing URL to start a new analysis, or toggle demo mode to load an existing <code className="px-1.5 py-0.5 bg-slate-100 rounded text-xs font-mono">run_id</code> result.</p>
             <ProgressBar percent={progress} show={status === 'queued' || status === 'processing'} />
           </div>
 
@@ -1518,7 +1529,7 @@ const roomTypes = useMemo(() => {
           {/* Investor metrics headline */}
           <Section
             title="Investor Metrics"
-            desc="Backend-calculated metrics are authoritative. Sliders model sensitivities only. Yield on Cost uses stabilised rent and all-in project costs. DSCR shows month-one headroom post-refi."
+            desc="Key financial performance indicators for this investment. DSCR (Debt Service Coverage Ratio) measures how comfortably rent covers mortgage payments – values above 1.25 are preferred by lenders. Yield on Cost shows annual rental return as a percentage of total investment (purchase + refurbishment). ROI (Return on Investment) calculates your profit relative to cash invested."
           >
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <KPI label={<Tooltip text="Net annual rent divided by total project cost (purchase + refurb). Indicates annual return percentage."><span>Yield on cost</span></Tooltip>} value={period?.yield_on_cost_percent != null ? `${Number(period.yield_on_cost_percent).toFixed(2)}%` : '—'} subtitle="At stabilised reference" />
@@ -1550,8 +1561,8 @@ const roomTypes = useMemo(() => {
           {/* Refurbishment */}
           {/* IMPORTANT: This section uses ONLY the properties payload. Do not query labour/material tables. */}
           <Section
-            title="Refurbishment Estimates"
-            desc="Refurbishment costs by room with VAT-inclusive totals displayed using en-GB formatting."
+            title="Refurbishment Budget Breakdown"
+            desc="Detailed room-by-room renovation cost estimates. All amounts include VAT (Value Added Tax at 20%) unless marked 'ex VAT'. Costs are AI-estimated from property images and UK market rates. Rooms with £0 budget require no refurbishment work. Use filters below to view specific room types or sort by cost."
             right={
               <div className="flex flex-wrap items-center gap-2 ml-auto">
                 <label className="text-xs text-slate-600">Filter:</label>
@@ -1664,8 +1675,8 @@ const roomTypes = useMemo(() => {
 
           {/* EPC + fabric and services */}
           <Section
-            title="EPC & Fabric"
-            desc="Fabric & systems snapshot from EPC and listing cues. EPC budget sits in Refurb rollup."
+            title="EPC & Building Fabric"
+            desc="Energy Performance Certificate (EPC) shows the property's energy efficiency rating from A (most efficient) to G (least efficient). The fabric section details heating systems, insulation, windows, and building construction. EPC improvement costs are included in the total refurbishment budget above."
             right={epcImageUrl ? (
               <div className="hidden md:block rounded-md overflow-hidden border ml-4">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1866,8 +1877,19 @@ const roomTypes = useMemo(() => {
               title="Scenarios (backend)"
               desc="Inputs feed two exit paths: a sale at stabilisation or a 24-month refinance. Each value is parsed from backend output. Click “Details” to expand embedded objects (e.g., fee breakdowns)."
             >
-              <div className="rounded-md border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900 mb-3">
-                <strong>How to read this:</strong> <em>Inputs</em> are the starting assumptions (price, rent, opex). <em>Exit: Sell</em> shows a disposal case—use Net Profit and ROI to compare flips. <em>Exit: Refi</em> emphasises <strong>Net Cash Left In</strong> and <strong>DSCR</strong> for long-term holds. <em>Period (no refi)</em> shows bridge-phase cashflows when you don’t refinance.
+              <div className="rounded-xl border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 text-sm text-blue-900 mb-4 shadow-sm">
+                <div className="font-semibold mb-2 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  How to Read Financial Scenarios:
+                </div>
+                <ul className="space-y-1 text-xs leading-relaxed">
+                  <li><strong>Inputs:</strong> Starting assumptions including purchase price, estimated rental income, and operating expenses (OpEx)</li>
+                  <li><strong>Exit: Sell:</strong> Shows profit if you renovate and sell. Focus on Net Profit and ROI (Return on Investment) to evaluate flip potential</li>
+                  <li><strong>Exit: Refi (Refinance):</strong> For buy-to-let hold strategy. Key metrics: Net Cash Left In after remortgage, and DSCR (Debt Service Coverage Ratio - rental income vs. mortgage payments)</li>
+                  <li><strong>Period (Bridge Phase):</strong> Cash flows during acquisition and renovation using bridge finance, before long-term mortgage</li>
+                </ul>
               </div>
               <ScenariosTabs scenarios={scenarios} ScenarioKV={ScenarioKV} />
             </Section>
@@ -1898,6 +1920,7 @@ const roomTypes = useMemo(() => {
           />
         </section>
       )}
+      </div>
     </main>
   );
 }
