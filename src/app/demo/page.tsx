@@ -1987,6 +1987,8 @@ const roomTypes = useMemo(() => {
                 <pre className="bg-amber-50 p-3 rounded border border-amber-300 overflow-auto md:col-span-2">
                   <div className="font-bold text-amber-900 mb-2">Missing Room Requests (from Supabase):</div>
                   <code>{JSON.stringify({
+                    property_id: data?.property_id,
+                    api_url: `/api/missing-rooms?property_id=${encodeURIComponent(data?.property_id || '')}&status=pending`,
                     missing_room_requests: missingRoomRequests,
                     roomUploadsMap_size: roomUploadsMap.size,
                     roomUploadsMap_entries: Array.from(roomUploadsMap.entries()).map(([key, uploads]) => ({

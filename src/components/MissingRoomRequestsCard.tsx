@@ -53,11 +53,18 @@ export default function MissingRoomRequestsCard({ propertyId }: MissingRoomReque
 
   useEffect(() => {
     async function fetchRequests() {
+      console.log('[MissingRoomRequestsCard] Fetching for property_id:', propertyId);
       try {
-        const response = await fetch(`/api/missing-rooms?property_id=${encodeURIComponent(propertyId)}&status=pending`);
+        const url = `/api/missing-rooms?property_id=${encodeURIComponent(propertyId)}&status=pending`;
+        console.log('[MissingRoomRequestsCard] Fetch URL:', url);
+        const response = await fetch(url);
+        console.log('[MissingRoomRequestsCard] Response status:', response.status);
         if (response.ok) {
           const data = await response.json();
+          console.log('[MissingRoomRequestsCard] Data received:', data);
           setRequests(data.items || []);
+        } else {
+          console.error('[MissingRoomRequestsCard] Non-OK response:', response.status, await response.text());
         }
       } catch (error) {
         console.error('[MissingRoomRequestsCard] Error:', error);
@@ -68,6 +75,8 @@ export default function MissingRoomRequestsCard({ propertyId }: MissingRoomReque
 
     if (propertyId) {
       fetchRequests();
+    } else {
+      console.log('[MissingRoomRequestsCard] No propertyId provided');
     }
   }, [propertyId]);
 

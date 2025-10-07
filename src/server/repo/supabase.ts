@@ -119,6 +119,8 @@ export async function getMissingRoomRequests(
   propertyId: string,
   onlyPending = true
 ): Promise<MissingRoomRequestRow[]> {
+  console.log('[repo] getMissingRoomRequests called with:', { propertyId, onlyPending });
+
   let query = supabase
     .from('missing_room_requests')
     .select('*')
@@ -135,6 +137,7 @@ export async function getMissingRoomRequests(
     return [];
   }
 
+  console.log('[repo] getMissingRoomRequests result:', { count: data?.length || 0, data });
   return data || [];
 }
 
