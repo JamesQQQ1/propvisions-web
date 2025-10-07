@@ -1,8 +1,10 @@
 // components/MissingRoomRequestsCard.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { isTokenExpired, type MissingRoomRequest } from '@/lib/supabase/queries';
+import { subscribeMissingRoomRequests } from '@/lib/realtime/subscribe';
+import { mergeRowUpsert, mergeRowDelete } from '@/lib/realtime/merge';
 
 export interface MissingRoomRequestsCardProps {
   propertyId: string;
@@ -11,6 +13,14 @@ export interface MissingRoomRequestsCardProps {
 export default function MissingRoomRequestsCard({ propertyId }: MissingRoomRequestsCardProps) {
   const [requests, setRequests] = useState<MissingRoomRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const handleUpsert = useCallback((row: MissingRoomRequest) => {
+    setRequests((prev) => mergeRowUpsert(prev, row));
+  }, []);
+
+  const handleDelete = useCallback((row: { id: string }) => {
+    setRequests((prev) => mergeRowDelete(prev, row.id));
+  }, []);
 
   useEffect(() => {
     async function fetchRequests() {
@@ -21,7 +31,7 @@ export default function MissingRoomRequestsCard({ propertyId }: MissingRoomReque
           setRequests(data || []);
         }
       } catch (error) {
-        console.error('[MissingRoomRequestsCard] Error fetching requests:', error);
+        console.error('[MissingRoomRequestsCard] Error:', error);
       } finally {
         setIsLoading(false);
       }
@@ -31,6 +41,12 @@ export default function MissingRoomRequestsCard({ propertyId }: MissingRoomReque
       fetchRequests();
     }
   }, [propertyId]);
+
+  useEffect(() => {
+    if (!propertyId) return;
+    const unsub = subscribeMissingRoomRequests(propertyId, handleUpsert, handleDelete);
+    return unsub;
+  }, [propertyId, handleUpsert, handleDelete]);
 
   // Filter to only show requests with valid upload URLs and non-expired tokens
   const activeRequests = requests.filter(
