@@ -1,5 +1,7 @@
 // lib/realtime/subscribe.ts
 import { supabaseBrowser } from '../supabase/browser';
+
+const client = supabaseBrowser();
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 const ENABLED = process.env.NEXT_PUBLIC_REALTIME_ENABLED === 'true';
@@ -24,7 +26,7 @@ export function subscribeRuns(
 ): () => void {
   if (!ENABLED) return () => {};
 
-  const channel: RealtimeChannel = supabaseBrowser
+  const channel: RealtimeChannel = client
     .channel(`runs:${runId}`)
     .on(
       'postgres_changes',
@@ -42,7 +44,7 @@ export function subscribeRuns(
     });
 
   return () => {
-    supabaseBrowser.removeChannel(channel);
+    client.removeChannel(channel);
   };
 }
 
@@ -52,7 +54,7 @@ export function subscribeProperties(
 ): () => void {
   if (!ENABLED) return () => {};
 
-  const channel: RealtimeChannel = supabaseBrowser
+  const channel: RealtimeChannel = client
     .channel(`properties:${propertyId}`)
     .on(
       'postgres_changes',
@@ -70,7 +72,7 @@ export function subscribeProperties(
     });
 
   return () => {
-    supabaseBrowser.removeChannel(channel);
+    client.removeChannel(channel);
   };
 }
 
@@ -81,7 +83,7 @@ export function subscribeMissingRoomRequests(
 ): () => void {
   if (!ENABLED) return () => {};
 
-  const channel: RealtimeChannel = supabaseBrowser
+  const channel: RealtimeChannel = client
     .channel(`missing_room_requests:${propertyId}`)
     .on(
       'postgres_changes',
@@ -119,6 +121,6 @@ export function subscribeMissingRoomRequests(
     });
 
   return () => {
-    supabaseBrowser.removeChannel(channel);
+    client.removeChannel(channel);
   };
 }
