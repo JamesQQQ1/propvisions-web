@@ -1,23 +1,23 @@
 // src/app/testing-dashboard/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Filters } from '@/components/dashboard/Filters';
-import { KpiCards } from '@/components/dashboard/KpiCards';
+import Filters from '@/components/dashboard/Filters';
+import KpiCards from '@/components/dashboard/KpiCards';
 import {
   RunsSparkline,
   SuccessStackedBar,
   StageDurationBar,
   ErrorDistributionBar,
 } from '@/components/dashboard/Charts';
-import { RunsTable } from '@/components/dashboard/RunsTable';
-import { StagesTable } from '@/components/dashboard/StagesTable';
-import { ErrorsTable } from '@/components/dashboard/ErrorsTable';
-import { IngestTable } from '@/components/dashboard/IngestTable';
-import { PropertiesTable } from '@/components/dashboard/PropertiesTable';
+import RunsTable from '@/components/dashboard/RunsTable';
+import StagesTable from '@/components/dashboard/StagesTable';
+import ErrorsTable from '@/components/dashboard/ErrorsTable';
+import IngestTable from '@/components/dashboard/IngestTable';
+import PropertiesTable from '@/components/dashboard/PropertiesTable';
 import type {
   OverviewResponse,
   RunsResult,
@@ -29,7 +29,7 @@ import type {
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-export default function TestingDashboardPage() {
+function DashboardContent() {
   const searchParams = useSearchParams();
   const queryString = searchParams.toString();
   const [activeTab, setActiveTab] = useState('runs');
@@ -216,5 +216,13 @@ export default function TestingDashboardPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+export default function TestingDashboardPage() {
+  return (
+    <Suspense fallback={<div className="container mx-auto py-8 px-4"><div className="text-slate-500">Loading dashboard...</div></div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }
