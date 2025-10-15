@@ -9,3 +9,6 @@ export const supabaseAdmin = createClient(
     global: { headers: { 'X-Client-Info': 'propertyscout-ui' } },
   }
 )
+
+// Optional: allow switching the runs table name via env
+export const RUNS_TABLE = process.env.RUNS_TABLE || 'pipeline_runs';
