@@ -12,6 +12,7 @@ const PAGES: Option[] = [
   { label: "Metrics", href: "/metrics" },
   { label: "Accuracy", href: "/accuracy" },
   { label: "Roadmap", href: "/roadmap" },
+  { label: "Testing Dashboard", href: "/testing-dashboard" },
   { label: "Contact", href: "/contact" },
 ];
 
