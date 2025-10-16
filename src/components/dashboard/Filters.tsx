@@ -19,6 +19,7 @@ import {
 import { ALL_STAGES, getStageColor } from '@/utils/format';
 import type { DashboardFilters } from '@/types/dashboard';
 import { X, Save, Trash2, ChevronDown } from 'lucide-react';
+import BatchSelector from './BatchSelector';
 
 export default function Filters() {
   const router = useRouter();
@@ -314,13 +315,9 @@ export default function Filters() {
           {/* Batch Label */}
           <div>
             <Label htmlFor="batch-label">Batch Label</Label>
-            <Input
-              id="batch-label"
-              type="text"
-              placeholder="e.g., batch-001"
+            <BatchSelector
               value={batchLabel}
-              onChange={(e) => setBatchLabel(e.target.value)}
-              className="mt-1"
+              onChange={setBatchLabel}
             />
           </div>
 

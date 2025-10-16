@@ -21,6 +21,7 @@ import StagesTable from '@/components/dashboard/StagesTable';
 import ErrorsTable from '@/components/dashboard/ErrorsTable';
 import IngestTable from '@/components/dashboard/IngestTable';
 import PropertiesTable from '@/components/dashboard/PropertiesTable';
+import NodeFailureAnalysis from '@/components/dashboard/NodeFailureAnalysis';
 import { ALL_STAGES, getStageColor } from '@/utils/format';
 import type {
   OverviewResponse,
@@ -104,42 +105,56 @@ function DashboardContent() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Top Navbar */}
-      <div className="bg-white border-b sticky top-0 z-10 shadow-sm">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900">Testing Dashboard</h1>
-          <div className="flex items-center gap-2">
-            {/* Auto-Refresh Toggle */}
-            <div className="flex items-center gap-1">
-              <Button
-                variant={autoRefreshInterval === null ? 'outline' : 'ghost'}
-                size="sm"
-                onClick={() => handleRefreshToggle(null)}
-              >
-                Off
+      <div className="bg-white border-b sticky top-0 z-10 shadow-lg backdrop-blur-sm bg-white/95">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-md">
+                <Maximize2 className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900">Testing Dashboard</h1>
+                <p className="text-xs text-slate-500">Real-time pipeline monitoring & analytics</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Auto-Refresh Toggle */}
+              <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+                <Button
+                  variant={autoRefreshInterval === null ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => handleRefreshToggle(null)}
+                  className="h-8"
+                >
+                  Off
+                </Button>
+                <Button
+                  variant={autoRefreshInterval === 15000 ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => handleRefreshToggle(15000)}
+                  className="h-8"
+                >
+                  15s
+                </Button>
+                <Button
+                  variant={autoRefreshInterval === 60000 ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => handleRefreshToggle(60000)}
+                  className="h-8"
+                >
+                  60s
+                </Button>
+              </div>
+              <div className="w-px h-8 bg-slate-200" />
+              <Button onClick={handleManualRefresh} variant="outline" size="sm" className="shadow-sm">
+                <RefreshCw className="w-4 h-4 mr-1" />
+                Refresh
               </Button>
-              <Button
-                variant={autoRefreshInterval === 15000 ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => handleRefreshToggle(15000)}
-              >
-                15s
-              </Button>
-              <Button
-                variant={autoRefreshInterval === 60000 ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => handleRefreshToggle(60000)}
-              >
-                60s
+              <Button onClick={handleExportCSV} variant="outline" size="sm" className="shadow-sm">
+                <Download className="w-4 h-4 mr-1" />
+                Export
               </Button>
             </div>
-            <Button onClick={handleManualRefresh} variant="outline" size="sm">
-              <RefreshCw className="w-4 h-4 mr-1" />
-              Refresh
-            </Button>
-            <Button onClick={handleExportCSV} variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-1" />
-              Export CSV
-            </Button>
           </div>
         </div>
       </div>
@@ -162,37 +177,73 @@ function DashboardContent() {
             <KpiCards totals={overviewData.totals} />
 
             {/* Stage Color Legend */}
-            <div className="mb-6 p-4 bg-white border rounded-lg">
-              <h3 className="text-sm font-semibold mb-3">Pipeline Stages</h3>
+            <div className="mb-6 p-6 bg-gradient-to-r from-white via-slate-50 to-white border rounded-xl shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-semibold text-slate-900">Pipeline Stages</h3>
+                <Badge variant="outline" className="text-xs">{ALL_STAGES.length} stages</Badge>
+              </div>
               <div className="flex flex-wrap gap-2">
                 {ALL_STAGES.map((stage) => {
                   const colors = getStageColor(stage);
                   return (
-                    <Badge key={stage} className={`${colors.bg} ${colors.text} border-0`}>
-                      {stage}
-                    </Badge>
+                    <div
+                      key={stage}
+                      className="group relative"
+                    >
+                      <Badge
+                        className={`${colors.bg} ${colors.text} border-0 px-3 py-1.5 font-medium hover:scale-105 transition-transform cursor-pointer`}
+                      >
+                        <div
+                          className="w-2 h-2 rounded-full mr-2 inline-block"
+                          style={{ backgroundColor: colors.chart }}
+                        />
+                        {stage}
+                      </Badge>
+                    </div>
                   );
                 })}
               </div>
+              <p className="text-xs text-slate-500 mt-3">
+                Color-coded stages used throughout charts and timelines
+              </p>
             </div>
 
             {/* Charts Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div className="bg-white border rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow">
-                <h3 className="text-sm font-semibold mb-3">Runs Over Time</h3>
+              <div className="group bg-gradient-to-br from-white to-blue-50/30 border rounded-xl shadow-sm p-6 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-semibold text-slate-900">Runs Over Time</h3>
+                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                </div>
                 <RunsSparkline data={overviewData.timeseries} />
+                <p className="text-xs text-slate-500 mt-3">Click data points for details</p>
               </div>
-              <div className="bg-white border rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow">
-                <h3 className="text-sm font-semibold mb-3">Success vs Failed</h3>
+              <div className="group bg-gradient-to-br from-white to-green-50/30 border rounded-xl shadow-sm p-6 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-semibold text-slate-900">Success vs Failed</h3>
+                  <div className="flex gap-1">
+                    <div className="w-2 h-2 rounded-full bg-green-500" />
+                    <div className="w-2 h-2 rounded-full bg-red-500" />
+                  </div>
+                </div>
                 <SuccessStackedBar data={overviewData.timeseries} />
+                <p className="text-xs text-slate-500 mt-3">Daily success and failure distribution</p>
               </div>
-              <div className="bg-white border rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow">
-                <h3 className="text-sm font-semibold mb-3">Stage Duration (Avg)</h3>
+              <div className="group bg-gradient-to-br from-white to-purple-50/30 border rounded-xl shadow-sm p-6 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-semibold text-slate-900">Stage Duration (Avg)</h3>
+                  <Badge variant="secondary" className="text-xs">Click to filter</Badge>
+                </div>
                 <StageDurationBar data={overviewData.stage_durations} />
+                <p className="text-xs text-slate-500 mt-3">Click stages to filter by stage</p>
               </div>
-              <div className="bg-white border rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow">
-                <h3 className="text-sm font-semibold mb-3">Top Errors</h3>
+              <div className="group bg-gradient-to-br from-white to-red-50/30 border rounded-xl shadow-sm p-6 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-semibold text-slate-900">Top Errors</h3>
+                  <Badge variant="secondary" className="text-xs">Click to filter</Badge>
+                </div>
                 <ErrorDistributionBar data={overviewData.top_errors} />
+                <p className="text-xs text-slate-500 mt-3">Click errors to view details</p>
               </div>
             </div>
           </>
@@ -261,11 +312,20 @@ function DashboardContent() {
               <div className="text-slate-500">Loading errors...</div>
             )}
             {errorsData && (
-              <ErrorsTable
-                errors={errorsData.errors}
-                total={errorsData.total}
-                onPageChange={handlePageChange}
-              />
+              <div className="space-y-6">
+                {/* Node Failure Analysis */}
+                <NodeFailureAnalysis errors={errorsData.errors} />
+
+                {/* Error Details Table */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Error Details</h3>
+                  <ErrorsTable
+                    errors={errorsData.errors}
+                    total={errorsData.total}
+                    onPageChange={handlePageChange}
+                  />
+                </div>
+              </div>
             )}
           </TabsContent>
 
