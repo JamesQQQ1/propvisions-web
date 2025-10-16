@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { formatDateTime, msToHuman } from '@/utils/format';
+import { formatDateTime, msToHuman, getStageColor, getStatusColor } from '@/utils/format';
 import { normalizeStatus } from '@/types/dashboard';
 import type { PipelineStageRunRow, PipelineErrorRow } from '@/types/dashboard';
 
@@ -132,28 +132,42 @@ export default function RunDrawer({ run_id, open, onClose }: RunDrawerProps) {
             <div className="mt-4">
               <h3 className="text-sm font-semibold mb-3">Stage Timeline</h3>
               {stagesData.rows && stagesData.rows.length > 0 ? (
-                <div className="space-y-2">
-                  {stagesData.rows.map((stage, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between p-3 bg-slate-50 rounded-md"
-                    >
-                      <div className="flex-1">
-                        <div className="font-medium text-sm">{stage.stage || 'Unknown'}</div>
-                        <div className="text-xs text-slate-600">
-                          {formatDateTime(stage.started_at)}
+                <div className="space-y-3">
+                  {stagesData.rows.map((stage, idx) => {
+                    const stageColors = getStageColor(stage.stage);
+                    const statusColors = getStatusColor(stage.status);
+                    return (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-3 p-3 bg-slate-50 rounded-md border-l-4"
+                        style={{ borderLeftColor: stageColors.chart }}
+                      >
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
+                             style={{ backgroundColor: stageColors.chart, color: 'white' }}>
+                          {idx + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge className={`${stageColors.bg} ${stageColors.text} border-0`}>
+                              {stage.stage || 'Unknown'}
+                            </Badge>
+                            <Badge className={`${statusColors.bg} ${statusColors.text} border-0`}>
+                              {stage.status || 'unknown'}
+                            </Badge>
+                          </div>
+                          <div className="text-xs text-slate-600">
+                            Started: {formatDateTime(stage.started_at)}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-semibold text-slate-900">
+                            {msToHuman(stage.duration_sec)}
+                          </div>
+                          <div className="text-xs text-slate-600">duration</div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="text-sm text-slate-700">
-                          {msToHuman(stage.duration_sec)}
-                        </div>
-                        <Badge variant={getStatusBadgeVariant(stage.status)}>
-                          {stage.status || 'unknown'}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-sm text-slate-600">No stage data available</div>

@@ -78,6 +78,8 @@ export async function GET(request: NextRequest) {
       success_rate: successRate,
       p50_duration_sec,
       p95_duration_sec,
+      avg_handoff_latency_sec: null, // Will be calculated after stage durations
+      top_stage_by_time: null, // Will be calculated after stage durations
     };
 
     // Get stage durations
@@ -117,6 +119,55 @@ export async function GET(request: NextRequest) {
       stage,
       avg_duration_sec: durations.reduce((sum, d) => sum + d, 0) / durations.length,
     }));
+
+    // Calculate top stage by time (total time spent across all runs)
+    const top_stage_by_time = stage_durations.length > 0
+      ? stage_durations.reduce((max, curr) => curr.avg_duration_sec > max.avg_duration_sec ? curr : max).stage
+      : null;
+
+    // Calculate avg handoff latency (ingest_jobs.created_at -> first pipeline_stage_run.started_at)
+    let ingestQuery = supabaseAdmin
+      .from('ingest_jobs')
+      .select('created_at, run_id')
+      .not('run_id', 'is', null);
+
+    if (filters.from) {
+      ingestQuery = ingestQuery.gte('created_at', filters.from);
+    }
+    if (filters.to) {
+      ingestQuery = ingestQuery.lt('created_at', filters.to + 'T23:59:59');
+    }
+
+    const { data: ingestJobs, error: ingestError } = await ingestQuery.limit(500);
+    if (ingestError) console.error('Error fetching ingest jobs for handoff latency:', ingestError);
+
+    let avg_handoff_latency_sec: number | null = null;
+    if (ingestJobs && ingestJobs.length > 0) {
+      const runIds = ingestJobs.map(j => j.run_id).filter((id): id is string => !!id);
+      if (runIds.length > 0) {
+        const { data: firstStages } = await supabaseAdmin
+          .from('pipeline_stage_runs')
+          .select('run_id, started_at')
+          .in('run_id', runIds)
+          .order('started_at', { ascending: true });
+
+        if (firstStages && firstStages.length > 0) {
+          const handoffLatencies: number[] = [];
+          ingestJobs.forEach(job => {
+            const firstStage = firstStages.find(s => s.run_id === job.run_id);
+            if (firstStage && job.created_at && firstStage.started_at) {
+              const created = new Date(job.created_at).getTime();
+              const started = new Date(firstStage.started_at).getTime();
+              const diff = (started - created) / 1000; // seconds
+              if (diff >= 0) handoffLatencies.push(diff);
+            }
+          });
+          avg_handoff_latency_sec = handoffLatencies.length > 0
+            ? handoffLatencies.reduce((sum, l) => sum + l, 0) / handoffLatencies.length
+            : null;
+        }
+      }
+    }
 
     // Get top errors
     let errorsQuery = supabaseAdmin
@@ -178,6 +229,10 @@ export async function GET(request: NextRequest) {
     const timeseries: TimeseriesPoint[] = Array.from(timeseriesMap.entries())
       .map(([date, data]) => ({ date, ...data }))
       .sort((a, b) => a.date.localeCompare(b.date));
+
+    // Update totals with calculated KPIs
+    totals.avg_handoff_latency_sec = avg_handoff_latency_sec;
+    totals.top_stage_by_time = top_stage_by_time;
 
     const response: OverviewResponse = {
       totals,
