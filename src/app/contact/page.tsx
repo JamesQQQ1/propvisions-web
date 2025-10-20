@@ -89,9 +89,11 @@ export default function ContactPage() {
       {/* Header */}
       <header className="max-w-3xl">
         <span className="badge">We usually reply within one business day</span>
-        <h1 className="heading-2 mt-3">Contact the PropVisions team</h1>
+        <h1 className="heading-2 mt-3">Contact PropVisions</h1>
         <p className="subhead mt-2">
-          Questions about the demo, pricing, setup, or partnerships? Send us a note and we’ll get back to you quickly.
+          Questions about features, pricing, integrations, or partnerships? Reach out at{" "}
+          <a href="mailto:hello@propvisions.com" className="underline">hello@propvisions.com</a>
+          {" "}or use the form below.
         </p>
       </header>
 
@@ -102,8 +104,8 @@ export default function ContactPage() {
             <div className="flex items-start gap-3">
               <div className="icon-wrap"><ChatIcon /></div>
               <div>
-                <h3 className="card-title">Sales & product</h3>
-                <p className="card-text">Walkthroughs, features, and pricing.</p>
+                <h3 className="card-title">Product & pricing</h3>
+                <p className="card-text">Questions about features, integrations, or plans.</p>
               </div>
             </div>
           </article>
@@ -111,8 +113,8 @@ export default function ContactPage() {
             <div className="flex items-start gap-3">
               <div className="icon-wrap"><SupportIcon /></div>
               <div>
-                <h3 className="card-title">Support</h3>
-                <p className="card-text">Something not working? Share a URL and what you expected.</p>
+                <h3 className="card-title">Technical support</h3>
+                <p className="card-text">Issues with runs, exports, or API access.</p>
               </div>
             </div>
           </article>
@@ -120,8 +122,8 @@ export default function ContactPage() {
             <div className="flex items-start gap-3">
               <div className="icon-wrap"><HandshakeIcon /></div>
               <div>
-                <h3 className="card-title">Partnerships</h3>
-                <p className="card-text">Data providers, estate agents, sourcing partners.</p>
+                <h3 className="card-title">Partnerships & custom builds</h3>
+                <p className="card-text">Enterprise solutions, white-label, data integrations.</p>
               </div>
             </div>
           </article>

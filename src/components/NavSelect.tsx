@@ -9,10 +9,9 @@ type Option = { label: string; href: string };
 const PAGES: Option[] = [
   { label: "Home", href: "/" },
   { label: "How it works", href: "/how-it-works" },
-  { label: "Metrics", href: "/metrics" },
-  { label: "Accuracy", href: "/accuracy" },
+  { label: "Pricing", href: "/pricing" },
   { label: "Roadmap", href: "/roadmap" },
-  { label: "Testing Dashboard", href: "/testing-dashboard" },
+  { label: "Book a demo", href: "/book-demo" },
   { label: "Contact", href: "/contact" },
 ];
 

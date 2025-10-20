@@ -46,14 +46,16 @@ export default function BookDemoPage() {
             </h1>
 
             <p className="subhead">
-              A clear 20-minute walkthrough: paste a property link, we read the photos to estimate works,
-              check rent and end value, and build the full numbers—then export. Tailored to your needs.
+              30-minute live demo: we'll run a complete analysis on a real listing, show refurb pricing from photos,
+              rent estimation with rationale, full ROI projections, and export the investor-ready pack. You'll also
+              get a free trial analysis credit.
             </p>
 
             <ul className="small text-slate-700 space-y-2 list-disc pl-5">
-              <li>Bring a real listing and watch a full run (~90 seconds end-to-end).</li>
-              <li>Tweak assumptions (voids, management, mortgage) and see results update live.</li>
-              <li>Review the outputs: investor-ready PDF and a traceable Excel breakdown.</li>
+              <li>Watch a complete run from URL to export (typically under 5 minutes).</li>
+              <li>See room-by-room refurb pricing, EPC matching, and rent estimates with confidence bands.</li>
+              <li>Review investor PDF and Excel breakdown—adjust assumptions in real time.</li>
+              <li>Ask questions about pricing, integrations, and custom workflows.</li>
             </ul>
 
             <div className="flex flex-wrap gap-3">
@@ -68,9 +70,9 @@ export default function BookDemoPage() {
             <div className="card p-4 small text-slate-600">
               <strong>What happens after booking?</strong>
               <ol className="list-decimal pl-5 mt-2 space-y-1">
-                <li>Instant confirmation.</li>
-                <li>Your slot appears in the calendar.</li>
-                <li>We add you to the beta list and send short prep notes.</li>
+                <li>Instant calendar invite sent to your email.</li>
+                <li>We'll send a free trial analysis credit before the call.</li>
+                <li>Bring a real listing URL or we'll use a demo example.</li>
               </ol>
             </div>
           </div>
@@ -80,7 +82,7 @@ export default function BookDemoPage() {
             <div id="scheduler" className="card overflow-hidden">
               <div className="card-header flex items-center justify-between">
                 <span className="small font-medium text-slate-900">Book a demo</span>
-                <span className="badge">20 mins • Google Meet</span>
+                <span className="badge">30 mins • Google Meet</span>
               </div>
               <CalendlyFrame url={embedUrl} />
               <div className="card-footer small">

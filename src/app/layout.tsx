@@ -51,12 +51,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <nav className="flex items-center gap-4 text-sm">
                 <Link href="/" className="hover:text-brand-700">Home</Link>
                 <Link href="/how-it-works" className="hover:text-brand-700">How it works</Link>
-                <Link href="/metrics" className="hover:text-brand-700">Metrics</Link>
-                <Link href="/accuracy" className="hover:text-brand-700">Accuracy</Link>
+                <Link href="/pricing" className="hover:text-brand-700">Pricing</Link>
                 <Link href="/roadmap" className="hover:text-brand-700">Roadmap</Link>
-                <Link href="/testing-dashboard" className="hover:text-brand-700">Testing Dashboard</Link>
-                <Link href="/demo-access" className="hover:text-brand-700">Give it a Try</Link>
                 <Link href="/book-demo" className="btn btn-primary px-3 py-1.5">Book a demo</Link>
+                <Link href="/contact" className="hover:text-brand-700">Contact</Link>
               </nav>
             </div>
           </div>

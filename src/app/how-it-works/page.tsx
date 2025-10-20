@@ -4,9 +4,9 @@ export default function HowItWorksPage() {
     <div className="section">
       <div className="container space-y-10">
         <header>
-          <h1 className="heading-2">How it works</h1>
+          <h1 className="heading-2">How PropVisions works</h1>
           <p className="small mt-1 text-slate-600">
-            A simple, checkable flow from link → clean data → works & rent → full numbers → export.
+            From listing URL to complete deal pack in under 5 minutes. Transparent, traceable, and export-ready.
           </p>
         </header>
 
@@ -28,41 +28,67 @@ export default function HowItWorksPage() {
 
         {/* 2. Refurb engine detail */}
         <section className="card p-6">
-          <h3 className="card-title">Refurbishment estimation (from photos)</h3>
+          <h3 className="card-title">Photo-based refurb pricing</h3>
           <p className="small text-slate-700 mt-2">
-            We spot the room and condition in each photo, then build a works list with typical local rates.
-            You can edit items, add contingency, and lock figures once quotes arrive.
+            PropVisions analyzes each photo to identify room type and condition, then maps work to floorplans
+            where available. Regional builder rates are applied, and missing rooms are flagged for agent follow-up.
           </p>
           <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div className="rounded-xl border p-4">
-              <div className="font-medium">Classification</div>
+              <div className="font-medium">Room classification</div>
               <ul className="list-disc pl-5 mt-2 space-y-1">
-                <li>Room type (kitchen, bathroom, bedroom, lounge, hall, exterior)</li>
-                <li>Signs of wear (cabinet age, tile wear, damp marks, electrics)</li>
+                <li>Kitchen, bathroom, bedroom, lounge, hall, exterior</li>
+                <li>Condition indicators: wear, damp, electrics, fixtures</li>
               </ul>
             </div>
             <div className="rounded-xl border p-4">
-              <div className="font-medium">Works list</div>
+              <div className="font-medium">Floorplan mapping</div>
               <ul className="list-disc pl-5 mt-2 space-y-1">
-                <li>Typical items per room (paint, flooring, fixtures, partial rewire)</li>
-                <li>Local price ranges and labour</li>
+                <li>Maps photos to rooms when floorplan is available</li>
+                <li>Flags missing rooms and prompts agent nudges</li>
               </ul>
             </div>
             <div className="rounded-xl border p-4">
-              <div className="font-medium">Confidence & controls</div>
+              <div className="font-medium">Regional pricing</div>
               <ul className="list-disc pl-5 mt-2 space-y-1">
-                <li>Confidence shown by room; flag low-quality photos for a quick check</li>
-                <li>Contingency slider; lock once quotes/invoices arrive</li>
+                <li>Builder rates adjusted by postcode area</li>
+                <li>Contingency controls and quote lock-in</li>
               </ul>
             </div>
           </div>
         </section>
 
-        {/* 3. Financial stack detail */}
+        {/* 3. Rent estimation detail */}
         <section className="card p-6">
-          <h3 className="card-title">Financials</h3>
+          <h3 className="card-title">Rent estimation & valuation</h3>
           <p className="small text-slate-700 mt-2">
-            Clear inputs, instant recalculation, lender-friendly outputs. Toggle voids, management, maintenance, and mortgage.
+            PropVisions combines regional rental baselines with regression models adjusted by listing signals
+            (beds, location, condition). Output includes a rationale, confidence band, and post-refurb valuation estimate.
+          </p>
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div className="rounded-xl border p-4">
+              <div className="font-medium">Rent estimation</div>
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>Regional baselines + listing signal regression</li>
+                <li>Confidence bands (low, mid, high)</li>
+                <li>Rationale showing key drivers</li>
+              </ul>
+            </div>
+            <div className="rounded-xl border p-4">
+              <div className="font-medium">Post-refurb valuation</div>
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>Estimate based on local sales data</li>
+                <li>Accounts for planned improvements</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        {/* 4. Financial stack detail */}
+        <section className="card p-6">
+          <h3 className="card-title">Full financials & ROI</h3>
+          <p className="small text-slate-700 mt-2">
+            All costs, fees, and ongoing expenses calculated automatically. Scenario comparisons for BTL and simple exit strategies.
           </p>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-sm border rounded-xl overflow-hidden">
@@ -74,30 +100,32 @@ export default function HowItWorksPage() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                <tr><td className="p-3 font-medium">Stamp duty</td><td className="p-3">✓</td><td className="p-3">BTL bands; scenario toggles</td></tr>
-                <tr><td className="p-3 font-medium">Fees</td><td className="p-3">✓</td><td className="p-3">Legal, survey, insurance presets</td></tr>
-                <tr><td className="p-3 font-medium">Operating</td><td className="p-3">✓</td><td className="p-3">Voids, management%, maintenance%</td></tr>
-                <tr><td className="p-3 font-medium">Mortgage</td><td className="p-3">✓</td><td className="p-3">Interest-only or repayment (more options coming)</td></tr>
-                <tr><td className="p-3 font-medium">Exports</td><td className="p-3">✓</td><td className="p-3">PDF snapshot + Excel model</td></tr>
+                <tr><td className="p-3 font-medium">SDLT</td><td className="p-3">✓</td><td className="p-3">BTL rates with scenario toggles</td></tr>
+                <tr><td className="p-3 font-medium">Fees</td><td className="p-3">✓</td><td className="p-3">Legal, survey, insurance, broker</td></tr>
+                <tr><td className="p-3 font-medium">Operating costs</td><td className="p-3">✓</td><td className="p-3">Voids, management %, maintenance %</td></tr>
+                <tr><td className="p-3 font-medium">Mortgage</td><td className="p-3">✓</td><td className="p-3">Standard assumptions (forward rates coming)</td></tr>
+                <tr><td className="p-3 font-medium">Exports</td><td className="p-3">✓</td><td className="p-3">Investor PDF + Excel breakdown</td></tr>
               </tbody>
             </table>
           </div>
         </section>
 
-        {/* 4. Comps & EPC */}
+        {/* 5. EPC & export */}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="card p-6">
-            <h3 className="card-title">Comps & checks</h3>
+            <h3 className="card-title">EPC matching & upgrades</h3>
             <ul className="small text-slate-700 list-disc pl-5 mt-2 space-y-1">
-              <li>Recent local sales/rental comps to flag £/sq ft outliers</li>
-              <li>We widen ranges and prompt a quick manual review when needed</li>
+              <li>Fetches official EPC from UK government register</li>
+              <li>Shows upgrade suggestions and expected rating uplift</li>
+              <li>Stored for audit and compliance reporting</li>
             </ul>
           </div>
           <div className="card p-6">
-            <h3 className="card-title">EPC enrichment</h3>
+            <h3 className="card-title">Export-ready reports</h3>
             <ul className="small text-slate-700 list-disc pl-5 mt-2 space-y-1">
-              <li>Rating and recommended measures where available</li>
-              <li>Stored for reporting and audit</li>
+              <li>Investor PDF: full deal pack with financials and assumptions</li>
+              <li>Builder quote PDF: room-by-room materials and cost breakdown</li>
+              <li>Both reports are brandable for client delivery</li>
             </ul>
           </div>
         </section>
@@ -105,8 +133,8 @@ export default function HowItWorksPage() {
         {/* CTA */}
         <div className="rounded-2xl bg-slate-50 border p-6 flex items-center justify-between">
           <div>
-            <div className="font-semibold">See it end-to-end on a real deal</div>
-            <div className="small text-slate-600">We’ll walk through your URL and share the export pack.</div>
+            <div className="font-semibold">See PropVisions in action</div>
+            <div className="small text-slate-600">Book a live demo and watch a complete analysis run—typically under 5 minutes.</div>
           </div>
           <a href="/book-demo" className="btn btn-primary">Book a demo</a>
         </div>
@@ -116,9 +144,9 @@ export default function HowItWorksPage() {
 }
 
 const FLOW = [
-  { title: "Paste a URL", desc: "Agent or auction page → tidy fields.", icon: IconList() },
-  { title: "We fetch & compute", desc: "Works from photos, rent/value checks, fees and ROI.", icon: IconPlus() },
-  { title: "Export & share", desc: "Lender-friendly PDF and Excel with every line item.", icon: IconSquare() },
+  { title: "Paste URL or upload photos", desc: "Major UK portals supported—Rightmove, Zoopla, OnTheMarket. Coverage varies by source.", icon: IconList() },
+  { title: "Analysis runs", desc: "Room-by-room refurb from photos, EPC matching, rent estimation, and full financial projections.", icon: IconPlus() },
+  { title: "Review & export", desc: "Check estimates, adjust assumptions, export investor PDF and builder quote.", icon: IconSquare() },
 ] as const;
 
 function IconList() {
