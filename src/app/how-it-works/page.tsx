@@ -6,7 +6,8 @@ export default function HowItWorksPage() {
         <header>
           <h1 className="heading-2">How PropVisions works</h1>
           <p className="small mt-1 text-slate-600">
-            From listing URL to complete deal pack in under 5 minutes. Transparent, traceable, and export-ready.
+            From listing URL (or batch upload) to complete deal pack in under 5 minutes per property.
+            Transparent, traceable, and export-ready. PropVisions accelerates analysis—it doesn't replace site visits or professional quotes.
           </p>
         </header>
 
@@ -133,10 +134,10 @@ export default function HowItWorksPage() {
         {/* CTA */}
         <div className="rounded-2xl bg-slate-50 border p-6 flex items-center justify-between">
           <div>
-            <div className="font-semibold">See PropVisions in action</div>
-            <div className="small text-slate-600">Book a live demo and watch a complete analysis run—typically under 5 minutes.</div>
+            <div className="font-semibold">Ready to get started?</div>
+            <div className="small text-slate-600">See a 5-minute live run and get a free trial analysis credit.</div>
           </div>
-          <a href="/book-demo" className="btn btn-primary">Book a demo</a>
+          <a href="/book-demo" className="btn btn-primary">Get a ranked shortlist</a>
         </div>
       </div>
     </div>
@@ -144,9 +145,9 @@ export default function HowItWorksPage() {
 }
 
 const FLOW = [
-  { title: "Paste URL or upload photos", desc: "Major UK portals supported—Rightmove, Zoopla, OnTheMarket. Coverage varies by source.", icon: IconList() },
-  { title: "Analysis runs", desc: "Room-by-room refurb from photos, EPC matching, rent estimation, and full financial projections.", icon: IconPlus() },
-  { title: "Review & export", desc: "Check estimates, adjust assumptions, export investor PDF and builder quote.", icon: IconSquare() },
+  { title: "Paste URL or batch upload", desc: "Process up to 100 properties at once (tier-dependent). Major UK portals supported—Rightmove, Zoopla, OnTheMarket. Coverage varies by source.", icon: IconList() },
+  { title: "Analysis runs", desc: "Room-by-room refurb from photos, EPC matching, rent estimation, and full financial projections. Typically under 5 minutes per property.", icon: IconPlus() },
+  { title: "Review & export", desc: "Check estimates, adjust assumptions, export investor PDF and builder quote. Use results to prioritize which properties to view.", icon: IconSquare() },
 ] as const;
 
 function IconList() {

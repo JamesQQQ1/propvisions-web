@@ -108,6 +108,7 @@ export default function RoadmapPage() {
           <div className="card p-6">
             <h3 className="card-title">What PropVisions delivers today</h3>
             <ul className="small text-slate-700 space-y-2 list-disc pl-5 mt-3">
+              <li>Batch upload (up to 100 properties at once)</li>
               <li>Instant deal analysis from URL or photo upload</li>
               <li>Room-by-room refurb pricing with regional builder rates</li>
               <li>EPC matching and upgrade suggestions</li>
@@ -124,7 +125,7 @@ export default function RoadmapPage() {
             <div className="small text-slate-600 mt-1">
               Enterprise customers get priority access to new features and can request custom builds.
             </div>
-            <a className="btn btn-primary mt-4 inline-block" href="/book-demo">Book a demo</a>
+            <a className="btn btn-primary mt-4 inline-block" href="/book-demo">Get a ranked shortlist</a>
           </div>
         </aside>
       </div>

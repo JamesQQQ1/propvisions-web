@@ -123,162 +123,82 @@ export default function PricingPage() {
                 </tr>
               </thead>
               <tbody className="divide-y">
+                <FeatureRow feature="Monthly runs" starter="10" pro="50" team="100" enterprise="Custom" />
+                <FeatureRow feature="Extra run cost" starter="£15" pro="£12" team="£10" enterprise="From £8.50" />
+                <FeatureRow feature="Batch upload" starter="no" pro="Up to 10" team="Up to 25" enterprise="Up to 100" />
+                <FeatureRow feature="Typical analysis time" starter="~5 min/property" pro="~5 min/property" team="~5 min/property" enterprise="~5 min/property" />
                 <FeatureRow
-                  feature="Monthly runs included"
-                  basic="10"
-                  pro="40"
-                  enterprise="Custom"
-                />
-                <FeatureRow
-                  feature="Extra run price"
-                  basic="£15"
-                  pro="£12"
-                  enterprise="From £8.50 (volume)"
+                  feature="Decision-support role (not replacement)"
+                  starter="yes"
+                  pro="yes"
+                  team="yes"
+                  enterprise="yes"
                 />
                 <FeatureRow
                   feature="Supported portals (major UK portals; coverage varies)"
-                  basic="yes"
+                  starter="yes"
                   pro="yes"
+                  team="yes"
                   enterprise="yes"
                 />
+                <FeatureRow feature="EPC fetch & attach" starter="yes" pro="yes" team="yes" enterprise="yes" />
                 <FeatureRow
-                  feature="Official EPC fetch & attach"
-                  basic="yes"
+                  feature="AI rent estimation (baseline + regression)"
+                  starter="yes"
                   pro="yes"
-                  enterprise="yes"
-                />
-                <FeatureRow
-                  feature="AI rent estimation (baselines + regression)"
-                  basic="yes"
-                  pro="yes"
+                  team="yes"
                   enterprise="yes"
                 />
                 <FeatureRow
                   feature="Room-by-room refurb pricing from photos"
-                  basic="yes"
+                  starter="yes"
                   pro="yes"
+                  team="yes"
                   enterprise="yes"
                 />
-                <FeatureRow
-                  feature="Floorplan mapping for images (if available)"
-                  basic="yes"
-                  pro="yes"
-                  enterprise="yes"
-                />
-                <FeatureRow
-                  feature="Missing-photo alerts & agent nudges"
-                  basic="yes"
-                  pro="yes"
-                  enterprise="yes"
-                />
-                <FeatureRow
-                  feature="EPC upgrade suggestions & uplift view"
-                  basic="yes"
-                  pro="yes"
-                  enterprise="yes"
-                />
-                <FeatureRow
-                  feature="Post-refurb valuation estimate"
-                  basic="yes"
-                  pro="yes"
-                  enterprise="yes"
-                />
-                <FeatureRow
-                  feature="Scenario modelling (BTL, simple exit)"
-                  basic="yes"
-                  pro="yes"
-                  enterprise="yes"
-                />
-                <FeatureRow
-                  feature="Expanded scenario modes (HMO, Airbnb, Social)"
-                  basic="limited"
-                  pro="yes"
-                  enterprise="yes"
-                />
-                <FeatureRow
-                  feature="Investor PDF (brandable)"
-                  basic="yes"
-                  pro="yes"
-                  enterprise="yes"
-                />
-                <FeatureRow
-                  feature="Builder quote PDF"
-                  basic="yes"
-                  pro="yes"
-                  enterprise="yes"
-                />
-                <FeatureRow
-                  feature="Alerts for listing/price changes"
-                  basic="yes"
-                  pro="yes"
-                  enterprise="yes"
-                />
-                <FeatureRow
-                  feature="API access"
-                  basic="limited"
-                  pro="yes"
-                  enterprise="Yes with SLA"
-                />
-                <FeatureRow
-                  feature="White-label branding"
-                  basic="no"
-                  pro="limited"
-                  enterprise="yes"
-                />
-                <FeatureRow
-                  feature="Team seats & roles"
-                  basic="2"
-                  pro="10"
-                  enterprise="Custom"
-                />
+                <FeatureRow feature="Scenario modelling" starter="limited" pro="yes" team="yes" enterprise="yes" />
+                <FeatureRow feature="Investor PDF & Builder PDF" starter="yes" pro="yes" team="yes" enterprise="yes" />
+                <FeatureRow feature="API & integration access" starter="no" pro="no" team="yes" enterprise="yes" />
+                <FeatureRow feature="White-label branding" starter="no" pro="no" team="yes" enterprise="yes" />
+                <FeatureRow feature="Team seats" starter="1" pro="3" team="10" enterprise="Custom" />
                 <FeatureRow
                   feature="Priority support / SLA"
-                  basic="no"
+                  starter="no"
                   pro="Business hours"
+                  team="Phone & chat"
                   enterprise="24×7 with SLA"
                 />
-                <FeatureRow
-                  feature="CRM & data integrations"
-                  basic="no"
-                  pro="limited"
-                  enterprise="Yes custom"
-                />
+                <FeatureRow feature="CRM & data integrations" starter="no" pro="limited" team="yes" enterprise="Yes custom" />
                 <FeatureRow
                   feature="Off-market sourcing (probate/distress)"
-                  basic="roadmap"
+                  starter="roadmap"
                   pro="roadmap"
+                  team="roadmap"
                   enterprise="Roadmap priority"
                 />
                 <FeatureRow
                   feature="Portfolio dashboards"
-                  basic="roadmap"
+                  starter="roadmap"
                   pro="roadmap"
+                  team="roadmap"
                   enterprise="Roadmap priority"
                 />
                 <FeatureRow
                   feature="Mortgage trigger with forward rates"
-                  basic="roadmap"
+                  starter="roadmap"
                   pro="roadmap"
+                  team="roadmap"
                   enterprise="Roadmap priority"
                 />
                 <FeatureRow
                   feature="Smart agent automation"
-                  basic="no"
+                  starter="no"
                   pro="roadmap"
+                  team="roadmap"
                   enterprise="Roadmap priority"
                 />
-                <FeatureRow
-                  feature="Nano Banana image API"
-                  basic="no"
-                  pro="roadmap"
-                  enterprise="roadmap"
-                />
-                <FeatureRow
-                  feature="Chatbot automation"
-                  basic="no"
-                  pro="roadmap"
-                  enterprise="roadmap"
-                />
+                <FeatureRow feature="Nano Banana image API" starter="no" pro="roadmap" team="roadmap" enterprise="roadmap" />
+                <FeatureRow feature="Chatbot automation" starter="no" pro="roadmap" team="roadmap" enterprise="roadmap" />
               </tbody>
             </table>
           </div>
@@ -299,12 +219,12 @@ export default function PricingPage() {
           <div className="text-black max-w-lg">
             <h3 className="text-2xl font-semibold">Ready to get started?</h3>
             <p className="small text-slate-500 mt-2">
-              Book a demo to see PropVisions in action and get a free trial analysis credit.
+              See a 5-minute live run and get a free trial analysis credit.
             </p>
           </div>
           <div className="flex gap-3">
             <Link href="/book-demo" className="btn btn-primary px-6 py-3 text-base font-medium rounded-lg shadow-md">
-              Book a demo
+              Get a ranked shortlist
             </Link>
             <Link href="/contact" className="btn btn-outline px-6 py-3 text-base font-medium rounded-lg">
               Talk to sales
@@ -333,9 +253,10 @@ interface PlanCardProps {
   ctaHref: string;
   features: string[];
   highlighted?: boolean;
+  extraRunPrice?: string;
 }
 
-function PlanCard({ name, price, period, description, cta, ctaHref, features, highlighted }: PlanCardProps) {
+function PlanCard({ name, price, period, description, cta, ctaHref, features, highlighted, extraRunPrice }: PlanCardProps) {
   return (
     <div
       className={`rounded-2xl border p-6 flex flex-col ${
@@ -344,7 +265,7 @@ function PlanCard({ name, price, period, description, cta, ctaHref, features, hi
     >
       {highlighted && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-emerald-500 text-white text-xs font-medium rounded-full">
-          Popular
+          Most popular
         </div>
       )}
       <div className="text-center">
@@ -354,6 +275,9 @@ function PlanCard({ name, price, period, description, cta, ctaHref, features, hi
           {period && <span className="text-slate-600">{period}</span>}
         </div>
         <p className="mt-3 text-sm text-slate-600">{description}</p>
+        {extraRunPrice && (
+          <p className="mt-2 text-xs text-slate-500">Extra runs: {extraRunPrice}</p>
+        )}
       </div>
 
       <Link
@@ -382,25 +306,27 @@ function PlanCard({ name, price, period, description, cta, ctaHref, features, hi
 /* Feature row component */
 interface FeatureRowProps {
   feature: string;
-  basic: string;
+  starter: string;
   pro: string;
+  team: string;
   enterprise: string;
 }
 
-function FeatureRow({ feature, basic, pro, enterprise }: FeatureRowProps) {
+function FeatureRow({ feature, starter, pro, team, enterprise }: FeatureRowProps) {
   const renderCell = (val: string) => {
     if (val === "yes") return <span className="text-emerald-600 font-medium">✓</span>;
     if (val === "no") return <span className="text-slate-400">—</span>;
     if (val === "limited") return <span className="text-amber-600 text-xs">Limited</span>;
     if (val === "roadmap") return <span className="text-blue-600 text-xs">Roadmap</span>;
-    return <span className="text-slate-700">{val}</span>;
+    return <span className="text-slate-700 text-xs">{val}</span>;
   };
 
   return (
     <tr>
       <td className="p-4 font-medium text-slate-900">{feature}</td>
-      <td className="p-4 text-center">{renderCell(basic)}</td>
+      <td className="p-4 text-center">{renderCell(starter)}</td>
       <td className="p-4 text-center">{renderCell(pro)}</td>
+      <td className="p-4 text-center">{renderCell(team)}</td>
       <td className="p-4 text-center">{renderCell(enterprise)}</td>
     </tr>
   );
@@ -412,8 +338,20 @@ function FAQAccordion() {
 
   const faqs = [
     {
-      q: "What counts as a 'run'?",
-      a: "One run = one property analysis from URL or upload. This includes refurb pricing, rent estimation, EPC matching, financials, and export PDFs. Editing or re-running the same property does not count as a new run.",
+      q: "What counts as a run?",
+      a: "One complete property analysis from input to report.",
+    },
+    {
+      q: "Can I batch properties?",
+      a: "Yes—Professional allows up to 10 per run, Team up to 25, Enterprise up to 100. Each property still counts as one run.",
+    },
+    {
+      q: "Do I still need a builder or to view properties?",
+      a: "Yes. PropVisions provides a rapid first-scan with cost bands so you can prioritise which properties to view and quote properly.",
+    },
+    {
+      q: "How long does an analysis take?",
+      a: "Most runs complete in under 5 minutes (depends on image count and available data).",
     },
     {
       q: "What is the billing period?",
@@ -421,7 +359,7 @@ function FAQAccordion() {
     },
     {
       q: "How do overages work?",
-      a: "If you exceed your monthly run allowance, additional runs are charged at your plan's per-run rate (£15 for Basic, £12 for Pro). You'll be invoiced for overages at the end of the billing period.",
+      a: "If you exceed your monthly run allowance, additional runs are charged at your plan's per-run rate. You'll be invoiced for overages at the end of the billing period.",
     },
     {
       q: "Can I cancel anytime?",
@@ -434,10 +372,6 @@ function FAQAccordion() {
     {
       q: "What about Enterprise pricing?",
       a: "Enterprise pricing is custom and depends on volume, integrations, and support requirements. The £8,000 setup fee covers custom AI prompts, white-label configuration, and integrations. Ongoing per-run fees start at £8.50 and decrease with volume. Contact sales for a tailored quote.",
-    },
-    {
-      q: "Do I need an API key?",
-      a: "API access is available on Pro and Enterprise plans. We'll provide credentials and documentation once your account is set up.",
     },
   ];
 

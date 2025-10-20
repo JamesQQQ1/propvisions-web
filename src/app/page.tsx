@@ -21,12 +21,13 @@ export default function LandingPage() {
               From listing URL to <span className="text-gradient">investor-ready ROI</span>
             </h1>
             <p className="subhead max-w-[60ch]">
-              PropVisions turns a property link into a complete deal pack: works from photos,
+              Filter 100 down to the best 10 in minutes—then go view only what's worth viewing.
+              PropVisions turns a property link into a complete deal pack: refurb costs from photos,
               rent estimation, full financials, and export-ready reports. Runs typically complete
               in under 5 minutes (depends on image count and data sources).
             </p>
             <div className="flex flex-wrap gap-4">
-              <Link href="/book-demo" className="btn btn-primary">Book a demo</Link>
+              <Link href="/book-demo" className="btn btn-primary">Get a ranked shortlist</Link>
               <a href="#walkthrough" className="btn btn-outline">Watch walkthrough</a>
             </div>
 
@@ -36,10 +37,10 @@ export default function LandingPage() {
                 <CheckIcon /> <span>Under 5 min per run</span>
               </li>
               <li className="flex items-center gap-2">
-                <CheckIcon /> <span>PDF & Excel exports</span>
+                <CheckIcon /> <span>Batch upload (up to 100)</span>
               </li>
               <li className="flex items-center gap-2">
-                <CheckIcon /> <span>Transparent sources</span>
+                <CheckIcon /> <span>PDF & Excel exports</span>
               </li>
             </ul>
           </div>
@@ -73,18 +74,18 @@ export default function LandingPage() {
       <section className="py-20 bg-slate-50">
         <div className="container grid grid-cols-1 lg:grid-cols-12 gap-16">
           <div className="lg:col-span-7 space-y-5">
-            <h2 className="heading-2">Built to underwrite, not browse</h2>
+            <h2 className="heading-2">Built to accelerate decisions, not replace them</h2>
             <p className="text-slate-700 leading-relaxed max-w-[65ch]">
-              PropVisions sits between your sourcing tools and your decisions. Paste a listing URL and get
-              room-by-room refurb pricing from photos, rent estimates with rationale, EPC data from the official
-              register, and full ROI projections—all with traceable sources and ranges. Export investor-ready
-              PDFs and detailed Excel breakdowns in minutes.
+              PropVisions doesn't replace site visits or professional quotes—it highlights which properties are worth your time.
+              Paste a listing URL (or batch upload up to 100) and get room-by-room refurb pricing from photos, rent estimates
+              with rationale, EPC data from the official register, and full ROI projections—all with traceable sources and ranges.
+              Export investor-ready PDFs and detailed Excel breakdowns in minutes.
             </p>
             <ul className="grid sm:grid-cols-2 gap-3 text-sm">
-              <li className="rounded-xl border p-3"><b>Instant analysis:</b> URL to full deal pack in under 5 minutes</li>
+              <li className="rounded-xl border p-3"><b>Batch upload:</b> Process up to 100 properties at once</li>
               <li className="rounded-xl border p-3"><b>Photo-based refurb:</b> Room-level pricing with regional rates</li>
               <li className="rounded-xl border p-3"><b>Transparent estimates:</b> Rent bands, valuations with confidence shown</li>
-              <li className="rounded-xl border p-3"><b>Export ready:</b> PDF reports and Excel models for lenders</li>
+              <li className="rounded-xl border p-3"><b>Under 5 min per run:</b> Fast analysis with export-ready outputs</li>
             </ul>
           </div>
 
@@ -115,7 +116,7 @@ export default function LandingPage() {
             <h2 className="heading-2 max-w-[22ch]">What PropVisions delivers</h2>
             <ul className="space-y-3 text-slate-700 leading-relaxed">
               <Li title="Instant deal analysis">
-                Paste a listing URL or upload photos—get structured data in seconds.
+                Paste a listing URL or batch upload up to 100 properties—get structured data for each in minutes.
               </Li>
               <Li title="Room-by-room refurb pricing">
                 Photo analysis identifies condition and maps work to floorplans where available. Regional builder rates, missing-room alerts, and agent nudges included.
@@ -244,16 +245,16 @@ export default function LandingPage() {
       <section className="py-20 bg-slate-50">
         <div className="container flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="text-black max-w-lg">
-            <h3 className="text-2xl font-semibold">Ready to see PropVisions in action?</h3>
+            <h3 className="text-2xl font-semibold">Ready to get started?</h3>
             <p className="small text-slate-500 mt-2">
-              Book a demo and we'll run a live analysis on your deal—instant, investor-ready output.
+              See a 5-minute live run and get a free trial analysis credit.
             </p>
           </div>
           <Link
             href="/book-demo"
             className="btn btn-primary px-6 py-3 text-base font-medium rounded-lg shadow-md transition"
           >
-            Book a demo
+            Get a ranked shortlist
           </Link>
         </div>
       </section>
