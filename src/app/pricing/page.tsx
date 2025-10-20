@@ -15,67 +15,95 @@ export default function PricingPage() {
           </span>
           <h1 className="heading-hero mt-6">Choose the plan that fits your workflow</h1>
           <p className="subhead mt-4">
-            Start with Basic for fast underwriting, scale to Pro for teams, or go Enterprise for custom solutions
-            and white-label options.
+            Filter 100 down to the best 10 in minutes—then go view only what's worth viewing. PropVisions accelerates
+            due diligence so you can focus on the right properties.
           </p>
         </div>
       </section>
 
       {/* Plan cards */}
       <section className="pb-16">
-        <div className="container grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl">
+        <div className="container grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl">
           <PlanCard
-            name="Basic"
+            name="Starter"
             price="£129"
             period="/month"
-            description="Fast deal analysis for individual investors and sourcers."
-            cta="Start free trial"
+            description="For new investors testing the platform."
+            cta="Get a ranked shortlist"
             ctaHref="/book-demo"
             features={[
-              "10 runs included per month",
-              "£15 per additional run",
-              "All core features below",
-              "2 team seats",
-              "Email support (business hours)",
+              "10 property runs/month",
+              "No batch upload (single only)",
+              "~5 min analysis per property",
+              "AI refurb pricing & EPC uplift",
+              "Rent/yield & valuation reports",
+              "Investor-ready PDF exports",
+              "Email support",
             ]}
+            extraRunPrice="£15 each"
           />
 
           <PlanCard
-            name="Pro"
+            name="Professional"
             price="£399"
             period="/month"
-            description="For teams managing multiple deals and clients."
-            cta="Start free trial"
+            description="For active investors analysing deals weekly."
+            cta="Get a ranked shortlist"
             ctaHref="/book-demo"
             highlighted
             features={[
-              "40 runs included per month",
-              "£12 per additional run",
-              "All core features below",
-              "10 team seats with roles",
-              "Priority support (business hours)",
-              "API access (standard)",
-              "White-label branding (add-on)",
+              "50 property runs/month",
+              "Batch upload up to 10/run",
+              "Scenario modelling (BTL/Refurb/Sale)",
+              "Listing-change alerts",
+              "Builder-style cost PDF",
+              "Priority support",
+              "Early access to new AI modules",
             ]}
+            extraRunPrice="£12 each"
+          />
+
+          <PlanCard
+            name="Team"
+            price="£899"
+            period="/month"
+            description="For agencies and developers with multiple projects."
+            cta="Get a ranked shortlist"
+            ctaHref="/book-demo"
+            features={[
+              "100 property runs/month",
+              "Batch upload up to 25/run",
+              "Multi-user access (up to 10 seats)",
+              "Shared dashboards & client links",
+              "API access for automation",
+              "White-label PDF branding",
+              "CRM/data integration support",
+              "Phone & chat support",
+            ]}
+            extraRunPrice="£10 each"
           />
 
           <PlanCard
             name="Enterprise"
             price="Custom"
             period=""
-            description="Tailored solutions with custom AI prompts, integrations, and dedicated support."
+            description="For larger firms and white-label partners."
             cta="Talk to sales"
             ctaHref="/contact"
             features={[
-              "£8,000 setup fee (one-time)",
-              "From £8.50 per run (volume-based)",
-              "Custom AI prompts & builds",
-              "Full CRM & data integrations",
-              "Specialised datasets",
-              "White-label & custom branding",
-              "24×7 support with SLA",
+              "Full system integration",
+              "Custom AI prompts & datasets",
+              "Batch up to 100 properties/run",
+              "Dedicated account manager & SLA",
+              "£8,000 setup fee",
+              "From £8.50 per property run",
             ]}
           />
+        </div>
+
+        <div className="container max-w-7xl mt-8 space-y-2 text-center text-sm text-slate-600">
+          <p>Batch upload lets you process multiple properties at once—each analysed property still counts as one run.</p>
+          <p className="italic">Most runs complete in under 5 minutes (depends on image count and data sources).</p>
         </div>
       </section>
 
@@ -84,12 +112,13 @@ export default function PricingPage() {
         <div className="container">
           <h2 className="heading-2 text-center mb-10">Feature comparison</h2>
           <div className="overflow-x-auto">
-            <table className="w-full max-w-5xl mx-auto bg-white border rounded-xl text-sm">
+            <table className="w-full max-w-6xl mx-auto bg-white border rounded-xl text-sm">
               <thead className="bg-slate-100 text-slate-700">
                 <tr>
                   <th className="p-4 text-left font-semibold">Feature</th>
-                  <th className="p-4 text-center font-semibold">Basic</th>
-                  <th className="p-4 text-center font-semibold">Pro</th>
+                  <th className="p-4 text-center font-semibold">Starter</th>
+                  <th className="p-4 text-center font-semibold">Professional</th>
+                  <th className="p-4 text-center font-semibold">Team</th>
                   <th className="p-4 text-center font-semibold">Enterprise</th>
                 </tr>
               </thead>
