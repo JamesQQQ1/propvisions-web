@@ -4,6 +4,7 @@ import Link from "next/link";
 import "./globals.css";
 import CookieBanner from "@/components/CookieBanner";
 import NavSelect from "@/components/NavSelect";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export const metadata = {
   title: "PropVisions — From URL to investor-ready ROI",
@@ -15,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <header className="sticky top-0 z-30 border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+        <header className="sticky top-0 z-30 border-b bg-white/80 dark:bg-slate-950/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:border-slate-800">
           <div className="container py-1">
             {/* Mobile header: dropdown (left) + logo (center) + CTA (right) */}
             <div className="flex md:hidden items-center justify-between gap-2">
@@ -29,12 +30,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   priority
                 />
               </Link>
-              <Link
-                href="/book-demo"
-                className="btn btn-primary px-3 py-1.5 text-sm"
-              >
-                Book a demo
-              </Link>
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <Link
+                  href="/book-demo"
+                  className="btn btn-primary px-3 py-1.5 text-sm"
+                >
+                  Book a demo
+                </Link>
+              </div>
             </div>
 
             {/* Desktop header */}
@@ -48,14 +52,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   priority
                 />
               </Link>
-              <nav className="flex items-center gap-4 text-sm">
-                <Link href="/" className="hover:text-brand-700">Home</Link>
-                <Link href="/how-it-works" className="hover:text-brand-700">How it works</Link>
-                <Link href="/pricing" className="hover:text-brand-700">Pricing</Link>
-                <Link href="/roadmap" className="hover:text-brand-700">Roadmap</Link>
-                <Link href="/book-demo" className="btn btn-primary px-3 py-1.5">Book a demo</Link>
-                <Link href="/contact" className="hover:text-brand-700">Contact</Link>
-              </nav>
+              <div className="flex items-center gap-4">
+                <nav className="flex items-center gap-4 text-sm">
+                  <Link href="/" className="hover:text-brand-700">Home</Link>
+                  <Link href="/how-it-works" className="hover:text-brand-700">How it works</Link>
+                  <Link href="/pricing" className="hover:text-brand-700">Pricing</Link>
+                  <Link href="/roadmap" className="hover:text-brand-700">Roadmap</Link>
+                  <Link href="/contact" className="hover:text-brand-700">Contact</Link>
+                  <Link href="/book-demo" className="btn btn-primary px-3 py-1.5 ml-2">Book a demo</Link>
+                </nav>
+                <ThemeToggle />
+              </div>
             </div>
           </div>
         </header>

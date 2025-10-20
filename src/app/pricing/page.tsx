@@ -29,7 +29,7 @@ export default function PricingPage() {
             price="£129"
             period="/month"
             description="For new investors testing the platform."
-            cta="Get a ranked shortlist"
+            cta="Book a demo"
             ctaHref="/book-demo"
             features={[
               "10 property runs/month",
@@ -48,7 +48,7 @@ export default function PricingPage() {
             price="£399"
             period="/month"
             description="For active investors analysing deals weekly."
-            cta="Get a ranked shortlist"
+            cta="Book a demo"
             ctaHref="/book-demo"
             highlighted
             features={[
@@ -68,7 +68,7 @@ export default function PricingPage() {
             price="£899"
             period="/month"
             description="For agencies and developers with multiple projects."
-            cta="Get a ranked shortlist"
+            cta="Book a demo"
             ctaHref="/book-demo"
             features={[
               "100 property runs/month",
@@ -88,15 +88,15 @@ export default function PricingPage() {
             price="Custom"
             period=""
             description="For larger firms and white-label partners."
-            cta="Talk to sales"
+            cta="Contact sales"
             ctaHref="/contact"
             features={[
               "Full system integration",
               "Custom AI prompts & datasets",
               "Batch up to 100 properties/run",
               "Dedicated account manager & SLA",
-              "£8,000 setup fee",
-              "From £8.50 per property run",
+              "Custom pricing per volume",
+              "Volume discounts available",
             ]}
           />
         </div>
@@ -124,7 +124,7 @@ export default function PricingPage() {
               </thead>
               <tbody className="divide-y">
                 <FeatureRow feature="Monthly runs" starter="10" pro="50" team="100" enterprise="Custom" />
-                <FeatureRow feature="Extra run cost" starter="£15" pro="£12" team="£10" enterprise="From £8.50" />
+                <FeatureRow feature="Extra run cost" starter="£15" pro="£12" team="£10" enterprise="Volume pricing" />
                 <FeatureRow feature="Batch upload" starter="no" pro="Up to 10" team="Up to 25" enterprise="Up to 100" />
                 <FeatureRow feature="Typical analysis time" starter="~5 min/property" pro="~5 min/property" team="~5 min/property" enterprise="~5 min/property" />
                 <FeatureRow
@@ -224,10 +224,10 @@ export default function PricingPage() {
           </div>
           <div className="flex gap-3">
             <Link href="/book-demo" className="btn btn-primary px-6 py-3 text-base font-medium rounded-lg shadow-md">
-              Get a ranked shortlist
+              Book a demo
             </Link>
             <Link href="/contact" className="btn btn-outline px-6 py-3 text-base font-medium rounded-lg">
-              Talk to sales
+              Contact sales
             </Link>
           </div>
         </div>
@@ -371,7 +371,7 @@ function FAQAccordion() {
     },
     {
       q: "What about Enterprise pricing?",
-      a: "Enterprise pricing is custom and depends on volume, integrations, and support requirements. The £8,000 setup fee covers custom AI prompts, white-label configuration, and integrations. Ongoing per-run fees start at £8.50 and decrease with volume. Contact sales for a tailored quote.",
+      a: "Enterprise pricing is custom and depends on volume, integrations, and support requirements. Setup includes custom AI prompts, white-label configuration, and integrations. Volume discounts are available. Contact sales for a tailored quote.",
     },
   ];
 

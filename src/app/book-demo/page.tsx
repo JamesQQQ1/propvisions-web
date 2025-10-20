@@ -60,7 +60,7 @@ export default function BookDemoPage() {
 
             <div className="flex flex-wrap gap-3">
               <a href="#scheduler" className="btn btn-primary" aria-label="Jump to booking widget">
-                Pick a time →
+                Book a demo
               </a>
               <Link href="/#walkthrough" className="btn btn-outline" aria-label="Watch product walkthrough">
                 Watch 2-min walkthrough

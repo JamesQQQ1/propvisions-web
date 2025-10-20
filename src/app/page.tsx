@@ -27,7 +27,7 @@ export default function LandingPage() {
               in under 5 minutes (depends on image count and data sources).
             </p>
             <div className="flex flex-wrap gap-4">
-              <Link href="/book-demo" className="btn btn-primary">Get a ranked shortlist</Link>
+              <Link href="/book-demo" className="btn btn-primary">Book a demo</Link>
               <a href="#walkthrough" className="btn btn-outline">Watch walkthrough</a>
             </div>
 
@@ -226,21 +226,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* TESTIMONIAL STRIP */}
-      <section className="py-24 bg-white">
-        <div className="container">
-          <h2 className="heading-2 text-center mb-12">What our users say</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {TESTIMONIALS.map((t) => (
-              <figure key={t.name} className="rounded-2xl border p-6 bg-white shadow-sm">
-                <blockquote className="text-slate-800 leading-relaxed">“{t.quote}”</blockquote>
-                <figcaption className="mt-4 small text-slate-600">{t.name} · {t.role}</figcaption>
-              </figure>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* FINAL CTA — strong, high-contrast stripe */}
       <section className="py-20 bg-slate-50">
         <div className="container flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
@@ -254,7 +239,7 @@ export default function LandingPage() {
             href="/book-demo"
             className="btn btn-primary px-6 py-3 text-base font-medium rounded-lg shadow-md transition"
           >
-            Get a ranked shortlist
+            Book a demo
           </Link>
         </div>
       </section>
@@ -290,8 +275,3 @@ function CheckIcon() {
   );
 }
 
-const TESTIMONIALS = [
-  { name: "James P.", role: "Portfolio Investor", quote: "Cuts underwriting from hours to minutes. Export pack is exactly what lenders want to see." },
-  { name: "Maya K.", role: "Buying Agent", quote: "Photo-based refurb pricing gives us a solid starting point. Fast, transparent, and traceable." },
-  { name: "Ollie S.", role: "Sourcing Lead", quote: "Cleanest URL-to-analysis flow I've used. The traceability is what makes it trustworthy." },
-] as const;

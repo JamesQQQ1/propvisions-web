@@ -137,7 +137,7 @@ export default function HowItWorksPage() {
             <div className="font-semibold">Ready to get started?</div>
             <div className="small text-slate-600">See a 5-minute live run and get a free trial analysis credit.</div>
           </div>
-          <a href="/book-demo" className="btn btn-primary">Get a ranked shortlist</a>
+          <a href="/book-demo" className="btn btn-primary">Book a demo</a>
         </div>
       </div>
     </div>
