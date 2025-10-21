@@ -72,10 +72,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <Image
                     src="/propvisions_logo_croped.png"
                     alt="PropVisions logo"
-                    width={130}
-                    height={32}
+                    width={180}
+                    height={45}
                     priority
-                    className="h-auto w-auto max-h-8"
+                    className="h-auto w-auto max-h-11"
                   />
                 </Link>
                 {/* System Status Indicator */}
