@@ -39,10 +39,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <Image
                     src="/propvisions_logo_croped.png"
                     alt="PropVisions logo"
-                    width={140}
-                    height={32}
+                    width={160}
+                    height={40}
                     priority
-                    className="h-auto w-auto max-h-8"
+                    className="h-auto w-auto max-h-10"
                   />
                 </Link>
                 {/* System Status Indicator - Mobile */}
@@ -72,10 +72,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <Image
                     src="/propvisions_logo_croped.png"
                     alt="PropVisions logo"
-                    width={110}
-                    height={28}
+                    width={130}
+                    height={32}
                     priority
-                    className="h-auto w-auto max-h-7"
+                    className="h-auto w-auto max-h-8"
                   />
                 </Link>
                 {/* System Status Indicator */}

@@ -36,23 +36,23 @@ export default function RoadmapPage() {
             Enterprise customers get priority access and can influence the roadmap.
           </p>
 
-          <div className="inline-flex items-center gap-3 px-6 py-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-blue-50 to-purple-50 dark:from-emerald-950/30 dark:via-blue-950/30 dark:to-purple-950/30 border-2 border-emerald-200/50 dark:border-emerald-800/50 animate-slideUp shadow-xl" style={{ animationDelay: '200ms' }}>
+          <div className="flex flex-col sm:inline-flex sm:flex-row items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-blue-50 to-purple-50 dark:from-emerald-950/30 dark:via-blue-950/30 dark:to-purple-950/30 border-2 border-emerald-200/50 dark:border-emerald-800/50 animate-slideUp shadow-xl max-w-full" style={{ animationDelay: '200ms' }}>
             <div className="flex items-center gap-2">
-              <div className="relative">
+              <div className="relative flex-shrink-0">
                 <div className="absolute inset-0 rounded-full bg-emerald-500 blur-md opacity-50 animate-pulse" />
-                <div className="relative w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}>
+                <div className="relative w-7 sm:w-8 h-7 sm:h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5} className="sm:w-4 sm:h-4">
                     <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
               </div>
               <div className="text-left">
-                <div className="text-sm font-bold text-slate-900 dark:text-slate-100">Currently Building</div>
-                <div className="text-xs text-slate-600 dark:text-slate-400">Nano Banana Image API Integration</div>
+                <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">Currently Building</div>
+                <div className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-400">Nano Banana Image API</div>
               </div>
             </div>
             <div className="hidden sm:block h-8 w-px bg-slate-300 dark:bg-slate-700" />
-            <div className="text-xs text-slate-600 dark:text-slate-400">
+            <div className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-400 text-center sm:text-left">
               Other features under evaluation for Q2 2026+
             </div>
           </div>
@@ -78,20 +78,21 @@ export default function RoadmapPage() {
                   }}
                 >
                   <div className={`
-                    relative p-6 rounded-2xl border-2 transition-all duration-500
+                    relative p-4 sm:p-6 rounded-2xl border-2 transition-all duration-500
                     ${hoveredIndex === index
-                      ? 'border-blue-500 dark:border-blue-400 bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-blue-950/50 dark:via-slate-900 dark:to-purple-950/50 shadow-2xl shadow-blue-500/30 translate-x-2 scale-[1.02]'
+                      ? 'border-blue-500 dark:border-blue-400 bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-blue-950/50 dark:via-slate-900 dark:to-purple-950/50 shadow-2xl shadow-blue-500/30 sm:translate-x-2 sm:scale-[1.02]'
                       : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:shadow-xl hover:border-slate-300 dark:hover:border-slate-700'
                     }
                   `}>
                     {/* Priority Badge */}
                     {item.priority && (
-                      <div className="absolute -top-3 -right-3 px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-green-500 text-white text-xs font-bold shadow-lg shadow-emerald-500/50 flex items-center gap-1.5">
+                      <div className="absolute -top-2.5 sm:-top-3 -right-2.5 sm:-right-3 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-green-500 text-white text-[10px] sm:text-xs font-bold shadow-lg shadow-emerald-500/50 flex items-center gap-1 sm:gap-1.5">
                         <div className="relative flex items-center justify-center">
-                          <div className="absolute w-2 h-2 rounded-full bg-white animate-ping" />
-                          <div className="relative w-1.5 h-1.5 rounded-full bg-white" />
+                          <div className="absolute w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-white animate-ping" />
+                          <div className="relative w-1 sm:w-1.5 h-1 sm:h-1.5 rounded-full bg-white" />
                         </div>
-                        {item.priority}
+                        <span className="hidden xs:inline">{item.priority}</span>
+                        <span className="xs:hidden">Active</span>
                       </div>
                     )}
 
@@ -256,6 +257,7 @@ const ROADMAP_ITEMS = [
     icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 2v20M2 12h20" strokeLinecap="round" /></svg>,
     status: "Under evaluation starting Q2 2026",
     benefits: ["Better ROI accuracy", "Lender-ready reports"],
+    priority: undefined,
   },
   {
     title: "Multiple scenario modes",
@@ -263,6 +265,7 @@ const ROADMAP_ITEMS = [
     icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" strokeLinecap="round" /></svg>,
     status: "Under evaluation starting Q2 2026",
     benefits: ["Strategy comparison", "Regulatory checks"],
+    priority: undefined,
   },
   {
     title: "Live builder pricing",
@@ -270,6 +273,7 @@ const ROADMAP_ITEMS = [
     icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" strokeLinecap="round" /></svg>,
     status: "Under evaluation starting Q2 2026",
     benefits: ["Verified quotes", "Instant booking"],
+    priority: undefined,
   },
   {
     title: "Off-market sourcing",

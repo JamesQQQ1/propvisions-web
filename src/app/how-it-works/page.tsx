@@ -57,7 +57,7 @@ export default function HowItWorksPage() {
                   onMouseLeave={() => setHoveredStep(null)}
                 >
                   <div className={`
-                    relative h-full rounded-2xl border-2 p-6 transition-all duration-500 cursor-pointer
+                    relative h-full rounded-2xl border-2 p-6 transition-all duration-500
                     ${hoveredStep === i
                       ? 'border-blue-500 dark:border-blue-400 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 shadow-2xl scale-105 -translate-y-2'
                       : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:shadow-lg'

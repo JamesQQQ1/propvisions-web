@@ -1,0 +1,78 @@
+/* src/app/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------- Base & container ---------- */
+html, body { height: 100%; }
+body { @apply bg-white text-slate-900 antialiased; }
+.container { @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8; }
+
+/* ---------- Sections ---------- */
+.section { @apply py-14; }
+
+/* ---------- Typography ---------- */
+.heading-hero { @apply text-4xl sm:text-5xl font-extrabold leading-tight tracking-tight; }
+.heading-2    { @apply text-2xl font-semibold tracking-tight; }
+.heading-cta  { @apply text-2xl font-semibold; }
+.subhead      { @apply text-lg text-slate-700 max-w-2xl; }
+.small        { @apply text-sm text-slate-600; }
+
+.text-gradient {
+  background: linear-gradient(90deg, #2563eb 0%, #7c3aed 50%, #06b6d4 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---------- Buttons & Links ---------- */
+a { @apply transition-colors; }
+.btn { @apply inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30; }
+.btn-primary { @apply bg-blue-600 text-white hover:bg-blue-700 shadow; }
+.btn-outline { @apply border border-slate-200 bg-white hover:bg-slate-50; }
+.btn-dark    { @apply bg-slate-900 text-white hover:bg-slate-800; }
+.btn-onColor { @apply bg-white text-blue-700 hover:bg-slate-50; }
+.link        { @apply text-blue-700 hover:underline; }
+
+/* ---------- Chips / Badges ---------- */
+.chip { @apply inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium; }
+.chip-emerald { @apply border-emerald-200 bg-emerald-100 text-emerald-800; }
+.chip-sky     { @apply border-sky-200 bg-sky-100 text-sky-800; }
+.chip-violet  { @apply border-violet-200 bg-violet-100 text-violet-800; }
+
+.badge { @apply inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-xs font-medium text-slate-700 backdrop-blur; }
+.badge-emerald { @apply inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700; }
+
+/* ---------- Cards & Metrics ---------- */
+.card        { @apply rounded-2xl border border-slate-200 bg-white shadow-sm; }
+.card-header { @apply px-4 py-3 border-b bg-slate-50 text-sm text-slate-700; }
+.card-footer { @apply flex items-center justify-between px-4 py-3 text-sm text-slate-600; }
+
+.metric       { @apply rounded-lg border border-slate-200 p-3; }
+.metric-label { @apply text-slate-500; }
+.metric-value { @apply mt-0.5 font-semibold text-slate-900; }
+
+/* ---------- Icons (wrappers keep SVGs tiny) ---------- */
+.icon-wrap { @apply grid place-items-center h-7 w-7 rounded-md border border-slate-200 bg-slate-50 text-blue-700; }
+
+/* ---------- Step index pill ---------- */
+.step-index { @apply absolute -top-3 left-4 grid h-6 w-6 place-items-center rounded-full bg-slate-900 text-[11px] font-bold text-white; }
+
+/* ---------- CTA band ---------- */
+.cta {
+  @apply rounded-3xl p-8 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-6;
+  background: linear-gradient(90deg, #2563eb 0%, #06b6d4 100%);
+  box-shadow: 0 10px 30px -12px rgba(2,6,23,0.25);
+}
+.cta-copy { @apply text-white/90; }
+
+/* globals.css */
+.link {
+  text-decoration: underline;
+  text-decoration-color: #cbd5e1; /* slate-300 */
+  text-underline-offset: 4px;
+}
+.link:hover {
+  text-decoration-color: currentColor;
+}
+
