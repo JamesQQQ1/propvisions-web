@@ -77,7 +77,7 @@ export default function PricingPage() {
               ctaHref="/book-demo"
               highlighted
               features={[
-                "50 property runs/month",
+                "60 property runs/month",
                 "All major UK portals (Rightmove, Zoopla, OnTheMarket, others)",
                 "Batch upload up to 10/run",
                 "Scenario modelling (BTL/Refurb/Sale)",
@@ -96,7 +96,7 @@ export default function PricingPage() {
             <PlanCard
               index={2}
               name="Team"
-              price="£999"
+              price="£899"
               period="/month"
               description="For agencies and developers with multiple projects."
               cta="Book a demo"
@@ -136,6 +136,7 @@ export default function PricingPage() {
                 "Dedicated account manager & SLA",
                 "Custom pricing per volume",
                 "Volume discounts available",
+                "Starts at £8,000 custom setup fee, plus monthly license"
               ]}
               hoveredCard={hoveredCard}
               setHoveredCard={setHoveredCard}
@@ -173,7 +174,7 @@ export default function PricingPage() {
                   index={0}
                   feature="Monthly runs"
                   starter="10"
-                  pro="50"
+                  pro="60"
                   team="150"
                   enterprise="Custom"
                   hoveredRow={hoveredRow}
