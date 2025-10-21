@@ -29,7 +29,7 @@ export default function LandingPage() {
             </h1>
 
             <p className="subhead max-w-[65ch] animate-slideUp delay-100">
-              PropVisions analyses everything you'd normally check manually—photos, EPC ratings, local rents, refurb costs, running costs, and ROI—then tells you which properties are worth a site visit. Stop wasting time viewing deals that don't stack up on paper.
+              Traditional analysis takes 1–3 hours per property. PropVisions completes it in about 5 minutes—that's up to 30 × faster. We analyse photos, EPC ratings, local rents, refurb costs, running costs, and ROI, then tell you which properties are worth a site visit.
             </p>
 
             <div className="mt-6 p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border-2 border-blue-200 dark:border-blue-800 animate-slideUp delay-150">
@@ -38,6 +38,7 @@ export default function LandingPage() {
                 <li>Paste property links from Rightmove, Zoopla, or OnTheMarket (or batch upload up to 100)</li>
                 <li>We analyse: listing photos, EPC data, local rental prices, renovation needs, purchase costs, and running expenses</li>
                 <li>In 5 minutes, you get a report showing: refurb costs, rental income, cash flow, ROI, and whether it's worth viewing</li>
+                <li>No more waiting days for builder quotes—PropVisions gives you instant, region-adjusted refurbishment estimates so you only bring in contractors on the best opportunities</li>
                 <li>Download the PDF, share with partners, and only visit properties that pass the desk check</li>
                 <li>This is pre-screening. You still do site visits, professional surveys, and builder quotes on the ones that make sense.</li>
               </ol>
@@ -111,7 +112,7 @@ export default function LandingPage() {
             </h2>
 
             <p className="text-2xl text-slate-700 dark:text-slate-300 leading-relaxed max-w-[55ch] mx-auto font-medium animate-slideUp delay-100">
-              PropVisions doesn't just make analysis faster—it gives you back the hours you're losing to dead-end properties.
+              Traditional analysis takes 1–3 hours per property. PropVisions completes it in about 5 minutes. Agents and investors save an entire working day each week by letting PropVisions handle the data collection and calculations.
             </p>
           </div>
 
@@ -125,10 +126,10 @@ export default function LandingPage() {
                 Reclaim Your Time
               </h3>
               <p className="text-slate-700 dark:text-slate-300 leading-relaxed mb-4">
-                <strong>Cut analyst hours in half.</strong> Stop manually checking photos, pulling EPC certificates, researching rental comps, and calculating ROI for properties that never had potential in the first place.
+                <strong>Up to 30 × faster than manual research.</strong> Stop manually checking photos, pulling EPC certificates, researching rental comps, and calculating ROI for properties that never had potential in the first place.
               </p>
               <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
-                <strong>Slash wasted viewings.</strong> Every site visit takes 2-3 hours when you factor in travel, walkthrough, and follow-up. PropVisions filters out the duds before you leave your desk—so you only visit properties that actually stack up on paper.
+                <strong>Slash wasted viewings.</strong> Every site visit takes 2–3 hours when you factor in travel, walkthrough, and follow-up. PropVisions filters out the duds before you leave your desk—so you only visit properties that actually stack up on paper.
               </p>
             </div>
 
@@ -186,8 +187,7 @@ export default function LandingPage() {
             <p className="text-xl text-slate-700 dark:text-slate-300 leading-relaxed max-w-[65ch] animate-slideUp delay-100">
               PropVisions is a pre-screening tool. We check all the factors you'd normally research—photos, EPC ratings, rental comparables,
               refurbishment costs, running expenses—and calculate if the numbers work. This lets you filter hundreds of portal listings down
-              to a shortlist of properties actually worth visiting. You still do site visits, professional valuations, and builder quotes.
-              We just make sure you only spend time on deals that pass the desk check.
+              to a shortlist of properties actually worth visiting. Every property report is generated the same way—consistent, transparent, and ready to share.
             </p>
 
             <div className="p-4 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">

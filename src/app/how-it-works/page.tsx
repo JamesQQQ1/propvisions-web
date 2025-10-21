@@ -30,8 +30,8 @@ export default function HowItWorksPage() {
             </h1>
 
             <p className="text-xl text-slate-700 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed animate-slideUp delay-100">
-              From listing URL (or batch upload) to complete deal pack in under 5 minutes per property.
-              Transparent, traceable, and export-ready. PropVisions accelerates analysis—it doesn't replace site visits or professional quotes.
+              Traditional analysis takes 1–3 hours per property. PropVisions completes it in about 5 minutes.
+              Every property report is generated the same way—consistent, transparent, and ready to share. PropVisions accelerates analysis—it doesn't replace site visits or professional quotes.
             </p>
           </div>
         </div>
@@ -47,7 +47,7 @@ export default function HowItWorksPage() {
               Your time is your most valuable asset. <span className="text-gradient">Stop wasting it.</span>
             </h2>
             <p className="text-xl text-slate-700 dark:text-slate-300 leading-relaxed animate-slideUp delay-100">
-              PropVisions gives you back the hours you're losing to manual analysis and dead-end property viewings—so you can focus on what actually scales your business.
+              That's up to 30 × faster than manual research across multiple tools. Agents and investors save an entire working day each week by letting PropVisions handle the data collection and calculations.
             </p>
           </div>
 
@@ -55,10 +55,10 @@ export default function HowItWorksPage() {
             <div className="rounded-xl border-2 border-blue-200 dark:border-blue-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm p-6 hover:shadow-xl hover:scale-105 transition-all duration-500 animate-scaleIn">
               <div className="text-4xl mb-4">⚡</div>
               <h3 className="text-lg font-bold mb-2 text-slate-900 dark:text-slate-100">
-                Cut Analysis Time by 80%
+                5 Minutes vs 1–3 Hours
               </h3>
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                Stop manually checking photos, pulling EPCs, researching comps, and calculating ROI. Process 100 properties in the time it takes to analyze 10 manually.
+                Traditional analysis takes hours. PropVisions delivers complete property reports in about 5 minutes—up to 30 × faster than manual research across multiple tools.
               </p>
             </div>
 
@@ -68,7 +68,7 @@ export default function HowItWorksPage() {
                 Only View Properties That Matter
               </h3>
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                Every viewing takes 2-3 hours with travel. Filter out the duds before you leave your desk and reclaim those hours for high-value activities.
+                Every viewing takes 2–3 hours with travel. Filter out the duds before you leave your desk and reclaim those hours for high-value activities.
               </p>
             </div>
 
@@ -172,8 +172,8 @@ export default function HowItWorksPage() {
                 </div>
 
                 <p className="text-slate-700 dark:text-slate-300 leading-relaxed mb-6">
-                  PropVisions analyzes each photo to identify room type and condition, then maps work to floorplans
-                  where available. Regional builder rates are applied, and missing rooms are flagged for agent follow-up.
+                  No more waiting days for builder quotes. PropVisions analyzes each photo to identify room type and condition, then maps work to floorplans
+                  where available. Regional builder rates are applied instantly, and missing rooms are flagged for agent follow-up.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

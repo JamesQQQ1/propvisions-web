@@ -71,21 +71,6 @@ export default function ContactPage() {
 
   return (
     <main className="container section">
-      {/* Top CTA row — ensure demo goes through the access gate */}
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <div className="small text-slate-600">
-          Have a quick look at the product or drop us a line.
-        </div>
-        <div className="flex items-center gap-2">
-          <Link href="/demo-access?next=/demo" className="btn btn-primary">
-            See the demo
-          </Link>
-          <Link href="/" className="btn">
-            Home
-          </Link>
-        </div>
-      </div>
-
       {/* Header */}
       <header className="max-w-3xl">
         <span className="badge">We usually reply within one business day</span>
