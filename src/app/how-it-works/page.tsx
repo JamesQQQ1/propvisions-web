@@ -44,10 +44,10 @@ export default function HowItWorksPage() {
         <div className="container relative z-10">
           <div className="max-w-4xl mx-auto text-center space-y-6 mb-12">
             <h2 className="text-3xl lg:text-4xl font-bold animate-slideUp">
-              Your time is your most valuable asset. <span className="text-gradient">Stop wasting it.</span>
+              Focus on the properties that matter
             </h2>
             <p className="text-xl text-slate-700 dark:text-slate-300 leading-relaxed animate-slideUp delay-100">
-              That's up to 30 × faster than manual research across multiple tools. Agents and investors save an entire working day each week by letting PropVisions handle the data collection and calculations.
+              PropVisions handles the data collection and calculations so you can spend your time on high-value activities—viewings, client relationships, and deals worth closing.
             </p>
           </div>
 
@@ -55,10 +55,10 @@ export default function HowItWorksPage() {
             <div className="rounded-xl border-2 border-blue-200 dark:border-blue-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm p-6 hover:shadow-xl hover:scale-105 transition-all duration-500 animate-scaleIn">
               <div className="text-4xl mb-4">⚡</div>
               <h3 className="text-lg font-bold mb-2 text-slate-900 dark:text-slate-100">
-                5 Minutes vs 1–3 Hours
+                Fast Analysis
               </h3>
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                Traditional analysis takes hours. PropVisions delivers complete property reports in about 5 minutes—up to 30 × faster than manual research across multiple tools.
+                PropVisions delivers complete property reports in about 5 minutes. Process hundreds of properties in the time it takes to manually analyse one.
               </p>
             </div>
 

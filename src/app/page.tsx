@@ -142,7 +142,7 @@ export default function LandingPage() {
                 Scale Without Hiring
               </h3>
               <p className="text-slate-700 dark:text-slate-300 leading-relaxed mb-4">
-                <strong>Do more with your current team.</strong> Instead of hiring more analysts or sourcers, multiply your existing capacity. Process 100 properties in the time it used to take to manually analyze 10.
+                <strong>Do more with your current team.</strong> Instead of hiring more analysts or sourcers, multiply your existing capacity. Process hundreds of properties in the time it takes to manually analyse one.
               </p>
               <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
                 <strong>Cut costs, not corners.</strong> Avoid the expense and hassle of recruitment, training, and onboarding. PropVisions handles the grunt work—your team focuses on high-value activities like client relationships, site visits that matter, and closing deals.
