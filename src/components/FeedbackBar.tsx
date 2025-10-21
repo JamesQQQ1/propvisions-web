@@ -70,14 +70,14 @@ export default function FeedbackBar({
 
   return (
     <div className={root} tabIndex={0} data-fb-root="true" aria-label="Feedback bar">
-      {!compact && <span className="text-slate-600">Was this accurate?</span>}
+      {!compact && <span className="text-slate-600 dark:text-slate-400">Was this accurate?</span>}
       <button
         type="button"
         onClick={() => send('up')}
         disabled={busy}
         className={`${base} ${choice === 'up'
-          ? 'bg-green-50 border-green-200 text-green-700'
-          : 'hover:bg-slate-50 border-slate-200 text-slate-700'
+          ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300'
+          : 'hover:bg-slate-50 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
         }`}
         aria-pressed={choice === 'up'}
         aria-label="Thumbs up"
@@ -89,8 +89,8 @@ export default function FeedbackBar({
         onClick={() => send('down')}
         disabled={busy}
         className={`${base} ${choice === 'down'
-          ? 'bg-red-50 border-red-200 text-red-700'
-          : 'hover:bg-slate-50 border-slate-200 text-slate-700'
+          ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
+          : 'hover:bg-slate-50 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
         }`}
         aria-pressed={choice === 'down'}
         aria-label="Thumbs down"
@@ -98,8 +98,8 @@ export default function FeedbackBar({
         <span aria-hidden>👎</span> {!compact && 'No'}
       </button>
       {choice && (
-        <span className="ml-2 text-slate-500" role="status" aria-live="polite">
-          {choice === 'up' ? 'Thanks!' : 'Noted — we’ll use this to improve.'}
+        <span className="ml-2 text-slate-500 dark:text-slate-400" role="status" aria-live="polite">
+          {choice === 'up' ? 'Thanks!' : 'Noted — we'll use this to improve.'}
         </span>
       )}
     </div>

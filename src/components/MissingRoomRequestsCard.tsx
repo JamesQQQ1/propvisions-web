@@ -97,16 +97,16 @@ export default function MissingRoomRequestsCard({ propertyId }: MissingRoomReque
     null;
 
   return (
-    <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl p-4 shadow-md">
+    <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border-2 border-amber-300 dark:border-amber-800 rounded-xl p-4 shadow-md">
       <div className="flex items-center gap-3 mb-3">
-        <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center">
+        <div className="w-8 h-8 bg-amber-500 dark:bg-amber-600 rounded-lg flex items-center justify-center">
           <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
           </svg>
         </div>
         <div className="flex-1">
-          <h3 className="text-lg font-bold text-amber-900">Missing Photos</h3>
-          {coverageText && <p className="text-xs text-amber-700">{coverageText}</p>}
+          <h3 className="text-lg font-bold text-amber-900 dark:text-amber-200">Missing Photos</h3>
+          {coverageText && <p className="text-xs text-amber-700 dark:text-amber-300">{coverageText}</p>}
         </div>
       </div>
 
@@ -118,13 +118,13 @@ export default function MissingRoomRequestsCard({ propertyId }: MissingRoomReque
           const floorText = req.floor ? ` (${req.floor})` : '';
 
           return (
-            <div key={req.id} className="flex items-center gap-2 bg-white rounded-lg p-2 border border-amber-200">
+            <div key={req.id} className="flex items-center gap-2 bg-white dark:bg-slate-800 rounded-lg p-2 border border-amber-200 dark:border-amber-800">
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-slate-900 truncate">
+                <div className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
                   {displayLabel}{floorText}
                 </div>
                 {hasUrl && !expired && (
-                  <div className="text-xs text-slate-500 truncate">
+                  <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
                     Open link: {req.upload_url}
                   </div>
                 )}
@@ -134,14 +134,14 @@ export default function MissingRoomRequestsCard({ propertyId }: MissingRoomReque
                   href={req.upload_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-3 py-1.5 bg-amber-500 text-white text-sm font-medium rounded-md hover:bg-amber-600 transition-colors whitespace-nowrap"
+                  className="px-3 py-1.5 bg-amber-500 dark:bg-amber-600 text-white text-sm font-medium rounded-md hover:bg-amber-600 dark:hover:bg-amber-700 transition-colors whitespace-nowrap"
                 >
                   Upload photo
                 </a>
               ) : (
                 <button
                   disabled
-                  className="px-3 py-1.5 bg-slate-300 text-slate-500 text-sm font-medium rounded-md cursor-not-allowed whitespace-nowrap"
+                  className="px-3 py-1.5 bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 text-sm font-medium rounded-md cursor-not-allowed whitespace-nowrap"
                 >
                   {expired ? 'Link expired' : 'No link'}
                 </button>
