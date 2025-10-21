@@ -315,11 +315,11 @@ function readTotalWithVat(t: any) {
 /* ---------- UI micro components ---------- */
 function Badge({ children, tone = 'slate' }: { children: React.ReactNode; tone?: 'green' | 'red' | 'amber' | 'slate' | 'blue' }) {
   const m: Record<string, string> = {
-    green: 'bg-green-50 text-green-800 ring-green-200/60 shadow-sm',
-    red: 'bg-red-50 text-red-800 ring-red-200/60 shadow-sm',
-    amber: 'bg-amber-50 text-amber-800 ring-amber-200/60 shadow-sm',
-    slate: 'bg-slate-50 text-slate-700 ring-slate-200/60 shadow-sm',
-    blue: 'bg-blue-50 text-blue-800 ring-blue-200/60 shadow-sm',
+    green: 'bg-green-50 dark:bg-green-950/30 text-green-800 dark:text-green-300 ring-green-200/60 dark:ring-green-800/60 shadow-sm',
+    red: 'bg-red-50 dark:bg-red-950/30 text-red-800 dark:text-red-300 ring-red-200/60 dark:ring-red-800/60 shadow-sm',
+    amber: 'bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 ring-amber-200/60 dark:ring-amber-800/60 shadow-sm',
+    slate: 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 ring-slate-200/60 dark:ring-slate-700/60 shadow-sm',
+    blue: 'bg-blue-50 dark:bg-blue-950/30 text-blue-800 dark:text-blue-300 ring-blue-200/60 dark:ring-blue-800/60 shadow-sm',
   };
   return <span className={classNames('inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ring-1', m[tone])}>{children}</span>;
 }
@@ -1585,10 +1585,10 @@ const roomTypes = useMemo(() => {
                       <a className="inline-flex items-center rounded-md bg-blue-600 text-white px-3 py-1.5 hover:bg-blue-700" href={data.property.preview_url_investor_pack} target="_blank" rel="noopener noreferrer">Investor Pack (PDF)</a>
                     )}
                     {data.property?.preview_url_builders_quote && (
-                      <a className="inline-flex items-center rounded-md border px-3 py-1.5 hover:bg-slate-50" href={data.property.preview_url_builders_quote} target="_blank" rel="noopener noreferrer">Builder’s Quote (PDF)</a>
+                      <a className="inline-flex items-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors" href={data.property.preview_url_builders_quote} target="_blank" rel="noopener noreferrer">Builder's Quote (PDF)</a>
                     )}
                     {data.property?.brochure_urls?.[0] && (
-                      <a className="inline-flex items-center rounded-md border px-3 py-1.5 hover:bg-slate-50" href={data.property.brochure_urls[0]} target="_blank" rel="noopener noreferrer">Agent Brochure</a>
+                      <a className="inline-flex items-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors" href={data.property.brochure_urls[0]} target="_blank" rel="noopener noreferrer">Agent Brochure</a>
                     )}
                   </div>
                 </div>
@@ -1638,29 +1638,29 @@ const roomTypes = useMemo(() => {
             desc="Detailed room-by-room renovation cost estimates. All amounts include VAT (Value Added Tax at 20%) unless marked 'ex VAT'. Costs are AI-estimated from property images and UK market rates. Rooms with £0 budget require no refurbishment work. Use filters below to view specific room types or sort by cost."
             right={
               <div className="flex flex-wrap items-center gap-2 ml-auto">
-                <label className="text-xs text-slate-600">Filter:</label>
-                <select className="text-sm border rounded-md px-2 py-1" value={filterType} onChange={(e) => setFilterType(e.target.value)}> 
+                <label className="text-xs text-slate-600 dark:text-slate-400">Filter:</label>
+                <select className="text-sm border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
                   {roomTypes.map((t) => (<option key={t} value={t}>{t}</option>))}
                 </select>
 
-                <label className="text-xs text-slate-600 ml-2">Sort:</label>
-                <select className="text-sm border rounded-md px-2 py-1" value={sortKey} onChange={(e) => setSortKey(e.target.value as any)}>
+                <label className="text-xs text-slate-600 dark:text-slate-400 ml-2">Sort:</label>
+                <select className="text-sm border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400" value={sortKey} onChange={(e) => setSortKey(e.target.value as any)}>
                   <option value="room_order">Room order (logical)</option>
                   <option value="total_desc">Total (high → low)</option>
                   <option value="total_asc">Total (low → high)</option>
                   <option value="room_asc">Room (A → Z)</option>
                 </select>
 
-                <label className="text-xs text-slate-600 ml-2">Min confidence:</label>
-                <input type="range" min={0} max={100} step={5} value={minConfidence} onChange={(e) => setMinConfidence(Number(e.target.value))} className="w-28" title={`${minConfidence}%`} />
-                <span className="text-xs text-slate-600 w-10 text-right">{minConfidence}%</span>
+                <label className="text-xs text-slate-600 dark:text-slate-400 ml-2">Min confidence:</label>
+                <input type="range" min={0} max={100} step={5} value={minConfidence} onChange={(e) => setMinConfidence(Number(e.target.value))} className="w-28 accent-blue-600 dark:accent-blue-500" title={`${minConfidence}%`} />
+                <span className="text-xs text-slate-600 dark:text-slate-400 w-10 text-right">{minConfidence}%</span>
               </div>
             }
           >
             {/* Programme note */}
-            <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 mb-3">
+            <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-3 text-sm text-slate-700 dark:text-slate-300 mb-3">
               <strong>Programme note:</strong> Works duration is tracked in Scenarios → <em>Period Snapshot</em>.
-              {period?.months_refurb != null ? <> Current assumption: <strong>{Number(period.months_refurb)} months</strong>.</> : ' If not shown, the backend hasn’t provided a refurb duration for this run.'}
+              {period?.months_refurb != null ? <> Current assumption: <strong>{Number(period.months_refurb)} months</strong>.</> : ' If not shown, the backend hasn't provided a refurb duration for this run.'}
             </div>
 
             {/* Cards (floorplan-ordered) */}
@@ -1694,32 +1694,32 @@ const roomTypes = useMemo(() => {
 
                 {/* Totals table (from original rows; optional to keep) */}
                 <div className="overflow-x-auto">
-                  <table className="w-full border text-sm">
+                  <table className="w-full border border-slate-200 dark:border-slate-700 text-sm">
                     <thead>
-                      <tr className="bg-slate-50">
-                        <th className="p-2 text-left">Room</th>
-                        <th className="p-2 text-right">Total (with VAT)</th>
-                        <th className="p-2 text-right">Total (ex VAT)</th>
-                        <th className="p-2 text-right">Conf.</th>
+                      <tr className="bg-slate-50 dark:bg-slate-800">
+                        <th className="p-2 text-left text-slate-900 dark:text-slate-100">Room</th>
+                        <th className="p-2 text-right text-slate-900 dark:text-slate-100">Total (with VAT)</th>
+                        <th className="p-2 text-right text-slate-900 dark:text-slate-100">Total (ex VAT)</th>
+                        <th className="p-2 text-right text-slate-900 dark:text-slate-100">Conf.</th>
                       </tr>
                     </thead>
                     <tbody>
                       {uiRooms.map((room) => (
-                        <tr key={room.room_name} className="border-t">
-                          <td className="p-2 capitalize">{room.display_name}</td>
-                          <td className="p-2 text-right font-semibold">{formatCurrency(room.total_with_vat)}</td>
-                          <td className="p-2 text-right">{formatCurrency(room.total_without_vat || 0)}</td>
-                          <td className="p-2 text-right">{room.confidence != null ? `${Math.round(room.confidence * 100)}%` : '—'}</td>
+                        <tr key={room.room_name} className="border-t border-slate-200 dark:border-slate-700">
+                          <td className="p-2 capitalize text-slate-900 dark:text-slate-100">{room.display_name}</td>
+                          <td className="p-2 text-right font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(room.total_with_vat)}</td>
+                          <td className="p-2 text-right text-slate-700 dark:text-slate-300">{formatCurrency(room.total_without_vat || 0)}</td>
+                          <td className="p-2 text-right text-slate-700 dark:text-slate-300">{room.confidence != null ? `${Math.round(room.confidence * 100)}%` : '—'}</td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
-                      <tr className="border-t bg-slate-50">
-                        <td className="p-2 text-right font-medium">Totals</td>
-                        <td className="p-2 text-right font-semibold">
+                      <tr className="border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                        <td className="p-2 text-right font-medium text-slate-900 dark:text-slate-100">Totals</td>
+                        <td className="p-2 text-right font-semibold text-slate-900 dark:text-slate-100">
                           {formatCurrency(uiRooms.reduce((a, r) => a + r.total_with_vat, 0))}
                         </td>
-                        <td className="p-2 text-right font-medium">
+                        <td className="p-2 text-right font-medium text-slate-700 dark:text-slate-300">
                           {formatCurrency(uiRooms.reduce((a, r) => a + (r.total_without_vat || 0), 0))}
                         </td>
                         <td className="p-2" />
@@ -1729,7 +1729,7 @@ const roomTypes = useMemo(() => {
                 </div>
               </>
             ) : (
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-slate-700">
+              <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4 text-slate-700 dark:text-slate-300">
                 <p className="font-medium">No refurbishment data found in properties payload.</p>
                 <p className="text-sm mt-1">Check that floorplan_min and room_totals are included in the properties object.</p>
               </div>
@@ -1806,7 +1806,7 @@ const roomTypes = useMemo(() => {
             title="Financial Summary"
             desc="Tweak core assumptions to see directional impact. Backend snapshot remains the source of truth."
             right={data.pdf_url ? (
-              <a href={`/api/pdf-proxy?url=${encodeURIComponent(data.pdf_url)}`} target="_blank" rel="noopener noreferrer" className="text-sm inline-flex items-center rounded-md border px-3 py-1.5 hover:bg-slate-50">
+              <a href={`/api/pdf-proxy?url=${encodeURIComponent(data.pdf_url)}`} target="_blank" rel="noopener noreferrer" className="text-sm inline-flex items-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                 Download PDF
               </a>
             ) : null}
@@ -1970,17 +1970,17 @@ const roomTypes = useMemo(() => {
           )}
 
           {/* Debug drawer */}
-          <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-4">
-            <button className="text-sm rounded-md border px-3 py-1.5 hover:bg-slate-50" onClick={() => setShowDebug((s) => !s)}>
+          <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm p-4">
+            <button className="text-sm rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors" onClick={() => setShowDebug((s) => !s)}>
               {showDebug ? 'Hide Debug' : 'Show Debug'}
             </button>
             {showDebug && (
               <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                <pre className="bg-slate-50 p-3 rounded border overflow-auto"><code>{JSON.stringify({ status, run: data?.run }, null, 2)}</code></pre>
-                <pre className="bg-slate-50 p-3 rounded border overflow-auto"><code>{JSON.stringify({ property: data?.property, financials: data?.financials }, null, 2)}</code></pre>
-                <pre className="bg-slate-50 p-3 rounded border overflow-auto md:col-span-2"><code>{JSON.stringify({ refurb_estimates: data?.refurb_estimates }, null, 2)}</code></pre>
-                <pre className="bg-amber-50 p-3 rounded border border-amber-300 overflow-auto md:col-span-2">
-                  <div className="font-bold text-amber-900 mb-2">Missing Room Requests (from Supabase):</div>
+                <pre className="bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 p-3 rounded border border-slate-200 dark:border-slate-700 overflow-auto"><code>{JSON.stringify({ status, run: data?.run }, null, 2)}</code></pre>
+                <pre className="bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 p-3 rounded border border-slate-200 dark:border-slate-700 overflow-auto"><code>{JSON.stringify({ property: data?.property, financials: data?.financials }, null, 2)}</code></pre>
+                <pre className="bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 p-3 rounded border border-slate-200 dark:border-slate-700 overflow-auto md:col-span-2"><code>{JSON.stringify({ refurb_estimates: data?.refurb_estimates }, null, 2)}</code></pre>
+                <pre className="bg-amber-50 dark:bg-amber-950/30 text-slate-900 dark:text-slate-100 p-3 rounded border border-amber-300 dark:border-amber-800 overflow-auto md:col-span-2">
+                  <div className="font-bold text-amber-900 dark:text-amber-200 mb-2">Missing Room Requests (from Supabase):</div>
                   <code>{JSON.stringify({
                     property_id: data?.property_id,
                     api_url: `/api/missing-rooms?property_id=${encodeURIComponent(data?.property_id || '')}&status=pending`,
@@ -2073,7 +2073,7 @@ function DetailsDrawer({ label, children }: { label: string; children: React.Rea
   const [open, setOpen] = useState(false);
   return (
     <div className="text-right">
-      <button onClick={() => setOpen((s) => !s)} className="text-xs rounded-md border px-2 py-1 hover:bg-slate-50">
+      <button onClick={() => setOpen((s) => !s)} className="text-xs rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-2 py-1 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
         {open ? 'Hide' : label}
       </button>
       {open && <div className="mt-2 text-left">{children}</div>}
@@ -2088,7 +2088,7 @@ function ScenariosTabs({ scenarios, ScenarioKV }: { scenarios: any; ScenarioKV: 
       onClick={() => setTab(id)}
       className={classNames(
         'px-3 py-1.5 rounded-md text-sm border',
-        tab === id ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 hover:bg-slate-50'
+        tab === id ? 'bg-blue-600 dark:bg-blue-700 text-white border-blue-600 dark:border-blue-700' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700'
       )}
     >
       {children}
