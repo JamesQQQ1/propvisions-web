@@ -21,19 +21,28 @@ export default function LandingPage() {
         <div className="container relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
           <div className="lg:col-span-7 space-y-8">
             <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-xs font-medium border border-emerald-200 dark:border-emerald-800 animate-fadeIn">
-              <Dot /> Beta live — book a guided demo
+              <Dot /> AI property analysis tool
             </span>
 
-            <h1 className="heading-hero max-w-[18ch] animate-slideUp">
-              From listing URL to <span className="text-gradient">investor-ready ROI</span>
+            <h1 className="heading-hero animate-slideUp">
+              Paste a Rightmove link.<br />Get a full investment analysis in 5 minutes.
             </h1>
 
-            <p className="subhead max-w-[60ch] animate-slideUp delay-100">
-              Filter 100 down to the best 10 in minutes—then go view only what's worth viewing.
-              PropVisions turns a property link into a complete deal pack: refurb costs from photos,
-              rent estimation, full financials, and export-ready reports. Runs typically complete
-              in under 5 minutes (depends on image count and data sources).
+            <p className="subhead max-w-[65ch] animate-slideUp delay-100">
+              PropVisions analyses any UK property listing and gives you everything you need to decide if it's worth viewing:
+              renovation costs from the photos, rental income estimates, profit projections, and a downloadable PDF report.
             </p>
+
+            <div className="mt-6 p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border-2 border-blue-200 dark:border-blue-800 animate-slideUp delay-150">
+              <p className="text-sm text-slate-700 dark:text-slate-300 font-medium mb-2">Here's exactly what happens:</p>
+              <ol className="text-sm text-slate-600 dark:text-slate-400 space-y-1.5 list-decimal pl-5">
+                <li>Copy a property link from Rightmove, Zoopla, or OnTheMarket</li>
+                <li>Paste it into PropVisions</li>
+                <li>We analyse the photos, floorplan, and listing details using AI</li>
+                <li>You get: refurb costs, rental estimates, ROI calculations, and a PDF report</li>
+                <li>Takes 5 minutes. No site visits needed yet.</li>
+              </ol>
+            </div>
 
             <div className="flex flex-wrap gap-4 animate-slideUp delay-200">
               <Link href="/book-demo" className="btn btn-primary px-6 py-3 text-base shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
@@ -47,9 +56,9 @@ export default function LandingPage() {
             {/* Quick trust list */}
             <ul className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-slate-700 dark:text-slate-300">
               {[
-                { icon: "⚡", text: "Under 5 min per run" },
-                { icon: "📦", text: "Batch upload (up to 100)" },
-                { icon: "📊", text: "PDF & Excel exports" }
+                { icon: "⚡", text: "Analysis ready in 5 minutes" },
+                { icon: "🏠", text: "Works with any UK listing" },
+                { icon: "📊", text: "Exportable PDF reports" }
               ].map((item, i) => (
                 <li key={i} className="flex items-center gap-2 animate-slideUp" style={{ animationDelay: `${300 + i * 50}ms` }}>
                   <span className="text-xl">{item.icon}</span>
@@ -95,14 +104,26 @@ export default function LandingPage() {
         <div className="container relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-16">
           <div className="lg:col-span-7 space-y-6">
             <h2 className="text-4xl font-bold animate-slideUp">
-              Built to <span className="text-gradient">accelerate decisions</span>, not replace them
+              Save time by <span className="text-gradient">analysing properties before you visit</span>
             </h2>
 
             <p className="text-xl text-slate-700 dark:text-slate-300 leading-relaxed max-w-[65ch] animate-slideUp delay-100">
-              PropVisions doesn't replace site visits or professional quotes—it highlights which properties are worth your time.
-              Paste a listing URL (or batch upload up to 100) and get room-by-room refurb pricing from photos, rent estimates
-              with rationale, EPC data from the official register, and full ROI projections—all with traceable sources and ranges.
+              Stop wasting time viewing properties that don't stack up. PropVisions tells you the numbers before you leave your desk.
+              Our AI looks at the listing photos and calculates renovation costs room-by-room, estimates rental income based on local data,
+              and shows you if the deal makes sense. You only visit properties that are worth your time.
             </p>
+
+            <div className="p-4 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2">What you get in every report:</p>
+              <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+                <li>• Renovation cost breakdown (kitchen, bathroom, flooring, etc.)</li>
+                <li>• Monthly rental income estimate for your area</li>
+                <li>• Purchase costs, mortgage payments, running costs</li>
+                <li>• Cash flow and ROI calculations</li>
+                <li>• EPC rating and energy efficiency data</li>
+                <li>• Downloadable PDF to share with partners or lenders</li>
+              </ul>
+            </div>
 
             <div className="grid sm:grid-cols-2 gap-4 mt-8">
               {[
