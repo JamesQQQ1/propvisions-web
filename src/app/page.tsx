@@ -21,26 +21,25 @@ export default function LandingPage() {
         <div className="container relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
           <div className="lg:col-span-7 space-y-8">
             <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-xs font-medium border border-emerald-200 dark:border-emerald-800 animate-fadeIn">
-              <Dot /> AI property analysis tool
+              <Dot /> Pre-screening tool for property investors
             </span>
 
             <h1 className="heading-hero animate-slideUp">
-              Paste a Rightmove link.<br />Get a full investment analysis in 5 minutes.
+              Filter 100 property listings down to the 10 worth viewing.
             </h1>
 
             <p className="subhead max-w-[65ch] animate-slideUp delay-100">
-              PropVisions analyses any UK property listing and gives you everything you need to decide if it's worth viewing:
-              renovation costs from the photos, rental income estimates, profit projections, and a downloadable PDF report.
+              PropVisions analyses everything you'd normally check manually—photos, EPC ratings, local rents, refurb costs, running costs, and ROI—then tells you which properties are worth a site visit. Stop wasting time viewing deals that don't stack up on paper.
             </p>
 
             <div className="mt-6 p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border-2 border-blue-200 dark:border-blue-800 animate-slideUp delay-150">
-              <p className="text-sm text-slate-700 dark:text-slate-300 font-medium mb-2">Here's exactly what happens:</p>
+              <p className="text-sm text-slate-700 dark:text-slate-300 font-medium mb-2">How it works:</p>
               <ol className="text-sm text-slate-600 dark:text-slate-400 space-y-1.5 list-decimal pl-5">
-                <li>Copy a property link from Rightmove, Zoopla, or OnTheMarket</li>
-                <li>Paste it into PropVisions</li>
-                <li>We analyse the photos, floorplan, and listing details using AI</li>
-                <li>You get: refurb costs, rental estimates, ROI calculations, and a PDF report</li>
-                <li>Takes 5 minutes. No site visits needed yet.</li>
+                <li>Paste property links from Rightmove, Zoopla, or OnTheMarket (or batch upload up to 100)</li>
+                <li>We analyse: listing photos, EPC data, local rental prices, renovation needs, purchase costs, and running expenses</li>
+                <li>In 5 minutes, you get a report showing: refurb costs, rental income, cash flow, ROI, and whether it's worth viewing</li>
+                <li>Download the PDF, share with partners, and only visit properties that pass the desk check</li>
+                <li>This is pre-screening. You still do site visits, professional surveys, and builder quotes on the ones that make sense.</li>
               </ol>
             </div>
 
@@ -56,9 +55,9 @@ export default function LandingPage() {
             {/* Quick trust list */}
             <ul className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-slate-700 dark:text-slate-300">
               {[
-                { icon: "⚡", text: "Analysis ready in 5 minutes" },
-                { icon: "🏠", text: "Works with any UK listing" },
-                { icon: "📊", text: "Exportable PDF reports" }
+                { icon: "🔍", text: "Filter 100s of listings quickly" },
+                { icon: "⚡", text: "5 minutes per property" },
+                { icon: "✓", text: "Only visit the good ones" }
               ].map((item, i) => (
                 <li key={i} className="flex items-center gap-2 animate-slideUp" style={{ animationDelay: `${300 + i * 50}ms` }}>
                   <span className="text-xl">{item.icon}</span>
@@ -104,25 +103,29 @@ export default function LandingPage() {
         <div className="container relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-16">
           <div className="lg:col-span-7 space-y-6">
             <h2 className="text-4xl font-bold animate-slideUp">
-              Save time by <span className="text-gradient">analysing properties before you visit</span>
+              We don't replace your process. <span className="text-gradient">We filter before you visit.</span>
             </h2>
 
             <p className="text-xl text-slate-700 dark:text-slate-300 leading-relaxed max-w-[65ch] animate-slideUp delay-100">
-              Stop wasting time viewing properties that don't stack up. PropVisions tells you the numbers before you leave your desk.
-              Our AI looks at the listing photos and calculates renovation costs room-by-room, estimates rental income based on local data,
-              and shows you if the deal makes sense. You only visit properties that are worth your time.
+              PropVisions is a pre-screening tool. We check all the factors you'd normally research—photos, EPC ratings, rental comparables,
+              refurbishment costs, running expenses—and calculate if the numbers work. This lets you filter hundreds of portal listings down
+              to a shortlist of properties actually worth visiting. You still do site visits, professional valuations, and builder quotes.
+              We just make sure you only spend time on deals that pass the desk check.
             </p>
 
             <div className="p-4 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2">What you get in every report:</p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2">What we analyse in each report:</p>
               <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
-                <li>• Renovation cost breakdown (kitchen, bathroom, flooring, etc.)</li>
-                <li>• Monthly rental income estimate for your area</li>
-                <li>• Purchase costs, mortgage payments, running costs</li>
-                <li>• Cash flow and ROI calculations</li>
-                <li>• EPC rating and energy efficiency data</li>
-                <li>• Downloadable PDF to share with partners or lenders</li>
+                <li>• Photos - room condition, renovation needs, finish quality</li>
+                <li>• EPC data - current rating, energy costs, upgrade potential</li>
+                <li>• Local rental prices - comparable properties in the area</li>
+                <li>• Renovation costs - room-by-room breakdown with regional rates</li>
+                <li>• Purchase & running costs - stamp duty, mortgage, insurance, maintenance</li>
+                <li>• Cash flow & ROI - monthly profit, annual return, payback period</li>
               </ul>
+              <p className="text-xs text-slate-500 dark:text-slate-500 mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                This analysis helps you decide which properties deserve a site visit. It doesn't replace viewings, surveys, or professional quotes.
+              </p>
             </div>
 
             <div className="grid sm:grid-cols-2 gap-4 mt-8">
