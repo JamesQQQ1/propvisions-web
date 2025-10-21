@@ -95,6 +95,83 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* VALUE PROPOSITION - Time Savings & Business Growth */}
+      <section className="py-24 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 relative overflow-hidden">
+        {/* Background decoration */}
+        <div className="absolute inset-0 bg-gradient-mesh opacity-40" />
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-blue-400/20 dark:bg-blue-500/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-purple-400/20 dark:bg-purple-500/10 rounded-full blur-3xl" />
+        </div>
+
+        <div className="container relative z-10">
+          <div className="max-w-5xl mx-auto text-center space-y-8 mb-16">
+            <h2 className="text-4xl lg:text-5xl font-extrabold animate-slideUp">
+              Stop wasting time. <span className="text-gradient">Start scaling.</span>
+            </h2>
+
+            <p className="text-2xl text-slate-700 dark:text-slate-300 leading-relaxed max-w-[55ch] mx-auto font-medium animate-slideUp delay-100">
+              PropVisions doesn't just make analysis faster—it gives you back the hours you're losing to dead-end properties.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto mb-12">
+            {/* Time Reclaimed */}
+            <div className="rounded-2xl border-2 border-blue-200 dark:border-blue-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-8 hover:shadow-2xl hover:scale-105 transition-all duration-500 animate-scaleIn">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white text-3xl mb-6 shadow-lg">
+                ⏰
+              </div>
+              <h3 className="text-2xl font-bold mb-4 text-slate-900 dark:text-slate-100">
+                Reclaim Your Time
+              </h3>
+              <p className="text-slate-700 dark:text-slate-300 leading-relaxed mb-4">
+                <strong>Cut analyst hours in half.</strong> Stop manually checking photos, pulling EPC certificates, researching rental comps, and calculating ROI for properties that never had potential in the first place.
+              </p>
+              <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
+                <strong>Slash wasted viewings.</strong> Every site visit takes 2-3 hours when you factor in travel, walkthrough, and follow-up. PropVisions filters out the duds before you leave your desk—so you only visit properties that actually stack up on paper.
+              </p>
+            </div>
+
+            {/* Scale Without Hiring */}
+            <div className="rounded-2xl border-2 border-purple-200 dark:border-purple-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-8 hover:shadow-2xl hover:scale-105 transition-all duration-500 animate-scaleIn delay-100">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-3xl mb-6 shadow-lg">
+                📈
+              </div>
+              <h3 className="text-2xl font-bold mb-4 text-slate-900 dark:text-slate-100">
+                Scale Without Hiring
+              </h3>
+              <p className="text-slate-700 dark:text-slate-300 leading-relaxed mb-4">
+                <strong>Do more with your current team.</strong> Instead of hiring more analysts or sourcers, multiply your existing capacity. Process 100 properties in the time it used to take to manually analyze 10.
+              </p>
+              <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
+                <strong>Cut costs, not corners.</strong> Avoid the expense and hassle of recruitment, training, and onboarding. PropVisions handles the grunt work—your team focuses on high-value activities like client relationships, site visits that matter, and closing deals.
+              </p>
+            </div>
+          </div>
+
+          <div className="max-w-4xl mx-auto">
+            <div className="rounded-2xl border-2 border-emerald-200 dark:border-emerald-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm p-8 animate-slideUp delay-200">
+              <div className="flex flex-col md:flex-row items-start gap-6">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white text-3xl shadow-lg flex-shrink-0">
+                  🎯
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold mb-4 text-slate-900 dark:text-slate-100">
+                    Spend Time on What Actually Grows Your Business
+                  </h3>
+                  <p className="text-lg text-slate-700 dark:text-slate-300 leading-relaxed mb-4">
+                    Take back those hours and invest them where they matter: finding more off-market opportunities, building relationships with sellers and agents, spending quality time analyzing the properties worth analyzing, and nurturing your investor network.
+                  </p>
+                  <p className="text-lg text-slate-700 dark:text-slate-300 leading-relaxed">
+                    <strong>PropVisions is your pre-screening partner.</strong> We don't replace due diligence—we make sure you only do it on properties that deserve your attention. Filter smarter. Scale faster. Close better deals.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* POSITIONING with glassmorphism */}
       <section className="py-24 bg-slate-50 dark:bg-slate-900/50 relative overflow-hidden">
         {/* Background decoration */}

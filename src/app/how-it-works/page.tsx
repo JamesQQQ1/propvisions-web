@@ -37,6 +37,54 @@ export default function HowItWorksPage() {
         </div>
       </section>
 
+      {/* ROI & TIME SAVINGS */}
+      <section className="py-20 bg-gradient-to-br from-emerald-50 via-blue-50 to-purple-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-mesh opacity-30" />
+
+        <div className="container relative z-10">
+          <div className="max-w-4xl mx-auto text-center space-y-6 mb-12">
+            <h2 className="text-3xl lg:text-4xl font-bold animate-slideUp">
+              Your time is your most valuable asset. <span className="text-gradient">Stop wasting it.</span>
+            </h2>
+            <p className="text-xl text-slate-700 dark:text-slate-300 leading-relaxed animate-slideUp delay-100">
+              PropVisions gives you back the hours you're losing to manual analysis and dead-end property viewings—so you can focus on what actually scales your business.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            <div className="rounded-xl border-2 border-blue-200 dark:border-blue-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm p-6 hover:shadow-xl hover:scale-105 transition-all duration-500 animate-scaleIn">
+              <div className="text-4xl mb-4">⚡</div>
+              <h3 className="text-lg font-bold mb-2 text-slate-900 dark:text-slate-100">
+                Cut Analysis Time by 80%
+              </h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Stop manually checking photos, pulling EPCs, researching comps, and calculating ROI. Process 100 properties in the time it takes to analyze 10 manually.
+              </p>
+            </div>
+
+            <div className="rounded-xl border-2 border-purple-200 dark:border-purple-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm p-6 hover:shadow-xl hover:scale-105 transition-all duration-500 animate-scaleIn delay-100">
+              <div className="text-4xl mb-4">🎯</div>
+              <h3 className="text-lg font-bold mb-2 text-slate-900 dark:text-slate-100">
+                Only View Properties That Matter
+              </h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Every viewing takes 2-3 hours with travel. Filter out the duds before you leave your desk and reclaim those hours for high-value activities.
+              </p>
+            </div>
+
+            <div className="rounded-xl border-2 border-emerald-200 dark:border-emerald-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm p-6 hover:shadow-xl hover:scale-105 transition-all duration-500 animate-scaleIn delay-200">
+              <div className="text-4xl mb-4">📈</div>
+              <h3 className="text-lg font-bold mb-2 text-slate-900 dark:text-slate-100">
+                Scale Without Hiring
+              </h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Multiply your team's capacity without recruitment costs or onboarding hassle. Focus analyst time on deals worth closing, not grunt work.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* 3-STEP FLOW with premium cards */}
       <section className="py-24 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-radial opacity-50" />
