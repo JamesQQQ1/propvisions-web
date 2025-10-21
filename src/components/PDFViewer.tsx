@@ -11,7 +11,7 @@ export default function PDFViewer({ pdfUrl }: { pdfUrl: string }) {
   }, [pdfUrl]);
 
   return (
-    <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
+    <div className="rounded-xl border-2 border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-900">
       <div className="w-full" style={{ height: '72vh', minHeight: 480 }}>
         <iframe
           title="Report PDF"
@@ -20,14 +20,14 @@ export default function PDFViewer({ pdfUrl }: { pdfUrl: string }) {
         />
       </div>
 
-      <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-t">
-        <div className="text-xs text-slate-600 truncate">{pdfUrl}</div>
+      <div className="flex items-center justify-between px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border-t-2 border-slate-200 dark:border-slate-700">
+        <div className="text-xs text-slate-600 dark:text-slate-400 truncate">{pdfUrl}</div>
         <div className="flex items-center gap-2">
           <a
             href={pdfUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm rounded-md border px-3 py-1.5 hover:bg-white"
+            className="text-sm rounded-md border-2 border-slate-200 dark:border-slate-700 px-3 py-1.5 hover:bg-white dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors"
           >
             Open in new tab
           </a>
@@ -36,7 +36,7 @@ export default function PDFViewer({ pdfUrl }: { pdfUrl: string }) {
             target="_blank"
             rel="noopener noreferrer"
             download
-            className="text-sm inline-flex items-center rounded-md bg-blue-600 text-white px-3 py-1.5 hover:bg-blue-700"
+            className="text-sm inline-flex items-center rounded-md bg-blue-600 dark:bg-blue-500 text-white px-3 py-1.5 hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
           >
             Download PDF
           </a>

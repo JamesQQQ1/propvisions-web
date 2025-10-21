@@ -36,10 +36,10 @@ function Slider({
 }: { label: string; value: number; min: number; max: number; step: number; suffix?: string; onChange: (v:number)=>void }) {
   return (
     <div className="grid grid-cols-12 gap-3 items-center py-2">
-      <div className="col-span-4 text-sm text-slate-600">{label}</div>
-      <input className="col-span-6" type="range" min={min} max={max} step={step} value={value}
+      <div className="col-span-4 text-sm text-slate-600 dark:text-slate-400">{label}</div>
+      <input className="col-span-6 accent-blue-600 dark:accent-blue-500" type="range" min={min} max={max} step={step} value={value}
              onChange={(e)=>onChange(parseFloat(e.target.value))}/>
-      <div className="col-span-2 text-right text-sm font-medium">{value}{suffix}</div>
+      <div className="col-span-2 text-right text-sm font-medium text-slate-900 dark:text-slate-100">{value}{suffix}</div>
     </div>
   );
 }
@@ -77,8 +77,8 @@ export default function FinancialSliders(p: Props) {
   }, [a, p.priceGBP, p.refurbTotalGBP, p.rentMonthlyGBP]);
 
   return (
-    <div className="rounded-2xl border p-4 shadow-sm">
-      <h3 className="text-lg font-semibold mb-2">Financial assumptions</h3>
+    <div className="rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm">
+      <h3 className="text-lg font-semibold mb-2 text-slate-900 dark:text-slate-100">Financial assumptions</h3>
       <div className="space-y-1">
         <Slider label="Management" value={a.mgmtPct} min={0} max={25} step={0.5} suffix="%" onChange={v=>setA(x=>({...x, mgmtPct:v}))}/>
         <Slider label="Voids" value={a.voidsPct} min={0} max={25} step={0.5} suffix="%" onChange={v=>setA(x=>({...x, voidsPct:v}))}/>
@@ -90,16 +90,16 @@ export default function FinancialSliders(p: Props) {
 
       {/* numeric steppers for £ fields */}
       <div className="grid grid-cols-2 gap-3 mt-3">
-        <label className="text-sm text-slate-600">Insurance (£/yr)
-          <input type="number" className="mt-1 w-full rounded border p-2"
+        <label className="text-sm text-slate-600 dark:text-slate-400">Insurance (£/yr)
+          <input type="number" className="mt-1 w-full rounded border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                  value={a.insuranceAnnual} onChange={e=>setA(x=>({...x, insuranceAnnual:+e.target.value || 0}))}/>
         </label>
-        <label className="text-sm text-slate-600">Product fee (£)
-          <input type="number" className="mt-1 w-full rounded border p-2"
+        <label className="text-sm text-slate-600 dark:text-slate-400">Product fee (£)
+          <input type="number" className="mt-1 w-full rounded border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                  value={a.productFee} onChange={e=>setA(x=>({...x, productFee:+e.target.value || 0}))}/>
         </label>
-        <label className="text-sm text-slate-600">Stamp duty override (£)
-          <input type="number" className="mt-1 w-full rounded border p-2"
+        <label className="text-sm text-slate-600 dark:text-slate-400">Stamp duty override (£)
+          <input type="number" className="mt-1 w-full rounded border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                  placeholder="auto (5%)"
                  value={a.stampDutyOverride ?? ''}
                  onChange={e=>setA(x=>({...x, stampDutyOverride: e.target.value === '' ? null : (+e.target.value||0)}))}/>
@@ -121,9 +121,9 @@ export default function FinancialSliders(p: Props) {
 
 function KPI({label, value}:{label:string; value:string}) {
   return (
-    <div className="rounded-xl border p-3 shadow-sm bg-white">
-      <div className="text-slate-500">{label}</div>
-      <div className="text-lg font-semibold">{value}</div>
+    <div className="rounded-xl border-2 border-slate-200 dark:border-slate-700 p-3 shadow-sm bg-white dark:bg-slate-800">
+      <div className="text-slate-500 dark:text-slate-400 text-xs">{label}</div>
+      <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">{value}</div>
     </div>
   );
 }

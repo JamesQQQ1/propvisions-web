@@ -17,7 +17,7 @@ export default function FloatingChatButton({ propertyId }: FloatingChatButtonPro
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 w-16 h-16 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full shadow-2xl hover:shadow-blue-500/50 hover:scale-110 transition-all duration-300 flex items-center justify-center group animate-bounce-subtle"
+          className="fixed bottom-6 right-6 z-50 w-16 h-16 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full shadow-2xl hover:shadow-blue-500/50 dark:hover:shadow-blue-400/50 hover:scale-110 transition-all duration-300 flex items-center justify-center group animate-bounce-subtle"
           aria-label="Open Property Assistant"
         >
           <div className="relative">
@@ -27,13 +27,13 @@ export default function FloatingChatButton({ propertyId }: FloatingChatButtonPro
             </svg>
 
             {/* Notification Badge */}
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white animate-pulse"></div>
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 dark:bg-green-500 rounded-full border-2 border-white dark:border-slate-900 animate-pulse"></div>
           </div>
 
           {/* Tooltip on Hover */}
-          <div className="absolute right-full mr-3 px-4 py-2 bg-slate-900 text-white text-sm rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl">
+          <div className="absolute right-full mr-3 px-4 py-2 bg-slate-900 dark:bg-slate-800 text-white text-sm rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl">
             Need help? Ask me anything!
-            <div className="absolute top-1/2 -right-1 -translate-y-1/2 w-2 h-2 bg-slate-900 rotate-45"></div>
+            <div className="absolute top-1/2 -right-1 -translate-y-1/2 w-2 h-2 bg-slate-900 dark:bg-slate-800 rotate-45"></div>
           </div>
         </button>
       )}
@@ -41,12 +41,12 @@ export default function FloatingChatButton({ propertyId }: FloatingChatButtonPro
       {/* Floating Chat Window */}
       {isOpen && (
         <div className="fixed bottom-6 right-6 z-50 w-[90vw] max-w-md h-[600px] shadow-2xl rounded-2xl overflow-hidden animate-slideIn">
-          <div className="h-full flex flex-col bg-white rounded-2xl">
+          <div className="h-full flex flex-col bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-200 dark:border-slate-700">
             {/* Close Button */}
             <div className="absolute top-3 right-3 z-10">
               <button
                 onClick={() => setIsOpen(false)}
-                className="w-8 h-8 bg-white/90 hover:bg-white rounded-full shadow-lg flex items-center justify-center text-slate-600 hover:text-slate-900 transition-all"
+                className="w-8 h-8 bg-white/90 dark:bg-slate-800/90 hover:bg-white dark:hover:bg-slate-800 rounded-full shadow-lg flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 transition-all"
                 aria-label="Close chat"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
