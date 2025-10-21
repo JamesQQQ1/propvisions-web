@@ -96,13 +96,13 @@ export default function PricingPage() {
             <PlanCard
               index={2}
               name="Team"
-              price="£899"
+              price="£999"
               period="/month"
               description="For agencies and developers with multiple projects."
               cta="Book a demo"
               ctaHref="/book-demo"
               features={[
-                "100 property runs/month",
+                "150 property runs/month",
                 "All major UK portals (Rightmove, Zoopla, OnTheMarket, others)",
                 "Batch upload up to 25/run",
                 "Multi-user access (up to 10 seats)",
@@ -174,7 +174,7 @@ export default function PricingPage() {
                   feature="Monthly runs"
                   starter="10"
                   pro="50"
-                  team="100"
+                  team="150"
                   enterprise="Custom"
                   hoveredRow={hoveredRow}
                   setHoveredRow={setHoveredRow}
