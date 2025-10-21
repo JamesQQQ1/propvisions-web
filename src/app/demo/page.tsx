@@ -366,7 +366,7 @@ function DSCRGauge({ value }: { value?: number }) {
 
   return (
     <div className="inline-flex items-center gap-3">
-      <svg width="120" height="70" viewBox="0 0 100 60" aria-label="DSCR gauge">
+      <svg width="120" height="70" viewBox="0 0 100 60" aria-label="DSCR gauge" className="dark:[&_path:first-child]:stroke-slate-700 dark:[&_text]:fill-slate-100">
         <path d="M8,50 A42,42 0 1 1 92,50" fill="none" stroke="#e5e7eb" strokeWidth="8" strokeLinecap="round" />
         <path d={`M8,50 A42,42 0 ${pct > 0.5 ? 1 : 0} 1 ${x},${y}`} fill="none" stroke={tone} strokeWidth="8" strokeLinecap="round" />
         <path d="M63,14 L66,9" stroke="#9ca3af" strokeWidth="2" />
@@ -375,12 +375,12 @@ function DSCRGauge({ value }: { value?: number }) {
         </text>
       </svg>
       <div className="text-sm">
-        <div className="font-medium">
+        <div className="font-medium text-slate-900 dark:text-slate-100">
           <Tooltip text="Measures how comfortably rental income covers mortgage payments. DSCR > 1.25 is generally considered safe by lenders.">
             <span>DSCR (Month-1)</span>
           </Tooltip>
         </div>
-        <div className="text-slate-600">≥ 1.25 preferred by lenders</div>
+        <div className="text-slate-600 dark:text-slate-400">≥ 1.25 preferred by lenders</div>
       </div>
     </div>
   );
@@ -394,11 +394,11 @@ function MiniBars({ items }: { items: { label: string; value: number; fmt?: 'mon
         const width = Math.round((Math.abs(it.value) / max) * 100);
         return (
           <div key={i} className="flex items-center gap-2">
-            <div className="w-28 text-xs text-slate-600">{it.label}</div>
-            <div className="flex-1 h-3 bg-slate-100 rounded">
-              <div className="h-3 rounded bg-blue-500" style={{ width: `${width}%` }} />
+            <div className="w-28 text-xs text-slate-600 dark:text-slate-400">{it.label}</div>
+            <div className="flex-1 h-3 bg-slate-100 dark:bg-slate-700 rounded">
+              <div className="h-3 rounded bg-blue-500 dark:bg-blue-400" style={{ width: `${width}%` }} />
             </div>
-            <div className="w-24 text-right text-xs tabular-nums">
+            <div className="w-24 text-right text-xs tabular-nums text-slate-900 dark:text-slate-100">
               {it.fmt === 'money' ? money0(it.value) : it.value.toLocaleString()}
             </div>
           </div>
@@ -412,19 +412,19 @@ function MiniBars({ items }: { items: { label: string; value: number; fmt?: 'mon
 function StatusBadge({ status }: { status?: RunStatus | 'idle' }) {
   const color =
     status === 'completed'
-      ? 'bg-green-100 text-green-800 border-green-200'
+      ? 'bg-green-100 dark:bg-green-950/50 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800'
       : status === 'failed'
-      ? 'bg-red-100 text-red-800 border-red-200'
+      ? 'bg-red-100 dark:bg-red-950/50 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800'
       : status === 'queued' || status === 'processing'
-      ? 'bg-amber-100 text-amber-900 border-amber-200'
-      : 'bg-gray-100 text-gray-800 border-gray-200';
+      ? 'bg-amber-100 dark:bg-amber-950/50 text-amber-900 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+      : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700';
   return <span className={classNames('inline-block px-2 py-0.5 text-xs rounded border', color)}>{status || 'idle'}</span>;
 }
 function ProgressBar({ percent, show }: { percent: number; show: boolean }) {
   return (
     <div className={classNames('mt-3 w-full', !show && 'hidden')} aria-hidden={!show}>
-      <div className="h-2 w-full bg-slate-200/70 rounded overflow-hidden">
-        <div className="h-2 bg-blue-600 transition-[width] duration-300 ease-out will-change-[width]" style={{ width: `${Math.max(0, Math.min(100, percent))}%` }} />
+      <div className="h-2 w-full bg-slate-200/70 dark:bg-slate-700/70 rounded overflow-hidden">
+        <div className="h-2 bg-blue-600 dark:bg-blue-500 transition-[width] duration-300 ease-out will-change-[width]" style={{ width: `${Math.max(0, Math.min(100, percent))}%` }} />
       </div>
     </div>
   );
@@ -1365,12 +1365,12 @@ const roomTypes = useMemo(() => {
 
   const ScenarioKV = ({ obj }: { obj: any }) => {
     const safe = tryParseJSON(obj);
-    if (safe == null) return <div className="text-slate-500 text-sm">No data.</div>;
+    if (safe == null) return <div className="text-slate-500 dark:text-slate-400 text-sm">No data.</div>;
     if (Array.isArray(safe)) {
       return (
         <div className="space-y-2">
           {safe.map((row, i) => (
-            <div key={i} className="rounded border p-2">
+            <div key={i} className="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-2">
               <ScenarioKV obj={row} />
             </div>
           ))}
@@ -1386,7 +1386,7 @@ const roomTypes = useMemo(() => {
         </dl>
       );
     }
-    return <div className="text-xs font-mono text-slate-700 break-all">{String(safe)}</div>;
+    return <div className="text-xs font-mono text-slate-700 dark:text-slate-300 break-all">{String(safe)}</div>;
   };
 
   /* ---------- UI ---------- */
@@ -2030,7 +2030,7 @@ function FragmentKV({ k, v, formatCell, prettifyKey }: { k: string; v: any; form
   if (isObj || isArr) {
     return (
       <>
-        <dt className="text-slate-600 capitalize">{prettifyKey(k)}</dt>
+        <dt className="text-slate-600 dark:text-slate-400 capitalize">{prettifyKey(k)}</dt>
         <dd className="text-right">
           <DetailsDrawer label="Details">
             {isObj && (
@@ -2043,14 +2043,14 @@ function FragmentKV({ k, v, formatCell, prettifyKey }: { k: string; v: any; form
             {isArr && (
               <div className="space-y-1">
                 {(parsed as any[]).map((row, i) => (
-                  <div key={i} className="rounded border p-2">
+                  <div key={i} className="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-2">
                     {isPlainObject(row) ? (
                       <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
                         {Object.entries(row).map(([kk, vv]) => (
                           <FragmentKV key={kk} k={kk} v={vv} formatCell={formatCell} prettifyKey={prettifyKey} />
                         ))}
                       </dl>
-                    ) : <pre className="text-xs font-mono break-all">{String(row)}</pre>}
+                    ) : <pre className="text-xs font-mono text-slate-900 dark:text-slate-100 break-all">{String(row)}</pre>}
                   </div>
                 ))}
               </div>
@@ -2063,8 +2063,8 @@ function FragmentKV({ k, v, formatCell, prettifyKey }: { k: string; v: any; form
 
   return (
     <>
-      <dt className="text-slate-600 capitalize">{prettifyKey(k)}</dt>
-      <dd className="text-right">{formatCell(k, parsed)}</dd>
+      <dt className="text-slate-600 dark:text-slate-400 capitalize">{prettifyKey(k)}</dt>
+      <dd className="text-right text-slate-900 dark:text-slate-100 font-medium">{formatCell(k, parsed)}</dd>
     </>
   );
 }
