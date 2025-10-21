@@ -52,11 +52,14 @@ export default function PricingPage() {
               ctaHref="/book-demo"
               features={[
                 "10 property runs/month",
+                "Rightmove only (no other portals)",
                 "No batch upload (single only)",
                 "~5 min analysis per property",
                 "AI refurb pricing & EPC uplift",
                 "Rent/yield & valuation reports",
-                "Investor-ready PDF exports",
+                "No PDFs (investor or builder PDFs not included)",
+                "No connections to other tools",
+                "No CRM",
                 "Email support",
               ]}
               extraRunPrice="£15 each"
@@ -75,10 +78,13 @@ export default function PricingPage() {
               highlighted
               features={[
                 "50 property runs/month",
+                "All major UK portals (Rightmove, Zoopla, OnTheMarket, others)",
                 "Batch upload up to 10/run",
                 "Scenario modelling (BTL/Refurb/Sale)",
                 "Listing-change alerts",
-                "Builder-style cost PDF",
+                "Investor & builder PDFs included",
+                "No connections to other tools (mortgage triggers, CRMs, custom APIs not included)",
+                "No CRM",
                 "Priority support",
                 "Early access to new AI modules",
               ]}
@@ -97,12 +103,14 @@ export default function PricingPage() {
               ctaHref="/book-demo"
               features={[
                 "100 property runs/month",
+                "All major UK portals (Rightmove, Zoopla, OnTheMarket, others)",
                 "Batch upload up to 25/run",
                 "Multi-user access (up to 10 seats)",
                 "Shared dashboards & client links",
-                "API access for automation",
+                "Investor & builder PDFs included",
                 "White-label PDF branding",
-                "CRM/data integration support",
+                "No connections to other tools (mortgage triggers, CRMs, custom APIs not included)",
+                "No CRM",
                 "Phone & chat support",
               ]}
               extraRunPrice="£10 each"
@@ -119,9 +127,12 @@ export default function PricingPage() {
               cta="Contact sales"
               ctaHref="/contact"
               features={[
-                "Full system integration",
-                "Custom AI prompts & datasets",
+                "All major portals plus custom/regional portals and auction houses",
                 "Batch up to 100 properties/run",
+                "Investor & builder PDFs included",
+                "Connections to other tools allowed (mortgage rate triggers, external CRMs, custom APIs)",
+                "CRM features included (if needed)",
+                "Custom AI prompts & datasets",
                 "Dedicated account manager & SLA",
                 "Custom pricing per volume",
                 "Volume discounts available",
@@ -210,11 +221,11 @@ export default function PricingPage() {
                 />
                 <FeatureRow
                   index={5}
-                  feature="Supported portals (major UK portals; coverage varies)"
-                  starter="yes"
-                  pro="yes"
-                  team="yes"
-                  enterprise="yes"
+                  feature="Supported portals"
+                  starter="Rightmove only"
+                  pro="All major UK"
+                  team="All major UK"
+                  enterprise="All + custom/auction"
                   hoveredRow={hoveredRow}
                   setHoveredRow={setHoveredRow}
                 />
@@ -261,7 +272,7 @@ export default function PricingPage() {
                 <FeatureRow
                   index={10}
                   feature="Investor PDF & Builder PDF"
-                  starter="yes"
+                  starter="no"
                   pro="yes"
                   team="yes"
                   enterprise="yes"
@@ -270,10 +281,10 @@ export default function PricingPage() {
                 />
                 <FeatureRow
                   index={11}
-                  feature="API & integration access"
+                  feature="Connections to other tools (mortgage triggers, CRMs, custom APIs)"
                   starter="no"
                   pro="no"
-                  team="yes"
+                  team="no"
                   enterprise="yes"
                   hoveredRow={hoveredRow}
                   setHoveredRow={setHoveredRow}
@@ -300,21 +311,21 @@ export default function PricingPage() {
                 />
                 <FeatureRow
                   index={14}
-                  feature="Priority support / SLA"
+                  feature="CRM features"
                   starter="no"
-                  pro="Business hours"
-                  team="Phone & chat"
-                  enterprise="24×7 with SLA"
+                  pro="no"
+                  team="no"
+                  enterprise="yes"
                   hoveredRow={hoveredRow}
                   setHoveredRow={setHoveredRow}
                 />
                 <FeatureRow
                   index={15}
-                  feature="CRM & data integrations"
-                  starter="no"
-                  pro="limited"
-                  team="yes"
-                  enterprise="Yes custom"
+                  feature="Priority support / SLA"
+                  starter="Email only"
+                  pro="Business hours"
+                  team="Phone & chat"
+                  enterprise="24×7 with SLA"
                   hoveredRow={hoveredRow}
                   setHoveredRow={setHoveredRow}
                 />

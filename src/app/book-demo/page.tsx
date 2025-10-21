@@ -30,13 +30,13 @@ export default function BookDemoPage() {
   }, []);
 
   return (
-    <main className="bg-white">
+    <main className="bg-white dark:bg-slate-950">
       {/* HERO */}
       <section className="section pt-10">
         <div className="container grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
           {/* Left: copy + bullets */}
           <div className="lg:col-span-5 space-y-6">
-            <span className="badge" aria-label="Live demo">
+            <span className="badge dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300" aria-label="Live demo">
               <Dot color="#10b981" />
               Book your live demo
             </span>
@@ -51,11 +51,11 @@ export default function BookDemoPage() {
               get a free trial analysis credit.
             </p>
 
-            <ul className="small text-slate-700 space-y-2 list-disc pl-5">
+            <ul className="small text-slate-700 dark:text-slate-300 space-y-2 list-disc pl-5">
               <li>Watch a complete run from URL to export (typically under 5 minutes).</li>
               <li>See room-by-room refurb pricing, EPC matching, and rent estimates with confidence bands.</li>
               <li>Review investor PDF and Excel breakdown—adjust assumptions in real time.</li>
-              <li>Ask questions about pricing, integrations, and custom workflows.</li>
+              <li>Ask questions about pricing, connections to other tools, and custom workflows.</li>
             </ul>
 
             <div className="flex flex-wrap gap-3">
@@ -67,8 +67,8 @@ export default function BookDemoPage() {
               </Link>
             </div>
 
-            <div className="card p-4 small text-slate-600">
-              <strong>What happens after booking?</strong>
+            <div className="card p-4 small text-slate-600 dark:text-slate-400">
+              <strong className="text-slate-900 dark:text-slate-100">What happens after booking?</strong>
               <ol className="list-decimal pl-5 mt-2 space-y-1">
                 <li>Instant calendar invite sent to your email.</li>
                 <li>We'll send a free trial analysis credit before the call.</li>
@@ -80,14 +80,14 @@ export default function BookDemoPage() {
           {/* Right: Calendly embed */}
           <div className="lg:col-span-7">
             <div id="scheduler" className="card overflow-hidden">
-              <div className="card-header flex items-center justify-between">
-                <span className="small font-medium text-slate-900">Book a demo</span>
-                <span className="badge">30 mins • Google Meet</span>
+              <div className="card-header flex items-center justify-between dark:border-slate-800">
+                <span className="small font-medium text-slate-900 dark:text-slate-100">Book a demo</span>
+                <span className="badge dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300">30 mins • Google Meet</span>
               </div>
               <CalendlyFrame url={embedUrl} />
-              <div className="card-footer small">
+              <div className="card-footer small dark:border-slate-800">
                 Having trouble with the embed?{" "}
-                <a className="link" href={embedUrl} target="_blank" rel="noreferrer">
+                <a className="link dark:text-blue-400" href={embedUrl} target="_blank" rel="noreferrer">
                   Open Calendly in a new tab →
                 </a>
               </div>
@@ -98,7 +98,7 @@ export default function BookDemoPage() {
               {["Investors", "Agents", "Sourcers", "Auctions", "Lenders", "Analysts"].map((label) => (
                 <div
                   key={label}
-                  className="h-8 rounded-md border border-slate-200 grid place-items-center text-[11px] text-slate-500"
+                  className="h-8 rounded-md border border-slate-200 dark:border-slate-700 grid place-items-center text-[11px] text-slate-500 dark:text-slate-400"
                   aria-label={label}
                 >
                   {label}
@@ -116,7 +116,7 @@ export default function BookDemoPage() {
 function CalendlyFrame({ url }: { url: string }) {
   // Calendly recommends min-height ~ 720–900 for full flow
   return (
-    <div className="aspect-[4/5] w-full bg-white" style={{ minHeight: 780 }}>
+    <div className="aspect-[4/5] w-full bg-white dark:bg-slate-900" style={{ minHeight: 780 }}>
       <iframe
         title="Calendly scheduling"
         src={toCalendlyEmbedUrl(url)}
