@@ -23,7 +23,7 @@ function Tooltip({ children, text }: { children: React.ReactNode; text: string }
   return (
     <span className="group relative inline-block cursor-help">
       {children}
-      <span className="invisible group-hover:visible absolute z-10 w-64 p-2 mt-2 text-xs text-white bg-slate-800 rounded-lg shadow-lg -left-24 top-full">
+      <span className="invisible group-hover:visible absolute z-10 w-64 p-2 mt-2 text-xs text-white bg-slate-800 dark:bg-slate-700 rounded-lg shadow-lg -left-24 top-full">
         {text}
       </span>
     </span>
@@ -327,23 +327,23 @@ function KPI({
   label, value, subtitle, tone, big = true,
 }: { label: React.ReactNode; value: React.ReactNode; subtitle?: React.ReactNode; tone?: 'green'|'red'|'amber'|'slate'|'blue'; big?: boolean; }) {
   return (
-    <div className="rounded-xl border-2 border-slate-200 p-4 bg-gradient-to-br from-white to-slate-50 shadow-md hover:shadow-lg transition-all">
+    <div className="rounded-xl border-2 border-slate-200 dark:border-slate-700 p-4 bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 shadow-md hover:shadow-lg transition-all">
       <div className="flex items-center justify-between mb-2">
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">{label}</div>
+        <div className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">{label}</div>
         {tone && <Badge tone={tone}>{tone.toUpperCase()}</Badge>}
       </div>
-      <div className={classNames('font-bold text-slate-900', big ? 'text-3xl' : 'text-xl')}>{value}</div>
-      {subtitle && <div className="mt-2 text-xs text-slate-600 leading-relaxed">{subtitle}</div>}
+      <div className={classNames('font-bold text-slate-900 dark:text-slate-100', big ? 'text-3xl' : 'text-xl')}>{value}</div>
+      {subtitle && <div className="mt-2 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{subtitle}</div>}
     </div>
   );
 }
 function Section({ title, children, right, desc }: { title: string; children: React.ReactNode; right?: React.ReactNode; desc?: string }) {
   return (
-    <section className="bg-white border-2 border-slate-200 rounded-2xl shadow-lg p-6 md:p-8 hover:shadow-xl transition-shadow">
-      <div className="flex items-start md:items-center justify-between mb-4 pb-4 border-b-2 border-slate-100">
+    <section className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-6 md:p-8 hover:shadow-xl transition-shadow">
+      <div className="flex items-start md:items-center justify-between mb-4 pb-4 border-b-2 border-slate-100 dark:border-slate-800">
         <div className="flex-1">
-          <h3 className="text-2xl font-bold text-slate-900 mb-1">{title}</h3>
-          {desc && <p className="text-sm text-slate-600 leading-relaxed max-w-3xl">{desc}</p>}
+          <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-1">{title}</h3>
+          {desc && <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl">{desc}</p>}
         </div>
         {right && <div className="ml-4">{right}</div>}
       </div>
@@ -1391,49 +1391,56 @@ const roomTypes = useMemo(() => {
 
   /* ---------- UI ---------- */
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 bg-gradient-mesh opacity-30 dark:opacity-20 pointer-events-none" />
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 right-1/3 w-96 h-96 bg-blue-400/10 dark:bg-blue-500/5 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 left-1/3 w-96 h-96 bg-purple-400/10 dark:bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+      </div>
+
+      <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6 relative z-10">
         {/* Protected banner + logout */}
-        <div className="flex items-center justify-between rounded-xl border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 px-5 py-3 shadow-sm">
+        <div className="flex items-center justify-between rounded-xl border-2 border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 px-5 py-3 shadow-lg backdrop-blur-sm">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-md">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
             </div>
-            <p className="text-sm text-slate-700">
-              <span className="font-semibold">Protected Demo</span> – Use your unique <code className="px-1.5 py-0.5 bg-white/60 rounded text-xs font-mono">run_id</code> to preview completed property analysis
+            <p className="text-sm text-slate-700 dark:text-slate-300">
+              <span className="font-semibold">Protected Demo</span> – Use your unique <code className="px-1.5 py-0.5 bg-white/60 dark:bg-slate-800/80 rounded text-xs font-mono">run_id</code> to preview completed property analysis
             </p>
           </div>
-          <button onClick={handleLogout} className="text-sm font-medium rounded-lg border-2 border-slate-300 bg-white px-4 py-2 hover:bg-slate-50 hover:border-slate-400 transition-all shadow-sm" title="Sign out and return to access page">
+          <button onClick={handleLogout} className="text-sm font-medium rounded-lg border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400 dark:hover:border-slate-500 transition-all shadow-sm" title="Sign out and return to access page">
             Sign Out
           </button>
         </div>
 
       {/* Sticky header */}
-      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b-2 border-slate-200 shadow-sm rounded-b-xl mx-4 px-6 py-4">
+      <header className="sticky top-0 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b-2 border-slate-200 dark:border-slate-700 shadow-lg rounded-b-xl px-6 py-4">
         <div className="flex items-start md:items-center justify-between gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-3">
               <Image src={LOGO_SRC} alt="PropVisions Logo" width={120} height={32} priority className="h-10 w-auto md:h-12" />
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">PropVisions Demo</h1>
-                <p className="text-xs text-slate-500 mt-0.5">AI-Powered Property Investment Analysis</p>
+                <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">PropVisions Demo</h1>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">AI-Powered Property Investment Analysis</p>
               </div>
             </div>
-            <p className="text-sm text-slate-600 mt-2 max-w-2xl">Paste a property listing URL to start a new analysis, or toggle demo mode to load an existing <code className="px-1.5 py-0.5 bg-slate-100 rounded text-xs font-mono">run_id</code> result.</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 max-w-2xl">Paste a property listing URL to start a new analysis, or toggle demo mode to load an existing <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded text-xs font-mono">run_id</code> result.</p>
             <ProgressBar percent={progress} show={status === 'queued' || status === 'processing'} />
           </div>
 
           <div className="flex items-center gap-3">
             <StatusBadge status={status} />
             {(status === 'queued' || status === 'processing') && (
-              <span className="text-sm text-slate-600" aria-live="polite">
+              <span className="text-sm text-slate-600 dark:text-slate-400" aria-live="polite">
                 Elapsed: {Math.floor(elapsedMs / 1000 / 60)}m {Math.floor((elapsedMs / 1000) % 60)}s
               </span>
             )}
             {running && (
-              <button type="button" onClick={handleCancel} className="px-3 py-1.5 bg-slate-200 text-slate-800 rounded-lg hover:bg-slate-300">
+              <button type="button" onClick={handleCancel} className="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">
                 Stop
               </button>
             )}
@@ -1449,14 +1456,14 @@ const roomTypes = useMemo(() => {
             placeholder="https://… listing or auction URL"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            className="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 p-3 border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all"
             required
             inputMode="url"
           />
           <button
             type="submit"
             disabled={running || !url}
-            className="px-4 py-3 bg-blue-600 text-white rounded-lg disabled:opacity-50"
+            className="px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-md hover:shadow-lg transition-all"
             title={!url ? 'Enter a URL or use demo run' : 'Analyze'}
           >
             {running ? 'Running…' : 'Analyze'}
@@ -1464,8 +1471,8 @@ const roomTypes = useMemo(() => {
         </form>
 
         <div className="flex flex-wrap items-center gap-3 text-sm">
-          <label className="inline-flex items-center gap-2">
-            <input type="checkbox" className="accent-blue-600" checked={useDemo} onChange={(e) => setUseDemo(e.target.checked)} />
+          <label className="inline-flex items-center gap-2 text-slate-700 dark:text-slate-300">
+            <input type="checkbox" className="accent-blue-600 dark:accent-blue-500 w-4 h-4 rounded" checked={useDemo} onChange={(e) => setUseDemo(e.target.checked)} />
             Use demo run
           </label>
 
@@ -1474,7 +1481,7 @@ const roomTypes = useMemo(() => {
             value={demoRunId}
             onChange={(e) => setDemoRunId(e.target.value.trim())}
             placeholder="demo run_id (UUID)"
-            className="min-w-[22rem] flex-1 p-2 border rounded-md disabled:bg-slate-50"
+            className="min-w-[22rem] flex-1 p-2 border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-md disabled:bg-slate-50 dark:disabled:bg-slate-900 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-all"
             disabled={!useDemo}
           />
 
@@ -1482,7 +1489,7 @@ const roomTypes = useMemo(() => {
             type="button"
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); loadDemoRun((demoRunId || '').trim()); }}
             disabled={!useDemo || !(demoRunId || '').trim()}
-            className="px-3 py-2 bg-slate-200 rounded-md disabled:opacity-50"
+            className="px-3 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors font-medium"
             title="Load demo data using the run_id"
           >
             Load demo
@@ -1491,7 +1498,7 @@ const roomTypes = useMemo(() => {
       </section>
 
       {/* Error */}
-      {error && <div role="alert" className="border border-red-200 bg-red-50 text-red-800 rounded-lg p-3">{error}</div>}
+      {error && <div role="alert" className="border-2 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 text-red-800 dark:text-red-300 rounded-lg p-3 font-medium">{error}</div>}
 
       {/* Results */}
       {status === 'completed' && data && (
@@ -1501,12 +1508,12 @@ const roomTypes = useMemo(() => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Left: facts */}
               <div className="lg:col-span-2 space-y-2">
-                <h2 className="text-2xl font-semibold tracking-tight">{data.property?.property_title || 'Untitled property'}</h2>
-                <p className="text-slate-700">
+                <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">{data.property?.property_title || 'Untitled property'}</h2>
+                <p className="text-slate-700 dark:text-slate-300">
                   {data.property?.address}{data.property?.postcode ? `, ${data.property.postcode}` : ''}
                 </p>
 
-                <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-700 mt-1">
+                <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-700 dark:text-slate-300 mt-1">
                   <span><strong>Type:</strong> {data.property?.property_type || '—'}</span>
                   <span><strong>Tenure:</strong> {data.property?.tenure || '—'}</span>
                   <span><strong>Beds:</strong> {data.property?.bedrooms ?? '—'}</span>
@@ -1523,12 +1530,12 @@ const roomTypes = useMemo(() => {
                 {/* Floorplan gallery */}
                 {floorplans.length > 0 && (
                   <div className="mt-4">
-                    <h4 className="text-sm font-medium text-slate-700 mb-2">Floorplans</h4>
+                    <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Floorplans</h4>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                       {floorplans.slice(0, 6).map((src, i) => (
-                        <div key={i} className="rounded-lg border overflow-hidden bg-white">
+                        <div key={i} className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={src} alt={`Floorplan ${i + 1}`} className="w-full h-44 object-contain bg-white" loading="lazy" />
+                          <img src={src} alt={`Floorplan ${i + 1}`} className="w-full h-44 object-contain bg-white dark:bg-slate-900" loading="lazy" />
                         </div>
                       ))}
                     </div>
@@ -1543,13 +1550,13 @@ const roomTypes = useMemo(() => {
 
               {/* Right: media + links */}
               <div className="space-y-4">
-                <div className="rounded-lg overflow-hidden border">
+                <div className="rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
                   {data.property?.listing_images?.[0]
                     ? (<img src={data.property.listing_images[0]} alt="Property" className="w-full h-48 object-cover" loading="lazy" />)
-                    : (<div className="w-full h-48 flex items-center justify-center text-slate-500">No image</div>)}
+                    : (<div className="w-full h-48 flex items-center justify-center text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800">No image</div>)}
                 </div>
 
-                <div className="text-sm space-y-1">
+                <div className="text-sm space-y-1 text-slate-700 dark:text-slate-300">
                   <div>
                     <strong>Displayed Price:</strong>{' '}
                     {money0(
@@ -1558,9 +1565,9 @@ const roomTypes = useMemo(() => {
                       data.property?.asking_price_gbp ??
                       data.property?.display_price_gbp
                     )}{' '}
-                    <span className="text-slate-500">({data.property?.price_label || 'price'})</span>
+                    <span className="text-slate-500 dark:text-slate-400">({data.property?.price_label || 'price'})</span>
                   </div>
-                  <div className="text-slate-600">
+                  <div className="text-slate-600 dark:text-slate-400">
                     <span className="mr-3">Guide: {money0(data.property?.guide_price_gbp)}</span>
                     <span className="mr-3">Purchase: {money0(data.property?.purchase_price_gbp)}</span>
                     <span>Asking: {money0(data.property?.asking_price_gbp)}</span>
@@ -1568,11 +1575,11 @@ const roomTypes = useMemo(() => {
                 </div>
 
                 {/* Links & documents */}
-                <div className="rounded-lg border p-3">
-                  <h4 className="text-sm font-medium mb-2 text-slate-700">Links & Documents</h4>
+                <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-3">
+                  <h4 className="text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Links & Documents</h4>
                   <div className="flex flex-col gap-2">
                     {data.property?.listing_url ? (
-                      <a className="inline-flex items-center rounded-md border px-3 py-1.5 hover:bg-slate-50" href={data.property.listing_url} target="_blank" rel="noreferrer">View Listing</a>
+                      <a className="inline-flex items-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors" href={data.property.listing_url} target="_blank" rel="noreferrer">View Listing</a>
                     ) : <span className="text-slate-500">No listing URL</span>}
                     {data.property?.preview_url_investor_pack && (
                       <a className="inline-flex items-center rounded-md bg-blue-600 text-white px-3 py-1.5 hover:bg-blue-700" href={data.property.preview_url_investor_pack} target="_blank" rel="noopener noreferrer">Investor Pack (PDF)</a>
