@@ -18,9 +18,12 @@ export default function RoadmapPage() {
         </div>
 
         <div className="container relative z-10 max-w-4xl text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 dark:bg-blue-500/20 border border-blue-500/20 mb-6 animate-fadeIn">
-            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-            <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Product Roadmap</span>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/30 dark:border-emerald-500/30 mb-6 animate-fadeIn shadow-lg shadow-emerald-500/20">
+            <div className="relative flex items-center justify-center">
+              <div className="absolute w-3 h-3 rounded-full bg-emerald-500 animate-ping opacity-75" />
+              <div className="relative w-2 h-2 rounded-full bg-emerald-500" />
+            </div>
+            <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Active Development</span>
           </div>
 
           <h1 className="text-5xl sm:text-6xl font-extrabold leading-tight tracking-tight mb-6 animate-slideUp">
@@ -33,8 +36,25 @@ export default function RoadmapPage() {
             Enterprise customers get priority access and can influence the roadmap.
           </p>
 
-          <div className="inline-block px-6 py-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-sm font-medium animate-slideUp" style={{ animationDelay: '200ms' }}>
-            We're not actively building new roadmap items right now. Evaluation for future features begins in Q2 2026 and will be scheduled based on user demand.
+          <div className="inline-flex items-center gap-3 px-6 py-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-blue-50 to-purple-50 dark:from-emerald-950/30 dark:via-blue-950/30 dark:to-purple-950/30 border-2 border-emerald-200/50 dark:border-emerald-800/50 animate-slideUp shadow-xl" style={{ animationDelay: '200ms' }}>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <div className="absolute inset-0 rounded-full bg-emerald-500 blur-md opacity-50 animate-pulse" />
+                <div className="relative w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}>
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+              </div>
+              <div className="text-left">
+                <div className="text-sm font-bold text-slate-900 dark:text-slate-100">Currently Building</div>
+                <div className="text-xs text-slate-600 dark:text-slate-400">Nano Banana Image API Integration</div>
+              </div>
+            </div>
+            <div className="hidden sm:block h-8 w-px bg-slate-300 dark:bg-slate-700" />
+            <div className="text-xs text-slate-600 dark:text-slate-400">
+              Other features under evaluation for Q2 2026+
+            </div>
           </div>
         </div>
       </section>
@@ -60,13 +80,17 @@ export default function RoadmapPage() {
                   <div className={`
                     relative p-6 rounded-2xl border-2 transition-all duration-500
                     ${hoveredIndex === index
-                      ? 'border-blue-500 dark:border-blue-400 bg-blue-50/50 dark:bg-blue-950/50 shadow-xl shadow-blue-500/20 translate-x-2'
-                      : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:shadow-lg'
+                      ? 'border-blue-500 dark:border-blue-400 bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-blue-950/50 dark:via-slate-900 dark:to-purple-950/50 shadow-2xl shadow-blue-500/30 translate-x-2 scale-[1.02]'
+                      : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:shadow-xl hover:border-slate-300 dark:hover:border-slate-700'
                     }
                   `}>
                     {/* Priority Badge */}
                     {item.priority && (
-                      <div className="absolute -top-3 -right-3 px-3 py-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold shadow-lg animate-bounce">
+                      <div className="absolute -top-3 -right-3 px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-green-500 text-white text-xs font-bold shadow-lg shadow-emerald-500/50 flex items-center gap-1.5">
+                        <div className="relative flex items-center justify-center">
+                          <div className="absolute w-2 h-2 rounded-full bg-white animate-ping" />
+                          <div className="relative w-1.5 h-1.5 rounded-full bg-white" />
+                        </div>
                         {item.priority}
                       </div>
                     )}
@@ -74,13 +98,16 @@ export default function RoadmapPage() {
                     {/* Icon & Status */}
                     <div className="flex items-start gap-4">
                       <div className={`
-                        flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-500
+                        flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-500 relative
                         ${hoveredIndex === index
-                          ? 'bg-blue-500 text-white scale-110 rotate-6'
+                          ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white scale-110 rotate-6 shadow-lg shadow-blue-500/50'
                           : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                         }
                       `}>
-                        {item.icon}
+                        {hoveredIndex === index && (
+                          <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 blur-md opacity-50 animate-pulse" />
+                        )}
+                        <div className="relative">{item.icon}</div>
                       </div>
 
                       <div className="flex-1">
@@ -107,7 +134,7 @@ export default function RoadmapPage() {
                         {item.benefits && (
                           <div className="mt-3 flex flex-wrap gap-2">
                             {item.benefits.map((benefit, i) => (
-                              <span key={i} className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+                              <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 text-xs font-medium text-blue-700 dark:text-blue-300 transition-all duration-300 hover:scale-105 hover:shadow-md">
                                 <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
                                   <path d="M6 0L7.5 4.5L12 6L7.5 7.5L6 12L4.5 7.5L0 6L4.5 4.5L6 0Z" />
                                 </svg>
@@ -229,14 +256,12 @@ const ROADMAP_ITEMS = [
     icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 2v20M2 12h20" strokeLinecap="round" /></svg>,
     status: "Under evaluation starting Q2 2026",
     benefits: ["Better ROI accuracy", "Lender-ready reports"],
-    priority: undefined,
   },
   {
     title: "Multiple scenario modes",
     description: "BTL, HMO, Airbnb, Social Housing—each with tailored assumptions and regulatory considerations. Compare strategies instantly.",
     icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" strokeLinecap="round" /></svg>,
     status: "Under evaluation starting Q2 2026",
-    priority: undefined,
     benefits: ["Strategy comparison", "Regulatory checks"],
   },
   {

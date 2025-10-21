@@ -34,15 +34,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {/* Mobile header: dropdown (left) + logo (center) + CTA (right) */}
             <div className="flex md:hidden items-center justify-between gap-2">
               <NavSelect />
-              <Link href="/" className="flex items-center justify-center">
-                <Image
-                  src="/propvisions_logo_croped.png"
-                  alt="PropVisions logo"
-                  width={120}
-                  height={40}
-                  priority
-                />
-              </Link>
+              <div className="flex flex-col items-center gap-1">
+                <Link href="/" className="flex items-center justify-center">
+                  <Image
+                    src="/propvisions_logo_croped.png"
+                    alt="PropVisions logo"
+                    width={120}
+                    height={40}
+                    priority
+                  />
+                </Link>
+                {/* System Status Indicator - Mobile */}
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/30 dark:border-emerald-500/30">
+                  <div className="relative flex items-center justify-center">
+                    <div className="absolute w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping opacity-75" />
+                    <div className="relative w-1 h-1 rounded-full bg-emerald-500" />
+                  </div>
+                  <span className="text-[9px] font-semibold text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">Live</span>
+                </div>
+              </div>
               <div className="flex items-center gap-2">
                 <ThemeToggle />
                 <Link
@@ -56,15 +66,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
             {/* Desktop header */}
             <div className="hidden md:flex items-center justify-between">
-              <Link href="/" className="flex items-center gap-2">
-                <Image
-                  src="/propvisions_logo_croped.png"
-                  alt="PropVisions logo"
-                  width={96}
-                  height={24}
-                  priority
-                />
-              </Link>
+              <div className="flex items-center gap-4">
+                <Link href="/" className="flex items-center gap-2">
+                  <Image
+                    src="/propvisions_logo_croped.png"
+                    alt="PropVisions logo"
+                    width={96}
+                    height={24}
+                    priority
+                  />
+                </Link>
+                {/* System Status Indicator */}
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/30 dark:border-emerald-500/30">
+                  <div className="relative flex items-center justify-center">
+                    <div className="absolute w-2 h-2 rounded-full bg-emerald-500 animate-ping opacity-75" />
+                    <div className="relative w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  </div>
+                  <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">Live</span>
+                </div>
+              </div>
               <div className="flex items-center gap-4">
                 <nav className="flex items-center gap-4 text-sm">
                   <Link href="/" className="hover:text-brand-700">Home</Link>

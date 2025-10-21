@@ -53,7 +53,7 @@ export default function BookDemoPage() {
 
             <ul className="small text-slate-700 dark:text-slate-300 space-y-2 list-disc pl-5">
               <li>Watch a complete run from URL to export (typically under 5 minutes).</li>
-              <li>See room-by-room refurb pricing, EPC matching, and rent estimates with confidence bands.</li>
+              <li>See room-by-room refurb pricing, EPC matching, and rent estimates.</li>
               <li>Review investor PDF and Excel breakdown—adjust assumptions in real time.</li>
               <li>Ask questions about pricing, connections to other tools, and custom workflows.</li>
             </ul>
