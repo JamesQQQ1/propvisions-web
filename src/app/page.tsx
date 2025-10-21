@@ -132,7 +132,7 @@ export default function LandingPage() {
               {[
                 { icon: "🚀", title: "Batch upload", desc: "Process up to 100 properties at once" },
                 { icon: "🏠", title: "Photo-based refurb", desc: "Room-level pricing with regional rates" },
-                { icon: "📈", title: "Transparent estimates", desc: "Rent bands, valuations with confidence shown" },
+                { icon: "📈", title: "Transparent estimates", desc: "Rent estimates and valuations with full rationale" },
                 { icon: "⏱️", title: "Under 5 min per run", desc: "Fast analysis with export-ready outputs" }
               ].map((item, i) => (
                 <div
@@ -376,7 +376,7 @@ const FEATURES = [
   {
     icon: "📊",
     title: "Rent estimation & valuation",
-    desc: "Combines regional baselines with regression adjusted by listing signals. Outputs include rationale and confidence bands."
+    desc: "Combines regional baselines with regression adjusted by listing signals. Outputs include full rationale."
   },
   {
     icon: "💰",

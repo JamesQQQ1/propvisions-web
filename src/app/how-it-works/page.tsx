@@ -176,13 +176,13 @@ export default function HowItWorksPage() {
 
                 <p className="text-lg text-slate-700 dark:text-slate-300 leading-relaxed">
                   PropVisions combines regional rental baselines with regression models adjusted by listing signals
-                  (beds, location, condition). Output includes a rationale, confidence band, and post-refurb valuation estimate.
+                  (beds, location, condition). Output includes a rationale and post-refurb valuation estimate.
                 </p>
 
                 <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
                   <Info className="flex-shrink-0 mt-1" />
                   <p className="text-sm text-blue-900 dark:text-blue-200">
-                    All estimates include confidence bands and transparent rationale showing key drivers.
+                    All estimates include transparent rationale showing key drivers.
                   </p>
                 </div>
               </div>

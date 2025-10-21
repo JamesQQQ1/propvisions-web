@@ -297,13 +297,6 @@ const ROADMAP_ITEMS = [
     benefits: ["Signal extraction", "Auto flags"],
   },
   {
-    title: "Confidence scoring",
-    description: "See low/medium/high confidence bands for all estimates based on available data quality. Full transparency on how estimates are calculated.",
-    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M9 11l3 3L22 4" strokeLinecap="round" strokeLinejoin="round" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" strokeLinecap="round" strokeLinejoin="round" /></svg>,
-    status: "Under evaluation starting Q2 2026",
-    benefits: ["Transparency", "Data quality"],
-  },
-  {
     title: "Feedback learning",
     description: "When you edit and correct estimates, the system learns your preferences for specific areas and property types. Your personal AI assistant that gets smarter over time.",
     icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="3" /><path d="M12 1v6m0 6v6M5.6 5.6l4.2 4.2m4.2 4.2l4.2 4.2M1 12h6m6 0h6M5.6 18.4l4.2-4.2m4.2-4.2l4.2-4.2" strokeLinecap="round" /></svg>,
@@ -343,10 +336,6 @@ const LIMITATIONS = [
   {
     title: "Portal coverage",
     desc: "Best with Rightmove, Zoopla, OnTheMarket. Coverage varies by source. Unified search coming Q2 2025."
-  },
-  {
-    title: "Estimate confidence",
-    desc: "Depends on listing quality and local data. Wider ranges prompt manual review. Your edits improve baselines."
   },
   {
     title: "Run timing",
