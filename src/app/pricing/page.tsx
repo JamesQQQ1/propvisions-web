@@ -41,7 +41,7 @@ export default function PricingPage() {
       {/* Pricing Cards */}
       <section className="pb-16 relative">
         <div className="container max-w-7xl">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             <PlanCard
               index={0}
               name="Starter"
@@ -491,12 +491,12 @@ function PlanCard({
   return (
     <div
       className={`
-        relative rounded-2xl p-6 flex flex-col transition-all duration-500 animate-scaleIn
+        relative rounded-2xl flex flex-col transition-all duration-500 animate-scaleIn
         ${highlighted
           ? 'bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 p-[2px] shadow-2xl'
-          : 'border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'
+          : 'border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-6'
         }
-        ${isHovered ? 'scale-105 shadow-2xl' : 'hover:scale-[1.02] hover:shadow-xl'}
+        ${isHovered ? 'sm:scale-105 shadow-2xl' : 'sm:hover:scale-[1.02] hover:shadow-xl'}
       `}
       style={{ animationDelay: `${index * 100}ms` }}
       onMouseEnter={() => setHoveredCard(index)}
@@ -504,10 +504,10 @@ function PlanCard({
     >
       {highlighted ? (
         <>
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
+          <div className="absolute -top-2.5 sm:-top-3 left-1/2 -translate-x-1/2 px-3 sm:px-4 py-1 sm:py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] sm:text-xs font-bold rounded-full shadow-lg animate-pulse">
             Most popular
           </div>
-          <div className="rounded-2xl bg-white dark:bg-slate-900 p-6 flex flex-col h-full">
+          <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 sm:p-6 flex flex-col h-full">
             <CardContent
               name={name}
               price={price}
@@ -550,33 +550,20 @@ function CardContent({
   highlighted
 }: Omit<PlanCardProps, 'index' | 'hoveredCard' | 'setHoveredCard'>) {
   return (
-    <>
+    <div className="flex flex-col h-full">
       <div className="text-center">
-        <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{name}</h3>
-        <div className="mt-4 flex items-baseline justify-center gap-1">
-          <span className="text-4xl font-bold text-slate-900 dark:text-slate-100">{price}</span>
-          {period && <span className="text-slate-600 dark:text-slate-400">{period}</span>}
+        <h3 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-100">{name}</h3>
+        <div className="mt-3 sm:mt-4 flex items-baseline justify-center gap-1">
+          <span className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-slate-100">{price}</span>
+          {period && <span className="text-sm sm:text-base text-slate-600 dark:text-slate-400">{period}</span>}
         </div>
-        <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">{description}</p>
+        <p className="mt-2 sm:mt-3 text-xs sm:text-sm text-slate-600 dark:text-slate-400">{description}</p>
         {extraRunPrice && (
-          <p className="mt-2 text-xs text-slate-500 dark:text-slate-500">Extra runs: {extraRunPrice}</p>
+          <p className="mt-1.5 sm:mt-2 text-[10px] sm:text-xs text-slate-500 dark:text-slate-500">Extra runs: {extraRunPrice}</p>
         )}
       </div>
 
-      <Link
-        href={ctaHref}
-        className={`
-          mt-6 w-full text-center px-4 py-2.5 rounded-xl font-medium transition-all duration-300
-          ${highlighted
-            ? "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl hover:scale-105"
-            : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 hover:scale-105"
-          }
-        `}
-      >
-        {cta}
-      </Link>
-
-      <ul className="mt-6 space-y-3 text-sm text-slate-700 dark:text-slate-300 flex-1">
+      <ul className="mt-4 sm:mt-6 space-y-2 sm:space-y-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 flex-1">
         {features.map((f, i) => (
           <li key={i} className="flex items-start gap-2 group">
             <CheckIcon />
@@ -584,7 +571,20 @@ function CardContent({
           </li>
         ))}
       </ul>
-    </>
+
+      <Link
+        href={ctaHref}
+        className={`
+          mt-4 sm:mt-6 w-full inline-block text-center px-4 py-2 sm:py-2.5 rounded-xl text-sm font-medium transition-all duration-300
+          ${highlighted
+            ? "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl sm:hover:scale-105"
+            : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 sm:hover:scale-105"
+          }
+        `}
+      >
+        {cta}
+      </Link>
+    </div>
   );
 }
 

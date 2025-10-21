@@ -97,13 +97,6 @@ export default function HowItWorksPage() {
                           {step.desc}
                         </p>
                       </div>
-
-                      {/* Hover indicator */}
-                      {hoveredStep === i && (
-                        <div className="mt-2 flex items-center gap-2 text-blue-600 dark:text-blue-400 text-sm font-medium animate-fadeIn">
-                          Learn more <Arrow />
-                        </div>
-                      )}
                     </div>
                   </div>
                 </li>
