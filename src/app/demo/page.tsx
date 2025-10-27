@@ -1660,7 +1660,7 @@ const roomTypes = useMemo(() => {
             {/* Programme note */}
             <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-3 text-sm text-slate-700 dark:text-slate-300 mb-3">
               <strong>Programme note:</strong> Works duration is tracked in Scenarios → <em>Period Snapshot</em>.
-              {period?.months_refurb != null ? <> Current assumption: <strong>{Number(period.months_refurb)} months</strong>.</> : ' If not shown, the backend hasn't provided a refurb duration for this run.'}
+              {period?.months_refurb != null ? <> Current assumption: <strong>{Number(period.months_refurb)} months</strong>.</> : " If not shown, the backend hasn't provided a refurb duration for this run."}
             </div>
 
             {/* Cards (floorplan-ordered) */}

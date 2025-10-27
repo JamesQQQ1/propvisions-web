@@ -99,7 +99,7 @@ export default function FeedbackBar({
       </button>
       {choice && (
         <span className="ml-2 text-slate-500 dark:text-slate-400" role="status" aria-live="polite">
-          {choice === 'up' ? 'Thanks!' : 'Noted — we'll use this to improve.'}
+          {choice === 'up' ? 'Thanks!' : "Noted — we'll use this to improve."}
         </span>
       )}
     </div>

@@ -55,7 +55,7 @@ export function buildRoomsFromProperties(properties: any): any[] {
     return match || null;
   }
 
-  const rooms: UiRoom[] = [];
+  const rooms: any[] = [];
   const processedRoomNames = new Set<string>();
 
   // Process floorplan rooms (canonical order)
