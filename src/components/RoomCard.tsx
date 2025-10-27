@@ -56,12 +56,15 @@ function MiniBarChart({ rooms, maxRooms = 5 }: { rooms: UiRoom[]; maxRooms?: num
 export default function RoomCard({ room, allRooms = [], showCharts = false, pendingUploads = [] }: RoomCardProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  const images = room.image_urls;
+  const images = room.image_urls || room.imageUrls || [];
   const hasImages = images.length > 0;
-  const currentImage = hasImages ? images[currentImageIndex] : null;
+  const currentImage = hasImages ? images[currentImageIndex] : (room.primary_image || room.primaryImageUrl);
   const thumbnails = images.slice(1, 5); // Show up to 4 thumbnails
 
-  const isZeroCost = room.total_with_vat === 0;
+  const costWithVat = room.total_with_vat ?? room.costWithVat;
+  const costWithoutVat = room.total_without_vat ?? room.costWithoutVat;
+  const isZeroCost = costWithVat === 0;
+  const hasCostData = costWithVat !== null && costWithVat !== undefined;
 
   const nextImage = () => {
     if (images.length > 1) {
@@ -76,25 +79,50 @@ export default function RoomCard({ room, allRooms = [], showCharts = false, pend
   };
 
   // Format room subtitle with area and windows
+  const areaSqm = room.area_sqm ?? room.areaSqm;
+  const areaSqft = room.area_sq_ft ?? room.areaSqft;
+  const windowCount = room.window_count;
+
   const subtitle = [
-    room.area_sqm ? `${room.area_sqm.toFixed(1)} m²` : null,
-    room.area_sq_ft ? `${room.area_sq_ft.toFixed(1)} ft²` : null,
-    room.window_count ? `${room.window_count} window${room.window_count !== 1 ? 's' : ''}` : null,
+    areaSqm ? `${areaSqm.toFixed(1)} m²` : null,
+    areaSqft ? `${areaSqft.toFixed(1)} ft²` : null,
+    windowCount ? `${windowCount} window${windowCount !== 1 ? 's' : ''}` : null,
   ].filter(Boolean).join(' · ');
+
+  // Badges for special states
+  const showFloorplanOnlyBadge = room.source === 'floorplan-only';
+  const showNotInFloorplanBadge = room.inFloorplan === false;
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-lg hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-300 group max-w-full">
       {/* Header */}
       <div className="p-4 pb-2">
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 break-words">
-          {room.display_name}
-        </h3>
-        {room.floor && (
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">{room.floor} Floor</p>
-        )}
-        {subtitle && (
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{subtitle}</p>
-        )}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 break-words">
+              {room.display_name || room.displayName}
+            </h3>
+            {room.floor && (
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">{room.floor} Floor</p>
+            )}
+            {subtitle && (
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{subtitle}</p>
+            )}
+          </div>
+          {/* Badges */}
+          <div className="flex flex-col gap-1">
+            {showFloorplanOnlyBadge && (
+              <span className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full whitespace-nowrap">
+                No photo mapped
+              </span>
+            )}
+            {showNotInFloorplanBadge && (
+              <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 px-2 py-0.5 rounded-full whitespace-nowrap">
+                Not on floorplan
+              </span>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Image Section */}
@@ -159,8 +187,14 @@ export default function RoomCard({ room, allRooms = [], showCharts = false, pend
       )}
 
       <div className="p-4 pt-3">
-        {/* Cost Information or Zero Message */}
-        {isZeroCost ? (
+        {/* Cost Information or Status Messages */}
+        {!hasCostData ? (
+          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 text-center">
+            <p className="text-sm text-amber-800 dark:text-amber-300 font-medium">
+              Awaiting estimate
+            </p>
+          </div>
+        ) : isZeroCost ? (
           <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-4 text-center">
             <p className="text-sm text-green-800 dark:text-green-300 font-medium">
               No refurbishment work required for this room/area.
@@ -172,12 +206,12 @@ export default function RoomCard({ room, allRooms = [], showCharts = false, pend
             <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg p-4 shadow-sm">
               <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Total Refurbishment Cost</div>
               <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                {formatCurrency(room.total_with_vat)}
+                {formatCurrency(costWithVat)}
               </div>
               <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">Including VAT</div>
-              {room.total_without_vat && (
+              {costWithoutVat != null && (
                 <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Ex VAT: {formatCurrency(room.total_without_vat)}
+                  Ex VAT: {formatCurrency(costWithoutVat)}
                 </div>
               )}
             </div>

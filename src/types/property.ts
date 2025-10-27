@@ -13,11 +13,16 @@ export interface PropertyRoomTotal {
   total_without_vat: number | null;
   labour_total_gbp: number | null;
   materials_total_gbp: number | null;
+  image_id?: string | null; // Optional: used for precise cost-to-image joins
 }
 
 export interface PropertyRoomGroup {
+  route: string; // e.g., 'living_room', 'bedroom', etc.
   room_name: string;
-  image_urls: string[];
+  floor?: string | null;
+  image_urls?: string[];
+  primary_image_id?: string | null;
+  primary_image_url?: string | null;
 }
 
 export interface PropertyNotInFloorplan {

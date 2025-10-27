@@ -1,5 +1,9 @@
 // IMPORTANT: Uses ONLY the properties payload. No queries to labour/material tables.
 
+// Re-export new builder and types
+export { buildUiRooms, type UiRoom, type Route, type PropertyRow } from './rooms/buildUiRooms';
+export { normaliseRouteFromName, areSynonyms, getSynonymsForRoute } from './rooms/names';
+
 // Safe string utilities
 export function safeLower(s?: string | null): string {
   return (s && typeof s === 'string') ? s.toLowerCase() : '';
@@ -9,22 +13,10 @@ export function normalizeLabel(s?: string | null): string {
   return safeLower(s).trim().replace(/\s+/g, ' ');
 }
 
-export interface UiRoom {
-  room_name: string;
-  display_name: string;
-  floor: string | null;
-  room_type: string | null;
-  area_sqm: number | null;
-  area_sq_ft: number | null;
-  window_count: number | null;
-  primary_image: string | null;
-  image_urls: string[];
-  total_with_vat: number;
-  total_without_vat: number | null;
-  is_exterior: boolean;
-}
-
-export function buildRoomsFromProperties(properties: any): UiRoom[] {
+/**
+ * @deprecated Use buildUiRooms instead for better type safety and robust joins
+ */
+export function buildRoomsFromProperties(properties: any): any[] {
   if (!properties) return [];
 
   const floorplanMin = properties.floorplan_min || [];
@@ -132,8 +124,10 @@ export function buildRoomsFromProperties(properties: any): UiRoom[] {
   return rooms;
 }
 
-// Legacy export for compatibility
-export function buildRooms(properties: any): UiRoom[] {
+/**
+ * @deprecated Use buildUiRooms instead for better type safety and robust joins
+ */
+export function buildRooms(properties: any): any[] {
   return buildRoomsFromProperties(properties);
 }
 
@@ -147,9 +141,13 @@ export function formatCurrency(amount: number | null | undefined, decimals = 0):
   }).format(amount);
 }
 
-export function getTopRoomsByCost(rooms: UiRoom[], maxRooms = 5): UiRoom[] {
+export function getTopRoomsByCost(rooms: any[], maxRooms = 5): any[] {
   return rooms
-    .filter(r => r.total_with_vat > 0)
-    .sort((a, b) => b.total_with_vat - a.total_with_vat)
+    .filter(r => (r.total_with_vat || r.costWithVat || 0) > 0)
+    .sort((a, b) => {
+      const aVal = a.total_with_vat || a.costWithVat || 0;
+      const bVal = b.total_with_vat || b.costWithVat || 0;
+      return bVal - aVal;
+    })
     .slice(0, maxRooms);
 }

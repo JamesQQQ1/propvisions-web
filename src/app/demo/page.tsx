@@ -11,7 +11,7 @@ import FloatingChatButton from '@/components/FloatingChatButton';
 import MissingRoomRequestsCard, { useMissingRoomRequests, type PendingUpload } from '@/components/MissingRoomRequestsCard';
 import type { RefurbRoom } from '@/types/refurb';
 import type { UiRoom } from '@/lib/rooms';
-import { buildRoomsFromProperties, safeLower, normalizeLabel, formatCurrency } from '@/lib/rooms';
+import { buildUiRooms, safeLower, normalizeLabel, formatCurrency } from '@/lib/rooms';
 import PDFViewer from '@/components/PDFViewer';
 import FinancialSliders, {
   type Derived as SliderDerived,
@@ -703,10 +703,10 @@ export default function Page() {
   const baseRefurb = useMemo(() => sumV2Totals(data?.refurb_estimates), [data?.refurb_estimates]);
   const rollup     = useMemo(() => computeRefurbRollup(data?.property, data?.refurb_estimates), [data?.property, data?.refurb_estimates]);
 
-  // New refurb data processing using properties-only approach
+  // New refurb data processing using properties-only approach with robust joins
   const uiRooms = useMemo(() => {
     if (!data?.property) return [];
-    return buildRoomsFromProperties(data.property);
+    return buildUiRooms(data.property);
   }, [data?.property]);
 
   const hasRefurbData = uiRooms.length > 0;
