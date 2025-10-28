@@ -6,7 +6,6 @@ import Image from 'next/image';
 
 import { pollUntilDone, type RunStatus, startAnalyze, POLL_BUILD } from '@/lib/api';
 import RoomCard from '@/components/RoomCard';
-import FeedbackBar from '@/components/FeedbackBar';
 import FloatingChatButton from '@/components/FloatingChatButton';
 import MissingRoomRequestsCard, { useMissingRoomRequests, type PendingUpload } from '@/components/MissingRoomRequestsCard';
 import type { RefurbRoom } from '@/types/refurb';
@@ -30,35 +29,110 @@ function Tooltip({ children, text }: { children: React.ReactNode; text: string }
   );
 }
 
-/* ---------- Image Modal component ---------- */
-function ImageModal({ isOpen, onClose, images, title }: { isOpen: boolean; onClose: () => void; images: string[]; title: string }) {
-  if (!isOpen) return null;
+/* ---------- Professional Image Gallery with Carousel ---------- */
+function ImageGallery({ isOpen, onClose, images, title, startIndex = 0 }: { isOpen: boolean; onClose: () => void; images: string[]; title: string; startIndex?: number }) {
+  const [currentIndex, setCurrentIndex] = useState(startIndex);
+
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentIndex(startIndex);
+    }
+  }, [isOpen, startIndex]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft') setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+      if (e.key === 'ArrowRight') setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, images.length, onClose]);
+
+  if (!isOpen || images.length === 0) return null;
+
+  const goToPrevious = () => setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+  const goToNext = () => setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="relative max-w-6xl max-h-[90vh] w-full bg-white dark:bg-slate-900 rounded-xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
+    <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm" onClick={onClose}>
+      <div className="absolute inset-0 flex flex-col" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 bg-black/50 backdrop-blur-md border-b border-white/10">
+          <div>
+            <h3 className="text-xl font-semibold text-white">{title}</h3>
+            <p className="text-sm text-white/70">{currentIndex + 1} / {images.length}</p>
+          </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            aria-label="Close modal"
+            className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+            aria-label="Close gallery"
           >
-            <svg className="w-6 h-6 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-        <div className="overflow-auto max-h-[calc(90vh-80px)] p-4">
-          <div className="grid grid-cols-1 gap-4">
-            {images.map((src, i) => (
-              <div key={i} className="flex justify-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={src} alt={`${title} ${i + 1}`} className="max-w-full h-auto rounded-lg shadow-lg" />
-              </div>
-            ))}
-          </div>
+
+        {/* Main Image */}
+        <div className="flex-1 relative flex items-center justify-center p-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={images[currentIndex]}
+            alt={`${title} ${currentIndex + 1}`}
+            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+          />
+
+          {/* Navigation Arrows */}
+          {images.length > 1 && (
+            <>
+              <button
+                onClick={goToPrevious}
+                className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/50 hover:bg-black/70 text-white backdrop-blur-sm transition-all"
+                aria-label="Previous image"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                onClick={goToNext}
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/50 hover:bg-black/70 text-white backdrop-blur-sm transition-all"
+                aria-label="Next image"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </>
+          )}
         </div>
+
+        {/* Thumbnail Strip */}
+        {images.length > 1 && (
+          <div className="p-4 bg-black/50 backdrop-blur-md border-t border-white/10">
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
+              {images.map((src, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrentIndex(i)}
+                  className={classNames(
+                    'flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all',
+                    i === currentIndex
+                      ? 'border-blue-500 ring-2 ring-blue-500/50 scale-105'
+                      : 'border-white/20 hover:border-white/40'
+                  )}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={src} alt={`Thumbnail ${i + 1}`} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -531,6 +605,8 @@ export default function Page() {
   // Modals
   const [epcModalOpen, setEpcModalOpen] = useState(false);
   const [floorplanModalOpen, setFloorplanModalOpen] = useState(false);
+  const [listingGalleryOpen, setListingGalleryOpen] = useState(false);
+  const [listingGalleryStartIndex, setListingGalleryStartIndex] = useState(0);
 
   /* ---------- New Helpers ---------- */
   function normName(s?: string | null): string {
@@ -858,12 +934,6 @@ export default function Page() {
       { label: 'EPC Rating', value: `${p.epc_rating_current ?? p.epc_rating ?? '—'} → ${p.epc_rating_potential ?? '—'}`, subtitle: epc?.score_current && epc?.score_potential ? `scores: ${epc.score_current} → ${epc.score_potential}` : undefined },
     ];
   }, [data?.property, data?.financials, epc]);
-  
-
-  /* ---------- FEEDBACK: restrict to relevant places ---------- */
-  const showFinancialsFeedback = true; // one bar only, no duplicates
-  const showRentFeedback = true;
-  const showEpcFeedback  = true;
 
 /* ---------- ROOM GROUPING & GALLERY (room_totals is the truth) ---------- */
 
@@ -1547,6 +1617,43 @@ const roomTypes = useMemo(() => {
       {/* Results */}
       {status === 'completed' && data && (
         <div className="grid grid-cols-1 gap-6">
+          {/* Listing Images Gallery */}
+          {data.property?.listing_images && data.property.listing_images.length > 0 && (
+            <Section title="Property Images" desc="Click any image to view full size gallery with navigation">
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                {data.property.listing_images.slice(0, 12).map((src: string, i: number) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      setListingGalleryStartIndex(i);
+                      setListingGalleryOpen(true);
+                    }}
+                    className="relative aspect-[4/3] rounded-lg overflow-hidden border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 transition-all hover:scale-105 hover:shadow-xl group"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={src} alt={`Property image ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+                      <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                      </svg>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              {data.property.listing_images.length > 12 && (
+                <button
+                  onClick={() => {
+                    setListingGalleryStartIndex(0);
+                    setListingGalleryOpen(true);
+                  }}
+                  className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  View all {data.property.listing_images.length} images
+                </button>
+              )}
+            </Section>
+          )}
+
           {/* Property header */}
           <Section title="Property Overview" desc="Core listing facts and quick KPIs. Links and key documents are provided on the right.">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1621,10 +1728,6 @@ const roomTypes = useMemo(() => {
                   </div>
                 )}
 
-                <div className="mt-2">
-                  {/* Keep a single overview feedback if needed */}
-                  <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="financials" targetKey="overview" compact />
-                </div>
               </div>
 
               {/* Right: media + links */}
@@ -1759,16 +1862,31 @@ const roomTypes = useMemo(() => {
                 </div>
 
                 {/* Rollup strip */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-                  <KPI label="Rooms total (incl. VAT)" value={money0(rollup.rooms_total_with_vat)} subtitle={rollup.rooms_total_without_vat ? `ex-VAT ${money0(rollup.rooms_total_without_vat)}` : undefined} />
-                  <KPI label="Whole-house overheads" value={rollup.overheads_with_vat != null ? money0(rollup.overheads_with_vat) : '—'} subtitle={rollup.overheads_without_vat != null ? `ex-VAT ${money0(rollup.overheads_without_vat)}` : undefined} />
-                  <KPI label="EPC works" value={rollup.epc_total_with_vat != null ? money0(rollup.epc_total_with_vat) : '—'} subtitle={rollup.epc_total_without_vat != null ? `ex-VAT ${money0(rollup.epc_total_without_vat)}` : undefined} />
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                   <KPI
-                    label="Grand refurb (incl. VAT)"
-                    value={rollup.property_total_with_vat != null ? money0(rollup.property_total_with_vat) : money0((rollup.rooms_total_with_vat ?? 0) + nz(rollup.overheads_with_vat) + nz(rollup.epc_total_with_vat))}
-                    subtitle={rollup.property_total_without_vat != null ? `ex-VAT ${money0(rollup.property_total_without_vat)}` : undefined}
+                    label="Rooms Total"
+                    value={money0(rollup.rooms_total_with_vat)}
+                    subtitle={rollup.rooms_total_without_vat ? `ex-VAT: ${money0(rollup.rooms_total_without_vat)}` : undefined}
+                    tone="blue"
                   />
-                  <KPI label="V2 fallback (incl. VAT)" value={rollup.v2_total_with_vat_fallback ? money0(rollup.v2_total_with_vat_fallback) : '—'} subtitle="Displayed when project rollup is missing" />
+                  <KPI
+                    label="Overheads"
+                    value={rollup.overheads_with_vat != null ? money0(rollup.overheads_with_vat) : '—'}
+                    subtitle={rollup.overheads_without_vat != null ? `ex-VAT: ${money0(rollup.overheads_without_vat)}` : 'Whole-house costs'}
+                    tone="amber"
+                  />
+                  <KPI
+                    label="EPC Works"
+                    value={rollup.epc_total_with_vat != null ? money0(rollup.epc_total_with_vat) : '—'}
+                    subtitle={rollup.epc_total_without_vat != null ? `ex-VAT: ${money0(rollup.epc_total_without_vat)}` : 'Energy efficiency upgrades'}
+                    tone="green"
+                  />
+                  <KPI
+                    label="Total Refurbishment"
+                    value={rollup.property_total_with_vat != null ? money0(rollup.property_total_with_vat) : money0((rollup.rooms_total_with_vat ?? 0) + nz(rollup.overheads_with_vat) + nz(rollup.epc_total_with_vat))}
+                    subtitle={rollup.property_total_without_vat != null ? `ex-VAT: ${money0(rollup.property_total_without_vat)}` : undefined}
+                    tone="slate"
+                  />
                 </div>
 
                 {/* Totals table (from original rows; optional to keep) */}
@@ -1834,11 +1952,6 @@ const roomTypes = useMemo(() => {
             {data.property?.rent_rationale && (
               <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-3 text-sm text-slate-700 dark:text-slate-300 mb-3">
                 <strong className="text-slate-900 dark:text-slate-100">Rationale:</strong> {data.property.rent_rationale}
-              </div>
-            )}
-            {showRentFeedback && (
-              <div className="flex items-center justify-end">
-                <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="rent" />
               </div>
             )}
           </Section>
@@ -1926,9 +2039,6 @@ const roomTypes = useMemo(() => {
                 </div>
               </div>
             </div>
-            <div className="mt-3">
-              {showEpcFeedback && <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="epc" />}
-            </div>
           </Section>
 
           {/* Financial sliders + backend-calculated tables */}
@@ -1953,10 +2063,6 @@ const roomTypes = useMemo(() => {
                   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('metrics:refresh'));
                 }}
               />
-              <div className="mt-2 flex items-center gap-3">
-                {/* SINGLE feedback bar only (no duplicate thumbs in this section) */}
-                <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="financials" targetKey="summary" compact />
-              </div>
             </div>
 
             {/* Backend snapshot */}
@@ -2081,7 +2187,7 @@ const roomTypes = useMemo(() => {
               title="Scenarios (backend)"
               desc="Inputs feed two exit paths: a sale at stabilisation or a 24-month refinance. Each value is parsed from backend output. Click “Details” to expand embedded objects (e.g., fee breakdowns)."
             >
-              <div className="rounded-xl border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 text-sm text-blue-900 mb-4 shadow-sm">
+              <div className="rounded-xl border-2 border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 p-4 text-sm text-blue-900 dark:text-blue-100 mb-4 shadow-sm">
                 <div className="font-semibold mb-2 flex items-center gap-2">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -2148,18 +2254,25 @@ const roomTypes = useMemo(() => {
         <FloatingChatButton propertyId={data.property_id} />
       )}
 
-      {/* Image Modals */}
-      <ImageModal
+      {/* Image Galleries */}
+      <ImageGallery
         isOpen={epcModalOpen}
         onClose={() => setEpcModalOpen(false)}
         images={epcImages}
         title="EPC Certificates"
       />
-      <ImageModal
+      <ImageGallery
         isOpen={floorplanModalOpen}
         onClose={() => setFloorplanModalOpen(false)}
         images={floorplans}
         title="Floorplans"
+      />
+      <ImageGallery
+        isOpen={listingGalleryOpen}
+        onClose={() => setListingGalleryOpen(false)}
+        images={data?.property?.listing_images || []}
+        title="Property Images"
+        startIndex={listingGalleryStartIndex}
       />
     </main>
   );
@@ -2254,28 +2367,28 @@ function ScenariosTabs({ scenarios, ScenarioKV }: { scenarios: any; ScenarioKV: 
         <TabBtn id="period">Period (no refi)</TabBtn>
       </div>
 
-      <div className="rounded-lg border p-4 bg-white">
+      <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-4 bg-white dark:bg-slate-800">
         {tab === 'inputs' && (
           <>
-            <p className="text-sm text-slate-600 mb-3">Assumptions used to drive the scenarios below. Adjust in sliders to test sensitivities.</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">Assumptions used to drive the scenarios below. Adjust in sliders to test sensitivities.</p>
             <ScenarioKV obj={inputs} />
           </>
         )}
         {tab === 'sell' && (
           <>
-            <p className="text-sm text-slate-600 mb-3">Disposal economics assuming sale at stabilisation. Useful for flip comparisons.</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">Disposal economics assuming sale at stabilisation. Useful for flip comparisons.</p>
             <ScenarioKV obj={sell} />
           </>
         )}
         {tab === 'refi' && (
           <>
-            <p className="text-sm text-slate-600 mb-3">Refinance outcome after ~24 months of operations. Key: DSCR, loan size, and cash left in.</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">Refinance outcome after ~24 months of operations. Key: DSCR, loan size, and cash left in.</p>
             <ScenarioKV obj={refi} />
           </>
         )}
         {tab === 'period' && (
           <>
-            <p className="text-sm text-slate-600 mb-3">If no refinance occurs, this shows bridge facility, works phase, and operations during bridge.</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">If no refinance occurs, this shows bridge facility, works phase, and operations during bridge.</p>
             {isPlainObject(period) ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
