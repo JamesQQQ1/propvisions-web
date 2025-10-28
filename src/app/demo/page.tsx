@@ -30,6 +30,40 @@ function Tooltip({ children, text }: { children: React.ReactNode; text: string }
   );
 }
 
+/* ---------- Image Modal component ---------- */
+function ImageModal({ isOpen, onClose, images, title }: { isOpen: boolean; onClose: () => void; images: string[]; title: string }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="relative max-w-6xl max-h-[90vh] w-full bg-white dark:bg-slate-900 rounded-xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            aria-label="Close modal"
+          >
+            <svg className="w-6 h-6 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="overflow-auto max-h-[calc(90vh-80px)] p-4">
+          <div className="grid grid-cols-1 gap-4">
+            {images.map((src, i) => (
+              <div key={i} className="flex justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={src} alt={`${title} ${i + 1}`} className="max-w-full h-auto rounded-lg shadow-lg" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- demo mode config (REQUIRED) ---------- */
 const DEFAULT_DEMO_RUN_ID = '04faa6d2-6111-4ab5-a374-457d0a8fc4fb';
 console.debug('[demo-page] POLL_BUILD =', POLL_BUILD);
@@ -494,6 +528,10 @@ export default function Page() {
   const [sortKey, setSortKey] = useState<'total_desc' | 'total_asc' | 'room_asc' | 'room_order'>('room_order');
   const [minConfidence, setMinConfidence] = useState<number>(0);
 
+  // Modals
+  const [epcModalOpen, setEpcModalOpen] = useState(false);
+  const [floorplanModalOpen, setFloorplanModalOpen] = useState(false);
+
   /* ---------- New Helpers ---------- */
   function normName(s?: string | null): string {
     if (!s || typeof s !== 'string') return '';
@@ -796,24 +834,30 @@ export default function Page() {
   /* ---------- media helpers (floorplans + EPC) ---------- */
   const floorplans: string[] = useMemo(() => {
     const p = data?.property || {};
-    const arr = p.floorplan_images || p.floorplan_image_urls || p.floorplans || [];
+    const arr = p.floorplan_urls || p.floorplan_images || p.floorplan_image_urls || p.floorplans || [];
     return Array.isArray(arr) ? arr.filter(Boolean) : [];
   }, [data?.property]);
 
-  const epcImageUrl: string | null = useMemo(() => {
+  const epcImages: string[] = useMemo(() => {
     const p = data?.property || {};
-    return (p.epc_image_url || p.epc_certificate_image || p.epc?.image_url || null) || null;
+    // Support both plural (epc_image_urls) and singular (epc_image_url) for backward compatibility
+    const urls = p.epc_image_urls || (p.epc_image_url ? [p.epc_image_url] : null) || (p.epc_certificate_image ? [p.epc_certificate_image] : null) || (p.epc?.image_url ? [p.epc.image_url] : null) || [];
+    return Array.isArray(urls) ? urls.filter(Boolean) : [];
   }, [data?.property]);
 
   const tops = useMemo(() => {
     const p = data?.property || {};
+    // Determine which price label to use
+    const priceLabel = p.purchase_price_gbp ? 'Purchase Price' : p.guide_price_gbp ? 'Guide Price' : p.asking_price_gbp ? 'Asking Price' : 'Display Price';
+    const priceValue = p.purchase_price_gbp ?? p.guide_price_gbp ?? p.asking_price_gbp ?? p.display_price_gbp;
+
     return [
-      { label: 'Displayed Price', value: money0(p.purchase_price_gbp ?? p.guide_price_gbp ?? p.asking_price_gbp ?? p.display_price_gbp), subtitle: 'price' },
-      { label: 'Guide Price',     value: money0(p.guide_price_gbp) },
-      { label: 'Purchase Price',  value: money0(p.purchase_price_gbp) },
-      { label: 'EPC Potential',   value: String(p.epc_potential ?? p.epc_rating_potential ?? '—') },
+      { label: priceLabel, value: money0(priceValue), subtitle: 'acquisition' },
+      { label: 'Post-Refurb Valuation', value: money0(p.post_refurb_valuation_gbp), subtitle: 'estimated ARV' },
+      { label: 'Monthly Rent', value: money0(p.monthly_rent_gbp ?? (data.financials as any)?.monthly_rent_gbp), subtitle: `annual: ${money0(p.annual_rent_gbp ?? (data.financials as any)?.annual_rent_gbp)}` },
+      { label: 'EPC Rating', value: `${p.epc_rating_current ?? p.epc_rating ?? '—'} → ${p.epc_rating_potential ?? '—'}`, subtitle: epc?.score_current && epc?.score_potential ? `scores: ${epc.score_current} → ${epc.score_potential}` : undefined },
     ];
-  }, [data?.property]);
+  }, [data?.property, data?.financials, epc]);
   
 
   /* ---------- FEEDBACK: restrict to relevant places ---------- */
@@ -1519,9 +1563,31 @@ const roomTypes = useMemo(() => {
                   <span><strong>Beds:</strong> {data.property?.bedrooms ?? '—'}</span>
                   <span><strong>Baths:</strong> {data.property?.bathrooms ?? '—'}</span>
                   <span><strong>Receptions:</strong> {data.property?.receptions ?? '—'}</span>
-                  <span><strong>EPC:</strong> {epc?.current ?? '—'}</span>
-                  <span><strong>Area:</strong> {dims?.floorplan_total_area_sqm ?? data.property?.floorplan_total_area_sqm ?? '—'} m²</span>
+                  <span>
+                    <strong>
+                      <Tooltip text="Energy Performance Certificate rating. Measures property energy efficiency from A (best) to G (worst).">
+                        <span>EPC:</span>
+                      </Tooltip>
+                    </strong> {epc?.current ?? '—'}
+                  </span>
+                  <span><strong>Area:</strong> {dims?.floorplan_total_area_sqm ?? data.property?.floorplan_total_area_sqm ?? '—'} m²{dims?.floorplan_total_area_sq_ft ?? data.property?.floorplan_total_area_sq_ft ? ` / ${dims?.floorplan_total_area_sq_ft ?? data.property?.floorplan_total_area_sq_ft} sq ft` : ''}</span>
                 </div>
+
+                {/* Agent info */}
+                {(data.property?.agent_name || data.property?.agent_phone || data.property?.agent_email) && (
+                  <div className="mt-3 flex flex-wrap gap-2 items-center">
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Agent:</span>
+                    {data.property?.agent_name && (
+                      <Badge tone="slate">{data.property.agent_name}</Badge>
+                    )}
+                    {data.property?.agent_phone && (
+                      <a href={`tel:${data.property.agent_phone}`} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">{data.property.agent_phone}</a>
+                    )}
+                    {data.property?.agent_email && (
+                      <a href={`mailto:${data.property.agent_email}`} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">{data.property.agent_email}</a>
+                    )}
+                  </div>
+                )}
 
                 <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {tops.map((k) => (<KPI key={k.label} label={k.label} value={k.value} subtitle={k.subtitle} />))}
@@ -1530,15 +1596,28 @@ const roomTypes = useMemo(() => {
                 {/* Floorplan gallery */}
                 {floorplans.length > 0 && (
                   <div className="mt-4">
-                    <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Floorplans</h4>
+                    <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Floorplans (click to enlarge)</h4>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                       {floorplans.slice(0, 6).map((src, i) => (
-                        <div key={i} className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800">
+                        <button
+                          key={i}
+                          onClick={() => setFloorplanModalOpen(true)}
+                          className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800 hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer"
+                          title="Click to view full size"
+                        >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={src} alt={`Floorplan ${i + 1}`} className="w-full h-44 object-contain bg-white dark:bg-slate-900" loading="lazy" />
-                        </div>
+                        </button>
                       ))}
                     </div>
+                    {floorplans.length > 6 && (
+                      <button
+                        onClick={() => setFloorplanModalOpen(true)}
+                        className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        View all {floorplans.length} floorplans
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -1738,12 +1817,29 @@ const roomTypes = useMemo(() => {
 
           {/* Rent estimate feedback */}
           <Section title="Rent Estimate" desc="Modelled view based on local comps and normalised assumptions. Use feedback to correct the model if this looks off.">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-slate-600">Modelled rent: <strong>{money0((data.financials as any)?.monthly_rent_gbp)}</strong> / month</div>
-              {showRentFeedback && <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="rent" />}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <KPI
+                label="Monthly Rent"
+                value={money0(data.property?.monthly_rent_gbp ?? (data.financials as any)?.monthly_rent_gbp)}
+                subtitle="Gross rental income per month"
+                big={false}
+              />
+              <KPI
+                label="Annual Rent"
+                value={money0(data.property?.annual_rent_gbp ?? (data.financials as any)?.annual_rent_gbp ?? ((data.property?.monthly_rent_gbp ?? (data.financials as any)?.monthly_rent_gbp) ? (data.property?.monthly_rent_gbp ?? (data.financials as any)?.monthly_rent_gbp) * 12 : null))}
+                subtitle="Total annual rental income"
+                big={false}
+              />
             </div>
             {data.property?.rent_rationale && (
-              <div className="mt-3 text-xs text-slate-600"><strong>Model notes:</strong> {data.property.rent_rationale}</div>
+              <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-3 text-sm text-slate-700 dark:text-slate-300 mb-3">
+                <strong className="text-slate-900 dark:text-slate-100">Rationale:</strong> {data.property.rent_rationale}
+              </div>
+            )}
+            {showRentFeedback && (
+              <div className="flex items-center justify-end">
+                <FeedbackBar runId={runIdRef.current} propertyId={data.property_id} module="rent" />
+              </div>
             )}
           </Section>
 
@@ -1751,10 +1847,27 @@ const roomTypes = useMemo(() => {
           <Section
             title="EPC & Building Fabric"
             desc="Energy Performance Certificate (EPC) shows the property's energy efficiency rating from A (most efficient) to G (least efficient). The fabric section details heating systems, insulation, windows, and building construction. EPC improvement costs are included in the total refurbishment budget above."
-            right={epcImageUrl ? (
-              <div className="hidden md:block rounded-md overflow-hidden border ml-4">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={epcImageUrl} alt="EPC certificate" className="w-36 h-24 object-contain bg-white" />
+            right={epcImages.length > 0 ? (
+              <div className="hidden md:flex gap-2 ml-4">
+                {epcImages.slice(0, 2).map((src, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setEpcModalOpen(true)}
+                    className="rounded-md overflow-hidden border hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer"
+                    title="Click to view full size"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={src} alt={`EPC certificate ${i + 1}`} className="w-36 h-24 object-contain bg-white" />
+                  </button>
+                ))}
+                {epcImages.length > 2 && (
+                  <button
+                    onClick={() => setEpcModalOpen(true)}
+                    className="flex items-center justify-center w-36 h-24 rounded-md border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 hover:border-blue-500 dark:hover:border-blue-400 transition-colors text-sm text-slate-600 dark:text-slate-400 font-medium"
+                  >
+                    +{epcImages.length - 2} more
+                  </button>
+                )}
               </div>
             ) : null}
           >
@@ -1777,11 +1890,28 @@ const roomTypes = useMemo(() => {
               </div>
               <div className="flex items-center md:justify-end">
                 <div className="text-sm">
-                  {epcImageUrl && (
-                    <div className="mb-3 md:hidden">
-                      {/* Mobile EPC image */}
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={epcImageUrl} alt="EPC certificate" className="w-40 h-28 object-contain border rounded bg-white" />
+                  {epcImages.length > 0 && (
+                    <div className="mb-3 md:hidden flex gap-2 flex-wrap">
+                      {/* Mobile EPC images */}
+                      {epcImages.slice(0, 2).map((src, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setEpcModalOpen(true)}
+                          className="rounded-md overflow-hidden border hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer"
+                          title="Click to view full size"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={src} alt={`EPC certificate ${i + 1}`} className="w-40 h-28 object-contain border rounded bg-white" />
+                        </button>
+                      ))}
+                      {epcImages.length > 2 && (
+                        <button
+                          onClick={() => setEpcModalOpen(true)}
+                          className="flex items-center justify-center w-40 h-28 rounded-md border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 hover:border-blue-500 dark:hover:border-blue-400 transition-colors text-sm text-slate-600 dark:text-slate-400 font-medium"
+                        >
+                          +{epcImages.length - 2} more
+                        </button>
+                      )}
                     </div>
                   )}
                   {epc?.score_current != null && epc?.score_potential != null ? (
@@ -2017,6 +2147,20 @@ const roomTypes = useMemo(() => {
       {data?.property_id && (
         <FloatingChatButton propertyId={data.property_id} />
       )}
+
+      {/* Image Modals */}
+      <ImageModal
+        isOpen={epcModalOpen}
+        onClose={() => setEpcModalOpen(false)}
+        images={epcImages}
+        title="EPC Certificates"
+      />
+      <ImageModal
+        isOpen={floorplanModalOpen}
+        onClose={() => setFloorplanModalOpen(false)}
+        images={floorplans}
+        title="Floorplans"
+      />
     </main>
   );
 }
