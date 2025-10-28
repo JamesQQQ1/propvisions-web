@@ -194,14 +194,10 @@ function sumV2Totals(rows?: RefurbRoom[] | null) {
 function computeRefurbRollup(property: any, refurb_estimates: RefurbRoom[] | undefined | null) {
   const rows = Array.isArray(property?.room_totals) ? property.room_totals : [];
   const byType = (t: string) => rows.find((r: any) => r.type === t);
-  const findOH = rows.find(
-    (r: any) =>
-      safeLower(r.room_name).includes('overheads') ||
-      safeLower(r.room_name).includes('whole-house'),
-  );
 
   const epc = byType('epc_totals');
   const rooms = byType('rooms_totals');
+  const overheads = byType('overheads_totals'); // Use type='overheads_totals' instead of searching room_name
   const propertySum = rows.find((r: any) => 'property_total_with_vat' in r || 'property_total_without_vat' in r);
 
   const result: {
@@ -219,8 +215,8 @@ function computeRefurbRollup(property: any, refurb_estimates: RefurbRoom[] | und
     rooms_total_without_vat: n(rooms?.rooms_total_without_vat) ?? undefined,
     epc_total_with_vat: n(epc?.epc_total_with_vat) ?? undefined,
     epc_total_without_vat: n(epc?.epc_total_without_vat) ?? undefined,
-    overheads_with_vat: n(findOH?.total_with_vat) ?? undefined,
-    overheads_without_vat: n(findOH?.total_without_vat) ?? undefined,
+    overheads_with_vat: n(overheads?.overheads_total_with_vat) ?? undefined,
+    overheads_without_vat: n(overheads?.overheads_total_without_vat) ?? undefined,
     property_total_with_vat:
       n(propertySum?.property_total_with_vat) ??
       n(property?.property_total_with_vat) ??
@@ -435,23 +431,23 @@ function KPI({
   label, value, subtitle, tone, big = true,
 }: { label: React.ReactNode; value: React.ReactNode; subtitle?: React.ReactNode; tone?: 'green'|'red'|'amber'|'slate'|'blue'; big?: boolean; }) {
   return (
-    <div className="rounded-xl border-2 border-slate-200 dark:border-slate-700 p-4 bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 shadow-md hover:shadow-lg transition-all">
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">{label}</div>
+    <div className="group rounded-2xl border-2 border-slate-200 dark:border-slate-700 p-5 bg-gradient-to-br from-white via-white to-slate-50/50 dark:from-slate-800 dark:via-slate-850 dark:to-slate-900 shadow-lg hover:shadow-2xl hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-300 hover:-translate-y-0.5">
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400 leading-tight">{label}</div>
         {tone && <Badge tone={tone}>{tone.toUpperCase()}</Badge>}
       </div>
-      <div className={classNames('font-bold text-slate-900 dark:text-slate-100', big ? 'text-3xl' : 'text-xl')}>{value}</div>
-      {subtitle && <div className="mt-2 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{subtitle}</div>}
+      <div className={classNames('font-extrabold text-slate-900 dark:text-slate-50 tracking-tight leading-none mb-1', big ? 'text-4xl' : 'text-2xl')}>{value}</div>
+      {subtitle && <div className="mt-2.5 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{subtitle}</div>}
     </div>
   );
 }
 function Section({ title, children, right, desc }: { title: string; children: React.ReactNode; right?: React.ReactNode; desc?: string }) {
   return (
-    <section className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-6 md:p-8 hover:shadow-xl transition-shadow">
-      <div className="flex items-start md:items-center justify-between mb-4 pb-4 border-b-2 border-slate-100 dark:border-slate-800">
+    <section className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-3xl shadow-xl p-8 md:p-10 hover:shadow-2xl transition-all duration-300">
+      <div className="flex items-start md:items-center justify-between mb-6 pb-6 border-b-2 border-slate-100 dark:border-slate-800">
         <div className="flex-1">
-          <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-1">{title}</h3>
-          {desc && <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl">{desc}</p>}
+          <h3 className="text-3xl font-extrabold text-slate-900 dark:text-slate-50 mb-2 tracking-tight leading-tight">{title}</h3>
+          {desc && <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl font-medium">{desc}</p>}
         </div>
         {right && <div className="ml-4">{right}</div>}
       </div>
@@ -880,7 +876,7 @@ export default function Page() {
         return false;
       });
 
-      if (matchingRoom) {
+      if (matchingRoom && matchingRoom.room_name) {
         const existing = map.get(matchingRoom.room_name) || [];
         map.set(matchingRoom.room_name, [...existing, req]);
       }
@@ -1411,9 +1407,9 @@ function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
 
     // Apply sorting
     if (sortKey === 'total_desc') {
-      list = [...list].sort((a, b) => b.total_with_vat - a.total_with_vat);
+      list = [...list].sort((a, b) => (b.total_with_vat ?? 0) - (a.total_with_vat ?? 0));
     } else if (sortKey === 'total_asc') {
-      list = [...list].sort((a, b) => a.total_with_vat - b.total_with_vat);
+      list = [...list].sort((a, b) => (a.total_with_vat ?? 0) - (b.total_with_vat ?? 0));
     }
 
     return list;
@@ -1513,36 +1509,36 @@ const roomTypes = useMemo(() => {
         <div className="absolute bottom-1/4 left-1/3 w-96 h-96 bg-purple-400/10 dark:bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
       </div>
 
-      <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6 relative z-10">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto space-y-8 relative z-10">
         {/* Protected banner + logout */}
-        <div className="flex items-center justify-between rounded-xl border-2 border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 px-5 py-3 shadow-lg backdrop-blur-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-md">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="flex items-center justify-between rounded-2xl border-2 border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 px-6 py-4 shadow-xl backdrop-blur-sm">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
             </div>
-            <p className="text-sm text-slate-700 dark:text-slate-300">
-              <span className="font-semibold">Protected Demo</span> – Use your unique <code className="px-1.5 py-0.5 bg-white/60 dark:bg-slate-800/80 rounded text-xs font-mono">run_id</code> to preview completed property analysis
+            <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">
+              <span className="font-bold">Protected Demo</span> – Use your unique <code className="px-2 py-1 bg-white/70 dark:bg-slate-800/90 rounded text-xs font-mono font-semibold">run_id</code> to preview completed property analysis
             </p>
           </div>
-          <button onClick={handleLogout} className="text-sm font-medium rounded-lg border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400 dark:hover:border-slate-500 transition-all shadow-sm" title="Sign out and return to access page">
+          <button onClick={handleLogout} className="text-sm font-semibold rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-5 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400 dark:hover:border-slate-500 transition-all shadow-md hover:shadow-lg" title="Sign out and return to access page">
             Sign Out
           </button>
         </div>
 
       {/* Sticky header */}
-      <header className="sticky top-0 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b-2 border-slate-200 dark:border-slate-700 shadow-lg rounded-b-xl px-6 py-4">
+      <header className="sticky top-0 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b-2 border-slate-200 dark:border-slate-700 shadow-xl rounded-b-2xl px-8 py-6">
         <div className="flex items-start md:items-center justify-between gap-4">
           <div className="flex-1">
-            <div className="flex items-center gap-3">
-              <Image src={LOGO_SRC} alt="PropVisions Logo" width={120} height={32} priority className="h-10 w-auto md:h-12" />
+            <div className="flex items-center gap-4">
+              <Image src={LOGO_SRC} alt="PropVisions Logo" width={140} height={36} priority className="h-12 w-auto md:h-14" />
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">PropVisions Demo</h1>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">AI-Powered Property Investment Analysis</p>
+                <h1 className="text-3xl md:text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent tracking-tight">PropVisions Demo</h1>
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 tracking-wide">AI-POWERED PROPERTY INVESTMENT ANALYSIS</p>
               </div>
             </div>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 max-w-2xl">Paste a property listing URL to start a new analysis, or toggle demo mode to load an existing <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded text-xs font-mono">run_id</code> result.</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-3 max-w-2xl font-medium leading-relaxed">Paste a property listing URL to start a new analysis, or toggle demo mode to load an existing <code className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded text-xs font-mono font-semibold">run_id</code> result.</p>
             <ProgressBar percent={progress} show={status === 'queued' || status === 'processing'} />
           </div>
 
@@ -1617,54 +1613,17 @@ const roomTypes = useMemo(() => {
       {/* Results */}
       {status === 'completed' && data && (
         <div className="grid grid-cols-1 gap-6">
-          {/* Listing Images Gallery */}
-          {data.property?.listing_images && data.property.listing_images.length > 0 && (
-            <Section title="Property Images" desc="Click any image to view full size gallery with navigation">
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                {data.property.listing_images.slice(0, 12).map((src: string, i: number) => (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      setListingGalleryStartIndex(i);
-                      setListingGalleryOpen(true);
-                    }}
-                    className="relative aspect-[4/3] rounded-lg overflow-hidden border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 transition-all hover:scale-105 hover:shadow-xl group"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={src} alt={`Property image ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
-                      <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                      </svg>
-                    </div>
-                  </button>
-                ))}
-              </div>
-              {data.property.listing_images.length > 12 && (
-                <button
-                  onClick={() => {
-                    setListingGalleryStartIndex(0);
-                    setListingGalleryOpen(true);
-                  }}
-                  className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-                >
-                  View all {data.property.listing_images.length} images
-                </button>
-              )}
-            </Section>
-          )}
-
           {/* Property header */}
-          <Section title="Property Overview" desc="Core listing facts and quick KPIs. Links and key documents are provided on the right.">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Section title="Property Overview" desc="Comprehensive listing details, key property metrics, and essential documentation. Review the property specifications and investment highlights below.">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Left: facts */}
-              <div className="lg:col-span-2 space-y-2">
-                <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">{data.property?.property_title || 'Untitled property'}</h2>
-                <p className="text-slate-700 dark:text-slate-300">
+              <div className="lg:col-span-2 space-y-4">
+                <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50 leading-tight">{data.property?.property_title || 'Untitled property'}</h2>
+                <p className="text-base text-slate-700 dark:text-slate-300 font-medium">
                   {data.property?.address}{data.property?.postcode ? `, ${data.property.postcode}` : ''}
                 </p>
 
-                <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-700 dark:text-slate-300 mt-1">
+                <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm text-slate-700 dark:text-slate-300 mt-3">
                   <span><strong>Type:</strong> {data.property?.property_type || '—'}</span>
                   <span><strong>Tenure:</strong> {data.property?.tenure || '—'}</span>
                   <span><strong>Beds:</strong> {data.property?.bedrooms ?? '—'}</span>
@@ -1701,30 +1660,34 @@ const roomTypes = useMemo(() => {
                 </div>
 
                 {/* Floorplan gallery */}
-                {floorplans.length > 0 && (
-                  <div className="mt-4">
-                    <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Floorplans (click to enlarge)</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {floorplans && floorplans.length > 0 ? (
+                  <div className="mt-6">
+                    <h4 className="text-base font-bold text-slate-900 dark:text-slate-50 mb-4 tracking-tight">Property Floorplans</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       {floorplans.slice(0, 6).map((src, i) => (
                         <button
                           key={i}
                           onClick={() => setFloorplanModalOpen(true)}
-                          className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800 hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer"
+                          className="rounded-xl border-2 border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800 hover:border-blue-500 dark:hover:border-blue-400 transition-all hover:shadow-lg cursor-pointer"
                           title="Click to view full size"
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={src} alt={`Floorplan ${i + 1}`} className="w-full h-44 object-contain bg-white dark:bg-slate-900" loading="lazy" />
+                          <img src={src} alt={`Floorplan ${i + 1}`} className="w-full h-44 object-contain bg-white dark:bg-slate-900 p-2" loading="lazy" />
                         </button>
                       ))}
                     </div>
                     {floorplans.length > 6 && (
                       <button
                         onClick={() => setFloorplanModalOpen(true)}
-                        className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                        className="mt-3 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
                       >
-                        View all {floorplans.length} floorplans
+                        View all {floorplans.length} floorplans →
                       </button>
                     )}
+                  </div>
+                ) : (
+                  <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
+                    <p className="text-sm text-slate-600 dark:text-slate-400">No floorplans available for this property</p>
                   </div>
                 )}
 
@@ -1757,20 +1720,20 @@ const roomTypes = useMemo(() => {
                 </div>
 
                 {/* Links & documents */}
-                <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-3">
-                  <h4 className="text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Links & Documents</h4>
-                  <div className="flex flex-col gap-2">
+                <div className="rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4">
+                  <h4 className="text-base font-bold mb-3 text-slate-900 dark:text-slate-50 tracking-tight">Links & Documents</h4>
+                  <div className="flex flex-col gap-3">
                     {data.property?.listing_url ? (
-                      <a className="inline-flex items-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors" href={data.property.listing_url} target="_blank" rel="noreferrer">View Listing</a>
-                    ) : <span className="text-slate-500">No listing URL</span>}
+                      <a className="inline-flex items-center justify-center rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400 dark:hover:border-slate-500 transition-all shadow-sm hover:shadow-md font-semibold text-sm" href={data.property.listing_url} target="_blank" rel="noreferrer">View Original Listing</a>
+                    ) : <span className="text-slate-500 text-sm">No listing URL</span>}
                     {data.property?.preview_url_investor_pack && (
-                      <a className="inline-flex items-center rounded-md bg-blue-600 text-white px-3 py-1.5 hover:bg-blue-700" href={data.property.preview_url_investor_pack} target="_blank" rel="noopener noreferrer">Investor Pack (PDF)</a>
+                      <a className="inline-flex items-center justify-center rounded-xl bg-blue-600 text-white px-4 py-2.5 hover:bg-blue-700 transition-all shadow-md hover:shadow-lg font-semibold text-sm" href={data.property.preview_url_investor_pack} target="_blank" rel="noopener noreferrer">Investor Pack (PDF)</a>
                     )}
                     {data.property?.preview_url_builders_quote && (
-                      <a className="inline-flex items-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors" href={data.property.preview_url_builders_quote} target="_blank" rel="noopener noreferrer">Builder's Quote (PDF)</a>
+                      <a className="inline-flex items-center justify-center rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400 dark:hover:border-slate-500 transition-all shadow-sm hover:shadow-md font-semibold text-sm" href={data.property.preview_url_builders_quote} target="_blank" rel="noopener noreferrer">Builder's Quote (PDF)</a>
                     )}
                     {data.property?.brochure_urls?.[0] && (
-                      <a className="inline-flex items-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors" href={data.property.brochure_urls[0]} target="_blank" rel="noopener noreferrer">Agent Brochure</a>
+                      <a className="inline-flex items-center justify-center rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400 dark:hover:border-slate-500 transition-all shadow-sm hover:shadow-md font-semibold text-sm" href={data.property.brochure_urls[0]} target="_blank" rel="noopener noreferrer">Agent Brochure (PDF)</a>
                     )}
                   </div>
                 </div>
@@ -1856,7 +1819,7 @@ const roomTypes = useMemo(() => {
                       room={room}
                       showCharts={true}
                       allRooms={uiRooms}
-                      pendingUploads={roomUploadsMap.get(room.room_name) || []}
+                      pendingUploads={roomUploadsMap.get(room.room_name || '') || []}
                     />
                   ))}
                 </div>
@@ -1890,36 +1853,36 @@ const roomTypes = useMemo(() => {
                 </div>
 
                 {/* Totals table (from original rows; optional to keep) */}
-                <div className="overflow-x-auto">
-                  <table className="w-full border border-slate-200 dark:border-slate-700 text-sm">
+                <div className="overflow-x-auto rounded-xl border-2 border-slate-200 dark:border-slate-700">
+                  <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-800">
-                        <th className="p-2 text-left text-slate-900 dark:text-slate-100">Room</th>
-                        <th className="p-2 text-right text-slate-900 dark:text-slate-100">Total (with VAT)</th>
-                        <th className="p-2 text-right text-slate-900 dark:text-slate-100">Total (ex VAT)</th>
-                        <th className="p-2 text-right text-slate-900 dark:text-slate-100">Conf.</th>
+                      <tr className="bg-slate-100 dark:bg-slate-800 border-b-2 border-slate-200 dark:border-slate-700">
+                        <th className="p-4 text-left text-slate-900 dark:text-slate-50 font-bold">Room</th>
+                        <th className="p-4 text-right text-slate-900 dark:text-slate-50 font-bold">Total (with VAT)</th>
+                        <th className="p-4 text-right text-slate-900 dark:text-slate-50 font-bold">Total (ex VAT)</th>
+                        <th className="p-4 text-right text-slate-900 dark:text-slate-50 font-bold">Conf.</th>
                       </tr>
                     </thead>
                     <tbody>
                       {uiRooms.map((room) => (
-                        <tr key={room.room_name} className="border-t border-slate-200 dark:border-slate-700">
-                          <td className="p-2 capitalize text-slate-900 dark:text-slate-100">{room.display_name}</td>
-                          <td className="p-2 text-right font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(room.total_with_vat)}</td>
-                          <td className="p-2 text-right text-slate-700 dark:text-slate-300">{formatCurrency(room.total_without_vat || 0)}</td>
-                          <td className="p-2 text-right text-slate-700 dark:text-slate-300">{room.confidence != null ? `${Math.round(room.confidence * 100)}%` : '—'}</td>
+                        <tr key={room.room_name} className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                          <td className="p-4 capitalize text-slate-900 dark:text-slate-100 font-medium">{room.display_name}</td>
+                          <td className="p-4 text-right font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(room.total_with_vat ?? 0)}</td>
+                          <td className="p-4 text-right text-slate-700 dark:text-slate-300">{formatCurrency(room.total_without_vat || 0)}</td>
+                          <td className="p-4 text-right text-slate-700 dark:text-slate-300">—</td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
-                      <tr className="border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
-                        <td className="p-2 text-right font-medium text-slate-900 dark:text-slate-100">Totals</td>
-                        <td className="p-2 text-right font-semibold text-slate-900 dark:text-slate-100">
-                          {formatCurrency(uiRooms.reduce((a, r) => a + r.total_with_vat, 0))}
+                      <tr className="border-t-2 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800">
+                        <td className="p-4 text-right font-bold text-slate-900 dark:text-slate-50">Totals</td>
+                        <td className="p-4 text-right font-bold text-slate-900 dark:text-slate-50">
+                          {formatCurrency(uiRooms.reduce((a, r) => a + (r.total_with_vat ?? 0), 0))}
                         </td>
-                        <td className="p-2 text-right font-medium text-slate-700 dark:text-slate-300">
+                        <td className="p-4 text-right font-semibold text-slate-700 dark:text-slate-300">
                           {formatCurrency(uiRooms.reduce((a, r) => a + (r.total_without_vat || 0), 0))}
                         </td>
-                        <td className="p-2" />
+                        <td className="p-4" />
                       </tr>
                     </tfoot>
                   </table>
@@ -1932,6 +1895,50 @@ const roomTypes = useMemo(() => {
               </div>
             )}
           </Section>
+
+          {/* Listing Images Gallery */}
+          {data.property?.listing_images && data.property.listing_images.length > 0 && (
+            <Section title="Property Images" desc="High-resolution property photos. Click any image to open the interactive gallery with navigation.">
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                {data.property.listing_images.slice(0, 12).map((src: string, i: number) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      setListingGalleryStartIndex(i);
+                      setListingGalleryOpen(true);
+                    }}
+                    className="relative aspect-[4/3] rounded-xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 transition-all hover:scale-[1.02] hover:shadow-2xl group"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={src} alt={`Property image ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center">
+                      <div className="bg-white/90 dark:bg-slate-900/90 rounded-full p-3 transform scale-75 group-hover:scale-100 transition-transform">
+                        <svg className="w-6 h-6 text-slate-900 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                        </svg>
+                      </div>
+                    </div>
+                    <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                      {i + 1} / {data.property.listing_images.length}
+                    </div>
+                  </button>
+                ))}
+              </div>
+              {data.property.listing_images.length > 12 && (
+                <div className="mt-4 text-center">
+                  <button
+                    onClick={() => {
+                      setListingGalleryStartIndex(0);
+                      setListingGalleryOpen(true);
+                    }}
+                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-semibold transition-all shadow-md hover:shadow-lg"
+                  >
+                    View all {data.property.listing_images.length} images →
+                  </button>
+                </div>
+              )}
+            </Section>
+          )}
 
           {/* Rent estimate feedback */}
           <Section title="Rent Estimate" desc="Modelled view based on local comps and normalised assumptions. Use feedback to correct the model if this looks off.">
