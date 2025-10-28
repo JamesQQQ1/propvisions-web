@@ -854,7 +854,7 @@ export default function Page() {
     return [
       { label: priceLabel, value: money0(priceValue), subtitle: 'acquisition' },
       { label: 'Post-Refurb Valuation', value: money0(p.post_refurb_valuation_gbp), subtitle: 'estimated ARV' },
-      { label: 'Monthly Rent', value: money0(p.monthly_rent_gbp ?? (data.financials as any)?.monthly_rent_gbp), subtitle: `annual: ${money0(p.annual_rent_gbp ?? (data.financials as any)?.annual_rent_gbp)}` },
+      { label: 'Monthly Rent', value: money0(p.monthly_rent_gbp ?? (data?.financials as any)?.monthly_rent_gbp), subtitle: `annual: ${money0(p.annual_rent_gbp ?? (data?.financials as any)?.annual_rent_gbp)}` },
       { label: 'EPC Rating', value: `${p.epc_rating_current ?? p.epc_rating ?? '—'} → ${p.epc_rating_potential ?? '—'}`, subtitle: epc?.score_current && epc?.score_potential ? `scores: ${epc.score_current} → ${epc.score_potential}` : undefined },
     ];
   }, [data?.property, data?.financials, epc]);
