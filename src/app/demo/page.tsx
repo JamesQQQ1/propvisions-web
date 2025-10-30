@@ -16,6 +16,7 @@ import FinancialSliders, {
   type Derived as SliderDerived,
   type Assumptions as SliderAssumptions,
 } from '@/components/FinancialSliders';
+import InvestorScenarios from '@/components/InvestorScenarios';
 
 /* ---------- Tooltip component ---------- */
 function Tooltip({ children, text }: { children: React.ReactNode; text: string }) {
@@ -2048,9 +2049,20 @@ const roomTypes = useMemo(() => {
             </div>
           </Section>
 
+          {/* NEW: Investor Scenarios with live calculations */}
+          {data && (
+            <InvestorScenarios
+              payload={data}
+              onSaveScenario={(overrides, kpis) => {
+                console.log('Save scenario:', { overrides, kpis });
+                // TODO: Implement save to analysis_scenarios table
+              }}
+            />
+          )}
+
           {/* Financial sliders + backend-calculated tables */}
           <Section
-            title="Financial Summary"
+            title="Financial Summary (Legacy)"
             desc="Tweak core assumptions to see directional impact. Backend snapshot remains the source of truth."
             right={data.pdf_url ? (
               <a href={`/api/pdf-proxy?url=${encodeURIComponent(data.pdf_url)}`} target="_blank" rel="noopener noreferrer" className="text-sm inline-flex items-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
