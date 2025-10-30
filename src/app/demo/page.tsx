@@ -456,40 +456,6 @@ function Section({ title, children, right, desc }: { title: string; children: Re
     </section>
   );
 }
-/** Tiny semicircle DSCR gauge (SVG) */
-function DSCRGauge({ value }: { value?: number }) {
-  const raw = Number(value);
-  const v = Number.isFinite(raw) ? Math.max(0, Math.min(2, raw)) : 0;
-  const pct = v / 2;
-  const angle = Math.PI * (1 + pct);
-  const r = 42, cx = 50, cy = 50;
-  const x = cx + r * Math.cos(angle);
-  const y = cy + r * Math.sin(angle);
-  const critical = v < 1.0;
-  const ok = v >= 1.25;
-  const tone = critical ? '#ef4444' : ok ? '#22c55e' : '#f59e0b';
-
-  return (
-    <div className="inline-flex items-center gap-3">
-      <svg width="120" height="70" viewBox="0 0 100 60" aria-label="DSCR gauge" className="dark:[&_path:first-child]:stroke-slate-700 dark:[&_text]:fill-slate-100">
-        <path d="M8,50 A42,42 0 1 1 92,50" fill="none" stroke="#e5e7eb" strokeWidth="8" strokeLinecap="round" />
-        <path d={`M8,50 A42,42 0 ${pct > 0.5 ? 1 : 0} 1 ${x},${y}`} fill="none" stroke={tone} strokeWidth="8" strokeLinecap="round" />
-        <path d="M63,14 L66,9" stroke="#9ca3af" strokeWidth="2" />
-        <text x="50" y="52" textAnchor="middle" fontSize="10" fill="#111827" fontWeight={700}>
-          {value == null ? '—' : value.toFixed(2)}
-        </text>
-      </svg>
-      <div className="text-sm">
-        <div className="font-medium text-slate-900 dark:text-slate-100">
-          <Tooltip text="Measures how comfortably rental income covers mortgage payments. DSCR > 1.25 is generally considered safe by lenders.">
-            <span>DSCR (Month-1)</span>
-          </Tooltip>
-        </div>
-        <div className="text-slate-600 dark:text-slate-400">≥ 1.25 preferred by lenders</div>
-      </div>
-    </div>
-  );
-}
 /** Minimal bar chart (SVG) for 24m summary */
 function MiniBars({ items }: { items: { label: string; value: number; fmt?: 'money'|'raw' }[] }) {
   const max = Math.max(1, ...items.map(i => Math.abs(i.value)));
@@ -899,10 +865,6 @@ export default function Page() {
 
   const backendSummary = (data?.financials as any)?.summary || (data?.property as any)?.summary || null;
   const period   = backendSummary?.period || null;
-  const exitSell = backendSummary?.exit_sell || null;
-  const exitRefi = backendSummary?.exit_refi_24m || null;
-
-  const scenarios = ((data?.financials as any)?.scenarios || (data?.property as any)?.scenarios || null) as any;
 
   /* ---------- media helpers (floorplans + EPC) ---------- */
   const floorplans: string[] = useMemo(() => {
@@ -1745,38 +1707,6 @@ const roomTypes = useMemo(() => {
           {/* Missing Room Requests Card */}
           {data.property_id && <MissingRoomRequestsCard propertyId={data.property_id} />}
 
-          {/* Investor metrics headline */}
-          <Section
-            title="Investor Metrics"
-            desc="Key financial performance indicators for this investment. DSCR (Debt Service Coverage Ratio) measures how comfortably rent covers mortgage payments – values above 1.25 are preferred by lenders. Yield on Cost shows annual rental return as a percentage of total investment (purchase + refurbishment). ROI (Return on Investment) calculates your profit relative to cash invested."
-          >
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              <KPI label={<Tooltip text="Net annual rent divided by total project cost (purchase + refurb). Indicates annual return percentage."><span>Yield on cost</span></Tooltip>} value={period?.yield_on_cost_percent != null ? `${Number(period.yield_on_cost_percent).toFixed(2)}%` : '—'} subtitle="At stabilised reference" />
-              <KPI label={<Tooltip text="Measures how comfortably rental income covers mortgage payments. DSCR > 1.25 is generally considered safe by lenders."><span>DSCR (Month-1)</span></Tooltip>} value={exitRefi?.dscr_month1 != null ? exitRefi.dscr_month1.toFixed(2) : '—'} />
-              <KPI label="Sell: Net profit" value={exitSell?.net_profit_gbp != null ? money0(exitSell.net_profit_gbp) : '—'} />
-              <KPI label={<Tooltip text="Net profit relative to total cash invested (purchase + refurb - refinance proceeds)."><span>Sell: ROI</span></Tooltip>} value={exitSell?.roi_percent != null ? `${Number(exitSell.roi_percent).toFixed(2)}%` : '—'} />
-              <KPI label="Refi: Cash left in" value={exitRefi?.net_cash_left_in_after_refi_gbp != null ? money0(exitRefi.net_cash_left_in_after_refi_gbp) : '—'} />
-            </div>
-
-            <div className="mt-4 flex flex-wrap items-center gap-6">
-              <DSCRGauge value={n(exitRefi?.dscr_month1)} />
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <KPI label="Rent (modelled/mo)" value={money0((data.financials as any)?.monthly_rent_gbp)} big={false} />
-                <KPI label="Stabilised NOI (annual)" value={period?.rent_collected_gbp != null ? money0(period.rent_collected_gbp) : '—'} big={false} />
-                <KPI label="Total cash in (period)" value={period?.total_cash_in_gbp != null ? money0(period.total_cash_in_gbp) : '—'} big={false} />
-                <KPI
-                  label={<Tooltip text="Net profit relative to total cash invested (purchase + refurb - refinance proceeds)."><span>ROI (period / annualised)</span></Tooltip>}
-                  value={
-                    period?.roi_period_percent != null
-                      ? `${Number(period.roi_period_percent).toFixed(1)}% / ${Number(period.roi_annualised_percent ?? 0).toFixed(1)}%`
-                      : '—'
-                  }
-                  big={false}
-                />
-              </div>
-            </div>
-          </Section>
-
           {/* Refurbishment */}
           {/* IMPORTANT: This section uses ONLY the properties payload. Do not query labour/material tables. */}
           <Section
@@ -2068,30 +1998,6 @@ const roomTypes = useMemo(() => {
             </Section>
           )}
 
-          {/* Scenarios (backend) — PRO console */}
-          {(scenarios?.inputs || scenarios?.exit_sell || scenarios?.exit_refi_24m || scenarios?.period_no_refi) && (
-            <Section
-              title="Scenarios (backend)"
-              desc="Inputs feed two exit paths: a sale at stabilisation or a 24-month refinance. Each value is parsed from backend output. Click “Details” to expand embedded objects (e.g., fee breakdowns)."
-            >
-              <div className="rounded-xl border-2 border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 p-4 text-sm text-blue-900 dark:text-blue-100 mb-4 shadow-sm">
-                <div className="font-semibold mb-2 flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  How to Read Financial Scenarios:
-                </div>
-                <ul className="space-y-1 text-xs leading-relaxed">
-                  <li><strong>Inputs:</strong> Starting assumptions including purchase price, estimated rental income, and operating expenses (OpEx)</li>
-                  <li><strong>Exit: Sell:</strong> Shows profit if you renovate and sell. Focus on Net Profit and ROI (Return on Investment) to evaluate flip potential</li>
-                  <li><strong>Exit: Refi (Refinance):</strong> For buy-to-let hold strategy. Key metrics: Net Cash Left In after remortgage, and DSCR (Debt Service Coverage Ratio - rental income vs. mortgage payments)</li>
-                  <li><strong>Period (Bridge Phase):</strong> Cash flows during acquisition and renovation using bridge finance, before long-term mortgage</li>
-                </ul>
-              </div>
-              <ScenariosTabs scenarios={scenarios} ScenarioKV={ScenarioKV} />
-            </Section>
-          )}
-
           {/* Debug drawer */}
           <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm p-4">
             <button className="text-sm rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors" onClick={() => setShowDebug((s) => !s)}>
@@ -2225,76 +2131,3 @@ function DetailsDrawer({ label, children }: { label: string; children: React.Rea
   );
 }
 
-function ScenariosTabs({ scenarios, ScenarioKV }: { scenarios: any; ScenarioKV: ({ obj }: { obj: any }) => React.ReactElement }) {
-  const [tab, setTab] = useState<'inputs'|'sell'|'refi'|'period'>('inputs');
-  const TabBtn = ({ id, children }: { id: typeof tab; children: React.ReactNode }) => (
-    <button
-      onClick={() => setTab(id)}
-      className={classNames(
-        'px-3 py-1.5 rounded-md text-sm border',
-        tab === id ? 'bg-blue-600 dark:bg-blue-700 text-white border-blue-600 dark:border-blue-700' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700'
-      )}
-    >
-      {children}
-    </button>
-  );
-
-  // normalise nested objects/strings
-  const inputs  = tryParseJSON(scenarios?.inputs);
-  const sell    = tryParseJSON(scenarios?.exit_sell);
-  const refi    = tryParseJSON(scenarios?.exit_refi_24m);
-  const period  = tryParseJSON(scenarios?.period_no_refi);
-
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
-        <TabBtn id="inputs">Inputs</TabBtn>
-        <TabBtn id="sell">Exit: Sell</TabBtn>
-        <TabBtn id="refi">Exit: Refi (24m)</TabBtn>
-        <TabBtn id="period">Period (no refi)</TabBtn>
-      </div>
-
-      <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-4 bg-white dark:bg-slate-800">
-        {tab === 'inputs' && (
-          <>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">Assumptions used to drive the scenarios below. Adjust in sliders to test sensitivities.</p>
-            <ScenarioKV obj={inputs} />
-          </>
-        )}
-        {tab === 'sell' && (
-          <>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">Disposal economics assuming sale at stabilisation. Useful for flip comparisons.</p>
-            <ScenarioKV obj={sell} />
-          </>
-        )}
-        {tab === 'refi' && (
-          <>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">Refinance outcome after ~24 months of operations. Key: DSCR, loan size, and cash left in.</p>
-            <ScenarioKV obj={refi} />
-          </>
-        )}
-        {tab === 'period' && (
-          <>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">If no refinance occurs, this shows bridge facility, works phase, and operations during bridge.</p>
-            {isPlainObject(period) ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <h5 className="font-medium mb-1">Bridge</h5>
-                  <ScenarioKV obj={(period as any).bridge} />
-                </div>
-                <div>
-                  <h5 className="font-medium mb-1">Works phase</h5>
-                  <ScenarioKV obj={(period as any).works_phase} />
-                </div>
-                <div>
-                  <h5 className="font-medium mb-1">Operations during bridge</h5>
-                  <ScenarioKV obj={(period as any).operations_during_bridge} />
-                </div>
-              </div>
-            ) : <ScenarioKV obj={period} />}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}

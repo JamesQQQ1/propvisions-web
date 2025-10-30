@@ -520,24 +520,6 @@ function RoomCardWithSlider({
           </div>
         </div>
 
-        {/* Top costs */}
-        {room.topCosts.length > 0 && (
-          <div className="space-y-1">
-            {room.topCosts.slice(0, 3).map((cost, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-500 dark:bg-blue-400"
-                    style={{ width: `${cost.pct}%` }}
-                  />
-                </div>
-                <span className="text-xs text-slate-600 dark:text-slate-400 w-20 text-right">
-                  {cost.label}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
@@ -713,19 +695,12 @@ function extractRoomsData(payload: any, baseline: ScenarioBaseline): RoomData[] 
     if (rt.image_url) images.push(rt.image_url);
     if (Array.isArray(rt.image_urls)) images.push(...rt.image_urls);
 
-    // Extract top costs (mock data for now - would come from line items)
-    const topCosts = [
-      { label: 'Labour', value: total * 0.4, pct: 40 },
-      { label: 'Materials', value: total * 0.35, pct: 35 },
-      { label: 'Fixtures', value: total * 0.25, pct: 25 },
-    ];
-
     rooms.push({
       key: String(key),
       label,
       total_with_vat: total,
       images,
-      topCosts,
+      topCosts: [],
     });
   }
 
