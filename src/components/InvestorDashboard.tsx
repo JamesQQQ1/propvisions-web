@@ -110,12 +110,8 @@ export default function InvestorDashboard({ payload, onSaveScenario }: InvestorD
       <StickyKPIHeader
         price={baseline.purchase_price_gbp}
         refurbTotal={kpis.refurb_total_gbp}
-        totalCashIn={kpis.total_cash_in_gbp}
         rent={currentRent}
         valuation={baseline.refi_value_gbp}
-        dscr={kpis.dscr_month1}
-        cashLeftIn={kpis.net_cash_left_in_gbp}
-        cocROI={kpis.roi_cash_on_cash_percent_24m}
         isUpdating={isUpdating}
         lastUpdated={lastUpdated}
       />

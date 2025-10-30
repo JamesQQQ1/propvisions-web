@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
+import { SearchIcon, LightningIcon, CheckIcon, ClockIcon, ChartIcon, TargetIcon, DotIcon, RocketIcon, HomeIcon, BriefcaseIcon, UsersIcon, BuildingIcon, DocumentIcon } from "@/components/Icons";
 
 export default function LandingPage() {
   const [hoveredFeature, setHoveredFeature] = useState<number | null>(null);
@@ -56,12 +57,12 @@ export default function LandingPage() {
             {/* Quick trust list */}
             <ul className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-slate-700 dark:text-slate-300">
               {[
-                { icon: "🔍", text: "Filter 100s of listings quickly" },
-                { icon: "⚡", text: "5 minutes per property" },
-                { icon: "✓", text: "Only visit the good ones" }
+                { icon: <SearchIcon className="w-5 h-5" />, text: "Filter 100s of listings quickly" },
+                { icon: <LightningIcon className="w-5 h-5" />, text: "5 minutes per property" },
+                { icon: <CheckIcon className="w-5 h-5" />, text: "Only visit the good ones" }
               ].map((item, i) => (
                 <li key={i} className="flex items-center gap-2 animate-slideUp" style={{ animationDelay: `${300 + i * 50}ms` }}>
-                  <span className="text-xl">{item.icon}</span>
+                  <span className="text-blue-600 dark:text-blue-400">{item.icon}</span>
                   <span>{item.text}</span>
                 </li>
               ))}
@@ -119,8 +120,8 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto mb-12">
             {/* Time Reclaimed */}
             <div className="rounded-2xl border-2 border-blue-200 dark:border-blue-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-8 hover:shadow-2xl hover:scale-105 transition-all duration-500 animate-scaleIn">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white text-3xl mb-6 shadow-lg">
-                ⏰
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white mb-6 shadow-lg">
+                <ClockIcon className="w-8 h-8" />
               </div>
               <h3 className="text-2xl font-bold mb-4 text-slate-900 dark:text-slate-100">
                 Reclaim Your Time
@@ -135,8 +136,8 @@ export default function LandingPage() {
 
             {/* Scale Without Hiring */}
             <div className="rounded-2xl border-2 border-purple-200 dark:border-purple-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-8 hover:shadow-2xl hover:scale-105 transition-all duration-500 animate-scaleIn delay-100">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-3xl mb-6 shadow-lg">
-                📈
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white mb-6 shadow-lg">
+                <ChartIcon className="w-8 h-8" />
               </div>
               <h3 className="text-2xl font-bold mb-4 text-slate-900 dark:text-slate-100">
                 Scale Without Hiring
@@ -153,8 +154,8 @@ export default function LandingPage() {
           <div className="max-w-4xl mx-auto">
             <div className="rounded-2xl border-2 border-emerald-200 dark:border-emerald-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm p-8 animate-slideUp delay-200">
               <div className="flex flex-col md:flex-row items-start gap-6">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white text-3xl shadow-lg flex-shrink-0">
-                  🎯
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-lg flex-shrink-0">
+                  <TargetIcon className="w-8 h-8" />
                 </div>
                 <div className="flex-1">
                   <h3 className="text-2xl font-bold mb-4 text-slate-900 dark:text-slate-100">
@@ -207,17 +208,17 @@ export default function LandingPage() {
 
             <div className="grid sm:grid-cols-2 gap-4 mt-8">
               {[
-                { icon: "🚀", title: "Batch upload", desc: "Process up to 100 properties at once" },
-                { icon: "🏠", title: "Photo-based refurb", desc: "Room-level pricing with regional rates" },
-                { icon: "📈", title: "Transparent estimates", desc: "Rent estimates and valuations with full rationale" },
-                { icon: "⏱️", title: "Under 5 min per run", desc: "Fast analysis with export-ready outputs" }
+                { icon: <RocketIcon className="w-8 h-8" />, title: "Batch upload", desc: "Process up to 100 properties at once" },
+                { icon: <HomeIcon className="w-8 h-8" />, title: "Photo-based refurb", desc: "Room-level pricing with regional rates" },
+                { icon: <ChartIcon className="w-8 h-8" />, title: "Transparent estimates", desc: "Rent estimates and valuations with full rationale" },
+                { icon: <ClockIcon className="w-8 h-8" />, title: "Under 5 min per run", desc: "Fast analysis with export-ready outputs" }
               ].map((item, i) => (
                 <div
                   key={i}
                   className="rounded-2xl border-2 border-slate-200 dark:border-slate-800 p-5 bg-white dark:bg-slate-900 hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-xl transition-all duration-500 hover:scale-105 animate-scaleIn"
                   style={{ animationDelay: `${200 + i * 100}ms` }}
                 >
-                  <div className="text-3xl mb-3">{item.icon}</div>
+                  <div className="text-blue-600 dark:text-blue-400 mb-3">{item.icon}</div>
                   <div className="font-semibold text-slate-900 dark:text-slate-100 mb-1">{item.title}</div>
                   <div className="text-sm text-slate-600 dark:text-slate-400">{item.desc}</div>
                 </div>
@@ -234,13 +235,13 @@ export default function LandingPage() {
                 </h3>
                 <ul className="space-y-4 text-slate-700 dark:text-slate-300">
                   {[
-                    { icon: "💼", title: "Property investors", desc: "Fast, defendable underwriting for BTL deals" },
-                    { icon: "🎯", title: "Sourcers & packagers", desc: "Professional deal packs for clients" },
-                    { icon: "🏗️", title: "Developers", desc: "Quick refurb estimates before committing quotes" },
-                    { icon: "🏢", title: "Estate agents", desc: "Value-add service for investor clients" }
+                    { icon: <BriefcaseIcon className="w-6 h-6" />, title: "Property investors", desc: "Fast, defendable underwriting for BTL deals" },
+                    { icon: <TargetIcon className="w-6 h-6" />, title: "Sourcers & packagers", desc: "Professional deal packs for clients" },
+                    { icon: <UsersIcon className="w-6 h-6" />, title: "Developers", desc: "Quick refurb estimates before committing quotes" },
+                    { icon: <BuildingIcon className="w-6 h-6" />, title: "Estate agents", desc: "Value-add service for investor clients" }
                   ].map((item, i) => (
                     <li key={i} className="flex items-start gap-3 group hover:translate-x-2 transition-transform duration-300">
-                      <span className="text-2xl">{item.icon}</span>
+                      <span className="text-blue-600 dark:text-blue-400">{item.icon}</span>
                       <div>
                         <div className="font-semibold text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{item.title}</div>
                         <div className="text-sm text-slate-600 dark:text-slate-400">{item.desc}</div>
@@ -436,32 +437,32 @@ export default function LandingPage() {
 
 const FEATURES = [
   {
-    icon: "🎯",
+    icon: <TargetIcon />,
     title: "Instant deal analysis",
     desc: "Paste a listing URL or batch upload up to 100 properties—get structured data for each in minutes."
   },
   {
-    icon: "🏗️",
+    icon: <UsersIcon />,
     title: "Room-by-room refurb pricing",
     desc: "Photo analysis identifies condition and maps work to floorplans where available. Regional builder rates, missing-room alerts, and agent nudges included."
   },
   {
-    icon: "⚡",
+    icon: <LightningIcon />,
     title: "EPC matching & upgrade suggestions",
     desc: "Fetches official EPC data and shows upgrade paths with expected uplift."
   },
   {
-    icon: "📊",
+    icon: <ChartIcon />,
     title: "Rent estimation & valuation",
     desc: "Combines regional baselines with regression adjusted by listing signals. Outputs include full rationale."
   },
   {
-    icon: "💰",
+    icon: <DocumentIcon />,
     title: "Full financials & scenarios",
     desc: "SDLT, fees, voids, management, maintenance, mortgage options. Compare BTL, simple exit, and more."
   },
   {
-    icon: "📄",
+    icon: <DocumentIcon />,
     title: "Export-ready reports",
     desc: "Investor PDF and builder quote PDF—both brandable for client delivery."
   },

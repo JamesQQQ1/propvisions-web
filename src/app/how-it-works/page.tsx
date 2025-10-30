@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { LightningIcon, TargetIcon, ChartIcon, UploadIcon, DocumentIcon, SearchIcon } from "@/components/Icons";
 
 export default function HowItWorksPage() {
   const [hoveredStep, setHoveredStep] = useState<number | null>(null);
@@ -53,7 +54,7 @@ export default function HowItWorksPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
             <div className="rounded-xl border-2 border-blue-200 dark:border-blue-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm p-6 hover:shadow-xl hover:scale-105 transition-all duration-500 animate-scaleIn">
-              <div className="text-4xl mb-4">⚡</div>
+              <div className="text-blue-600 dark:text-blue-400 mb-4"><LightningIcon className="w-10 h-10" /></div>
               <h3 className="text-lg font-bold mb-2 text-slate-900 dark:text-slate-100">
                 Fast Analysis
               </h3>
@@ -63,7 +64,7 @@ export default function HowItWorksPage() {
             </div>
 
             <div className="rounded-xl border-2 border-purple-200 dark:border-purple-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm p-6 hover:shadow-xl hover:scale-105 transition-all duration-500 animate-scaleIn delay-100">
-              <div className="text-4xl mb-4">🎯</div>
+              <div className="text-purple-600 dark:text-purple-400 mb-4"><TargetIcon className="w-10 h-10" /></div>
               <h3 className="text-lg font-bold mb-2 text-slate-900 dark:text-slate-100">
                 Only View Properties That Matter
               </h3>
@@ -73,7 +74,7 @@ export default function HowItWorksPage() {
             </div>
 
             <div className="rounded-xl border-2 border-emerald-200 dark:border-emerald-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm p-6 hover:shadow-xl hover:scale-105 transition-all duration-500 animate-scaleIn delay-200">
-              <div className="text-4xl mb-4">📈</div>
+              <div className="text-emerald-600 dark:text-emerald-400 mb-4"><ChartIcon className="w-10 h-10" /></div>
               <h3 className="text-lg font-bold mb-2 text-slate-900 dark:text-slate-100">
                 Scale Without Hiring
               </h3>
