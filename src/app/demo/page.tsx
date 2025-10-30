@@ -16,7 +16,7 @@ import FinancialSliders, {
   type Derived as SliderDerived,
   type Assumptions as SliderAssumptions,
 } from '@/components/FinancialSliders';
-import InvestorScenarios from '@/components/InvestorScenarios';
+import InvestorDashboard from '@/components/InvestorDashboard';
 
 /* ---------- Tooltip component ---------- */
 function Tooltip({ children, text }: { children: React.ReactNode; text: string }) {
@@ -2049,9 +2049,9 @@ const roomTypes = useMemo(() => {
             </div>
           </Section>
 
-          {/* NEW: Investor Scenarios with live calculations */}
+          {/* NEW: Investor Dashboard with live calculations */}
           {data && (
-            <InvestorScenarios
+            <InvestorDashboard
               payload={data}
               onSaveScenario={(overrides, kpis) => {
                 console.log('Save scenario:', { overrides, kpis });
