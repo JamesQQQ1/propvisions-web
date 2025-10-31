@@ -140,7 +140,7 @@ function ImageGallery({ isOpen, onClose, images, title, startIndex = 0 }: { isOp
 }
 
 /* ---------- demo mode config (REQUIRED) ---------- */
-const DEFAULT_DEMO_RUN_ID = '04faa6d2-6111-4ab5-a374-457d0a8fc4fb';
+const DEFAULT_DEMO_RUN_ID = '32acd855-d0e9-409d-806b-085f1ae81a2b';
 console.debug('[demo-page] POLL_BUILD =', POLL_BUILD);
 
 /* ---------- branding ---------- */
