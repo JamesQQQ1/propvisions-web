@@ -728,6 +728,12 @@ export default function Page() {
           refurb_debug: result.refurb_debug ?? undefined,
           run: result.run ?? undefined,
         });
+
+        // Auto-populate run_id for easy reloading
+        if (kickoff.run_id) {
+          setDemoRunId(kickoff.run_id);
+          console.log('[Auto-populated run_id]:', kickoff.run_id);
+        }
       } catch (err: any) {
         setError(err?.message === 'Polling aborted' ? 'Cancelled.' : err?.message || 'Run failed');
         setStatus('failed');
@@ -751,7 +757,7 @@ export default function Page() {
   /* progress */
   const [progress, setProgress] = useState(0);
   const progressTickRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const RAMP_MS = 100 * 60 * 1000;
+  const RAMP_MS = 5 * 60 * 1000; // 5 minutes
   const MAX_DURING_RUN = 97;
 
   useEffect(() => {
@@ -1570,7 +1576,7 @@ const roomTypes = useMemo(() => {
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 tracking-wide">AI-POWERED PROPERTY INVESTMENT ANALYSIS</p>
               </div>
             </div>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mt-3 max-w-2xl font-medium leading-relaxed">Paste a property listing URL to start a new analysis, or toggle demo mode to load an existing <code className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded text-xs font-mono font-semibold">run_id</code> result.</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-3 max-w-2xl font-medium leading-relaxed">Paste a property listing URL to start a new analysis. After completion, the <code className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded text-xs font-mono font-semibold">run_id</code> will auto-populate below so you can reload this property anytime.</p>
             <ProgressBar percent={progress} show={status === 'queued' || status === 'processing'} />
           </div>
 
@@ -1615,14 +1621,14 @@ const roomTypes = useMemo(() => {
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <label className="inline-flex items-center gap-2 text-slate-700 dark:text-slate-300">
             <input type="checkbox" className="accent-blue-600 dark:accent-blue-500 w-4 h-4 rounded" checked={useDemo} onChange={(e) => setUseDemo(e.target.checked)} />
-            Use demo run
+            Load Prior Run
           </label>
 
           <input
             type="text"
             value={demoRunId}
             onChange={(e) => setDemoRunId(e.target.value.trim())}
-            placeholder="demo run_id (UUID)"
+            placeholder="run_id (UUID) - auto-filled after analysis"
             className="min-w-[22rem] flex-1 p-2 border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-md disabled:bg-slate-50 dark:disabled:bg-slate-900 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-all"
             disabled={!useDemo}
           />
@@ -1632,7 +1638,7 @@ const roomTypes = useMemo(() => {
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); loadDemoRun((demoRunId || '').trim()); }}
             disabled={!useDemo || !(demoRunId || '').trim()}
             className="px-3 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors font-medium"
-            title="Load demo data using the run_id"
+            title="Load previously analyzed property using the run_id"
           >
             Load demo
           </button>
@@ -1727,11 +1733,30 @@ const roomTypes = useMemo(() => {
 
               {/* Right: media + links */}
               <div className="space-y-4">
-                <div className="rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
-                  {data.property?.listing_images?.[0]
-                    ? (<img src={data.property.listing_images[0]} alt="Property" className="w-full h-48 object-cover" loading="lazy" />)
-                    : (<div className="w-full h-48 flex items-center justify-center text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800">No image</div>)}
-                </div>
+                <button
+                  onClick={() => {
+                    if (data.property?.listing_images && data.property.listing_images.length > 0) {
+                      setListingGalleryStartIndex(0);
+                      setListingGalleryOpen(true);
+                    }
+                  }}
+                  disabled={!data.property?.listing_images || data.property.listing_images.length === 0}
+                  className="w-full rounded-lg overflow-hidden border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 transition-all hover:shadow-lg group disabled:hover:border-slate-200 disabled:hover:shadow-none disabled:cursor-default"
+                  title={data.property?.listing_images?.length > 0 ? `Click to view all ${data.property.listing_images.length} property images` : ''}
+                >
+                  {data.property?.listing_images?.[0] ? (
+                    <div className="relative">
+                      <img src={data.property.listing_images[0]} alt="Property" className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+                      {data.property.listing_images.length > 1 && (
+                        <div className="absolute top-2 right-2 bg-black/70 dark:bg-black/80 backdrop-blur text-white text-xs px-2 py-1 rounded-full font-medium">
+                          {data.property.listing_images.length} photos
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="w-full h-48 flex items-center justify-center text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800">No image</div>
+                  )}
+                </button>
 
                 <div className="text-sm space-y-1 text-slate-700 dark:text-slate-300">
                   <div>
@@ -1923,49 +1948,6 @@ const roomTypes = useMemo(() => {
             )}
           </Section>
 
-          {/* Listing Images Gallery */}
-          {data.property?.listing_images && data.property.listing_images.length > 0 && (
-            <Section title="Property Images" desc="High-resolution property photos. Click any image to open the interactive gallery with navigation.">
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                {data.property.listing_images.slice(0, 12).map((src: string, i: number) => (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      setListingGalleryStartIndex(i);
-                      setListingGalleryOpen(true);
-                    }}
-                    className="relative aspect-[4/3] rounded-xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 transition-all hover:scale-[1.02] hover:shadow-2xl group"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={src} alt={`Property image ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center">
-                      <div className="bg-white/90 dark:bg-slate-900/90 rounded-full p-3 transform scale-75 group-hover:scale-100 transition-transform">
-                        <svg className="w-6 h-6 text-slate-900 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                        </svg>
-                      </div>
-                    </div>
-                    <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
-                      {i + 1} / {data.property.listing_images.length}
-                    </div>
-                  </button>
-                ))}
-              </div>
-              {data.property.listing_images.length > 12 && (
-                <div className="mt-4 text-center">
-                  <button
-                    onClick={() => {
-                      setListingGalleryStartIndex(0);
-                      setListingGalleryOpen(true);
-                    }}
-                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-semibold transition-all shadow-md hover:shadow-lg"
-                  >
-                    View all {data.property.listing_images.length} images →
-                  </button>
-                </div>
-              )}
-            </Section>
-          )}
 
           {/* Rent estimate feedback */}
           <Section title="Rent Estimate" desc="Modelled view based on local comps and normalised assumptions. Use feedback to correct the model if this looks off.">
