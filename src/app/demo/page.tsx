@@ -17,6 +17,7 @@ import FinancialSliders, {
   type Assumptions as SliderAssumptions,
 } from '@/components/FinancialSliders';
 import InvestorDashboard from '@/components/InvestorDashboard';
+import { Slider } from '@/components/ui/slider';
 
 /* ---------- Tooltip component ---------- */
 function Tooltip({ children, text }: { children: React.ReactNode; text: string }) {
@@ -815,6 +816,21 @@ export default function Page() {
   }, [data?.property, roomCostOverrides]);
 
   const hasRefurbData = uiRooms.length > 0;
+
+  // Debug logging for room data
+  useEffect(() => {
+    if (uiRooms.length > 0) {
+      console.log(`[Refurb Breakdown] Total rooms: ${uiRooms.length}`);
+      console.log(`[Refurb Breakdown] Rooms with cost: ${uiRooms.filter(r => (r.total_with_vat || 0) > 0).length}`);
+      console.log(`[Refurb Breakdown] Zero-cost rooms: ${uiRooms.filter(r => (r.total_with_vat || 0) === 0).length}`);
+      console.log('[Refurb Breakdown] Room list:', uiRooms.map(r => ({
+        name: r.display_name,
+        cost: r.total_with_vat,
+        source: r.source,
+        type: r.room_type
+      })));
+    }
+  }, [uiRooms]);
 
   // Recalculate rollup with overridden costs
   const rollup = useMemo(() => {
@@ -1843,29 +1859,55 @@ const roomTypes = useMemo(() => {
                     <thead>
                       <tr className="bg-slate-100 dark:bg-slate-800 border-b-2 border-slate-200 dark:border-slate-700">
                         <th className="p-4 text-left text-slate-900 dark:text-slate-50 font-bold">Room</th>
+                        <th className="p-4 text-center text-slate-900 dark:text-slate-50 font-bold w-64">Adjust Cost</th>
                         <th className="p-4 text-right text-slate-900 dark:text-slate-50 font-bold">Total (with VAT)</th>
                         <th className="p-4 text-right text-slate-900 dark:text-slate-50 font-bold">Total (ex VAT)</th>
                         <th className="p-4 text-right text-slate-900 dark:text-slate-50 font-bold">Conf.</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {uiRooms.map((room) => (
-                        <tr key={room.room_name} className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                          <td className="p-4 capitalize text-slate-900 dark:text-slate-100 font-medium">{room.display_name}</td>
-                          <td className="p-4 text-right font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(room.total_with_vat ?? 0)}</td>
-                          <td className="p-4 text-right text-slate-700 dark:text-slate-300">{formatCurrency(room.total_without_vat || 0)}</td>
-                          <td className="p-4 text-right text-slate-700 dark:text-slate-300">—</td>
-                        </tr>
-                      ))}
+                      {filteredRooms.map((room) => {
+                        const maxSliderValue = Math.max(50000, (room.total_with_vat || 0) * 2 || 10000);
+                        return (
+                          <tr key={room.room_name} className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                            <td className="p-4 capitalize text-slate-900 dark:text-slate-100 font-medium">
+                              {room.display_name}
+                              {room.total_with_vat === 0 && (
+                                <span className="ml-2 text-xs bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full">
+                                  No issues
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-4">
+                              <div className="flex items-center gap-2">
+                                <Slider
+                                  value={[room.total_with_vat || 0]}
+                                  onValueChange={(val) => handleRoomCostChange(room.room_name || '', val[0])}
+                                  min={0}
+                                  max={maxSliderValue}
+                                  step={100}
+                                  className="flex-1"
+                                />
+                                <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                                  £{((room.total_with_vat || 0) / 1000).toFixed(1)}k
+                                </span>
+                              </div>
+                            </td>
+                            <td className="p-4 text-right font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(room.total_with_vat ?? 0)}</td>
+                            <td className="p-4 text-right text-slate-700 dark:text-slate-300">{formatCurrency(room.total_without_vat || 0)}</td>
+                            <td className="p-4 text-right text-slate-700 dark:text-slate-300">—</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                     <tfoot>
                       <tr className="border-t-2 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800">
-                        <td className="p-4 text-right font-bold text-slate-900 dark:text-slate-50">Totals</td>
+                        <td className="p-4 text-right font-bold text-slate-900 dark:text-slate-50" colSpan={2}>Totals</td>
                         <td className="p-4 text-right font-bold text-slate-900 dark:text-slate-50">
-                          {formatCurrency(uiRooms.reduce((a, r) => a + (r.total_with_vat ?? 0), 0))}
+                          {formatCurrency(filteredRooms.reduce((a, r) => a + (r.total_with_vat ?? 0), 0))}
                         </td>
                         <td className="p-4 text-right font-semibold text-slate-700 dark:text-slate-300">
-                          {formatCurrency(uiRooms.reduce((a, r) => a + (r.total_without_vat || 0), 0))}
+                          {formatCurrency(filteredRooms.reduce((a, r) => a + (r.total_without_vat || 0), 0))}
                         </td>
                         <td className="p-4" />
                       </tr>
