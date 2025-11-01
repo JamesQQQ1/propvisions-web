@@ -560,6 +560,9 @@ export default function Page() {
   const [slDerived, setSlDerived] = useState<SliderDerived | null>(null);
   const [slAssumptions, setSlAssumptions] = useState<SliderAssumptions | null>(null);
 
+  // Room cost overrides (for manual adjustments via sliders)
+  const [roomCostOverrides, setRoomCostOverrides] = useState<Map<string, number>>(new Map());
+
   // Filters
   const [filterType, setFilterType] = useState<string>('All');
   const [sortKey, setSortKey] = useState<'total_desc' | 'total_asc' | 'room_asc' | 'room_order'>('room_order');
@@ -778,15 +781,65 @@ export default function Page() {
   const basePrice  = useMemo(() => pickPrice(data?.property), [data?.property]);
   const baseRent   = useMemo(() => Number((data?.financials as any)?.monthly_rent_gbp ?? 0) || 0, [data?.financials]);
   const baseRefurb = useMemo(() => sumV2Totals(data?.refurb_estimates), [data?.refurb_estimates]);
-  const rollup     = useMemo(() => computeRefurbRollup(data?.property, data?.refurb_estimates), [data?.property, data?.refurb_estimates]);
+
+  // Handler for room cost changes
+  const handleRoomCostChange = (roomName: string, newCostWithVat: number) => {
+    setRoomCostOverrides(prev => {
+      const next = new Map(prev);
+      next.set(roomName, newCostWithVat);
+      return next;
+    });
+  };
 
   // New refurb data processing using properties-only approach with robust joins
   const uiRooms = useMemo(() => {
     if (!data?.property) return [];
-    return buildUiRooms(data.property);
-  }, [data?.property]);
+    const rooms = buildUiRooms(data.property);
+
+    // Apply cost overrides
+    return rooms.map(room => {
+      const override = roomCostOverrides.get(room.room_name || '');
+      if (override !== undefined) {
+        // Calculate ex-VAT from VAT-inclusive price (assuming 20% VAT)
+        const withoutVat = override / 1.2;
+        return {
+          ...room,
+          total_with_vat: override,
+          costWithVat: override,
+          total_without_vat: withoutVat,
+          costWithoutVat: withoutVat,
+        };
+      }
+      return room;
+    });
+  }, [data?.property, roomCostOverrides]);
 
   const hasRefurbData = uiRooms.length > 0;
+
+  // Recalculate rollup with overridden costs
+  const rollup = useMemo(() => {
+    const baseRollup = computeRefurbRollup(data?.property, data?.refurb_estimates);
+
+    // Calculate total rooms cost from uiRooms (which includes overrides)
+    const roomsTotalWithVat = uiRooms.reduce((sum, room) => sum + (room.total_with_vat || 0), 0);
+    const roomsTotalWithoutVat = uiRooms.reduce((sum, room) => sum + (room.total_without_vat || 0), 0);
+
+    // Recalculate property total including overheads and EPC
+    const propertyTotalWithVat = roomsTotalWithVat +
+      (baseRollup.overheads_with_vat || 0) +
+      (baseRollup.epc_total_with_vat || 0);
+    const propertyTotalWithoutVat = roomsTotalWithoutVat +
+      (baseRollup.overheads_without_vat || 0) +
+      (baseRollup.epc_total_without_vat || 0);
+
+    return {
+      ...baseRollup,
+      rooms_total_with_vat: roomsTotalWithVat,
+      rooms_total_without_vat: roomsTotalWithoutVat,
+      property_total_with_vat: propertyTotalWithVat,
+      property_total_without_vat: propertyTotalWithoutVat,
+    };
+  }, [data?.property, data?.refurb_estimates, uiRooms]);
 
   // Missing room requests (realtime)
   const { requests: missingRoomRequests } = useMissingRoomRequests(data?.property_id || '');
@@ -1751,6 +1804,7 @@ const roomTypes = useMemo(() => {
                       showCharts={true}
                       allRooms={uiRooms}
                       pendingUploads={roomUploadsMap.get(room.room_name || '') || []}
+                      onCostChange={handleRoomCostChange}
                     />
                   ))}
                 </div>
@@ -1982,7 +2036,14 @@ const roomTypes = useMemo(() => {
           {/* NEW: Investor Dashboard with live calculations */}
           {data && (
             <InvestorDashboard
-              payload={data}
+              payload={{
+                ...data,
+                property: {
+                  ...data.property,
+                  property_total_with_vat: rollup.property_total_with_vat,
+                  property_total_without_vat: rollup.property_total_without_vat,
+                },
+              }}
               onSaveScenario={(overrides, kpis) => {
                 console.log('Save scenario:', { overrides, kpis });
                 // TODO: Implement save to analysis_scenarios table

@@ -1,16 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { UiRoom } from '@/lib/rooms';
 import { formatCurrency, getTopRoomsByCost } from '@/lib/rooms';
 import RoomUploadButton from './RoomUploadButton';
 import type { PendingUpload } from './MissingRoomRequestsCard';
+import { Slider } from './ui/slider';
 
 interface RoomCardProps {
   room: UiRoom;
   allRooms?: UiRoom[];
   showCharts?: boolean;
   pendingUploads?: PendingUpload[];
+  onCostChange?: (roomName: string, newCostWithVat: number) => void;
 }
 
 const PLACEHOLDER_SVG = `data:image/svg+xml;utf8,${encodeURIComponent(`
@@ -53,7 +55,7 @@ function MiniBarChart({ rooms, maxRooms = 5 }: { rooms: UiRoom[]; maxRooms?: num
   );
 }
 
-export default function RoomCard({ room, allRooms = [], showCharts = false, pendingUploads = [] }: RoomCardProps) {
+export default function RoomCard({ room, allRooms = [], showCharts = false, pendingUploads = [], onCostChange }: RoomCardProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const images = room.image_urls || room.imageUrls || [];
@@ -61,10 +63,30 @@ export default function RoomCard({ room, allRooms = [], showCharts = false, pend
   const currentImage = hasImages ? images[currentImageIndex] : (room.primary_image || room.primaryImageUrl);
   const thumbnails = images.slice(1, 5); // Show up to 4 thumbnails
 
-  const costWithVat = room.total_with_vat ?? room.costWithVat;
+  const costWithVat = room.total_with_vat ?? room.costWithVat ?? 0;
   const costWithoutVat = room.total_without_vat ?? room.costWithoutVat;
   const isZeroCost = costWithVat === 0;
-  const hasCostData = costWithVat !== null && costWithVat !== undefined;
+  const hasCostData = true; // Always show cost data now, even if it's £0
+
+  // Local state for slider value (for immediate UI feedback)
+  const [localCost, setLocalCost] = useState(costWithVat);
+
+  // Update local cost when room changes
+  useEffect(() => {
+    setLocalCost(costWithVat);
+  }, [costWithVat]);
+
+  const handleCostChange = (newValue: number[]) => {
+    const newCost = newValue[0];
+    setLocalCost(newCost);
+    if (onCostChange && room.room_name) {
+      onCostChange(room.room_name, newCost);
+    }
+  };
+
+  // Calculate max slider value based on cost (with reasonable range)
+  const maxSliderValue = Math.max(50000, localCost * 2 || 10000);
+  const sliderStep = 100;
 
   const nextImage = () => {
     if (images.length > 1) {
@@ -187,36 +209,49 @@ export default function RoomCard({ room, allRooms = [], showCharts = false, pend
       )}
 
       <div className="p-4 pt-3">
-        {/* Cost Information or Status Messages */}
-        {!hasCostData ? (
-          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 text-center">
-            <p className="text-sm text-amber-800 dark:text-amber-300 font-medium">
-              Awaiting estimate
-            </p>
-          </div>
-        ) : isZeroCost ? (
-          <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-4 text-center">
-            <p className="text-sm text-green-800 dark:text-green-300 font-medium">
-              No refurbishment work required for this room/area.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {/* Total Cost */}
-            <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg p-4 shadow-sm">
-              <div className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Total Refurbishment Cost</div>
-              <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                {formatCurrency(costWithVat)}
+        {/* Cost Information with Editable Slider */}
+        <div className="space-y-3">
+          {/* Cost Display and Slider */}
+          <div className={`${isZeroCost ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700'} border rounded-lg p-4 shadow-sm`}>
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Refurbishment Cost
               </div>
-              <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">Including VAT</div>
-              {costWithoutVat != null && (
-                <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Ex VAT: {formatCurrency(costWithoutVat)}
-                </div>
+              {isZeroCost && localCost === 0 && (
+                <span className="text-xs bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full">
+                  No issues found
+                </span>
               )}
             </div>
+
+            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-3">
+              {formatCurrency(localCost)}
+            </div>
+
+            {/* Editable Slider */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
+                <span>Adjust cost</span>
+                <span className="text-slate-500 dark:text-slate-500">£0 - {formatCurrency(maxSliderValue, 0)}</span>
+              </div>
+              <Slider
+                value={[localCost]}
+                onValueChange={handleCostChange}
+                min={0}
+                max={maxSliderValue}
+                step={sliderStep}
+                className="w-full"
+              />
+            </div>
+
+            <div className="text-xs text-slate-600 dark:text-slate-400 mt-2">Including VAT</div>
+            {costWithoutVat != null && (
+              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Ex VAT: {formatCurrency(costWithoutVat)}
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Charts - only show if not zero cost */}
         {!isZeroCost && showCharts && allRooms.length > 1 && (
