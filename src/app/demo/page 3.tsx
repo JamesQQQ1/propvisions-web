@@ -17,7 +17,6 @@ import FinancialSliders, {
   type Assumptions as SliderAssumptions,
 } from '@/components/FinancialSliders';
 import InvestorDashboard from '@/components/InvestorDashboard';
-import { Slider } from '@/components/ui/slider';
 
 /* ---------- Tooltip component ---------- */
 function Tooltip({ children, text }: { children: React.ReactNode; text: string }) {
@@ -561,9 +560,6 @@ export default function Page() {
   const [slDerived, setSlDerived] = useState<SliderDerived | null>(null);
   const [slAssumptions, setSlAssumptions] = useState<SliderAssumptions | null>(null);
 
-  // Room cost overrides (for manual adjustments via sliders)
-  const [roomCostOverrides, setRoomCostOverrides] = useState<Map<string, number>>(new Map());
-
   // Filters
   const [filterType, setFilterType] = useState<string>('All');
   const [sortKey, setSortKey] = useState<'total_desc' | 'total_asc' | 'room_asc' | 'room_order'>('room_order');
@@ -728,12 +724,6 @@ export default function Page() {
           refurb_debug: result.refurb_debug ?? undefined,
           run: result.run ?? undefined,
         });
-
-        // Auto-populate run_id for easy reloading
-        if (kickoff.run_id) {
-          setDemoRunId(kickoff.run_id);
-          console.log('[Auto-populated run_id]:', kickoff.run_id);
-        }
       } catch (err: any) {
         setError(err?.message === 'Polling aborted' ? 'Cancelled.' : err?.message || 'Run failed');
         setStatus('failed');
@@ -757,7 +747,7 @@ export default function Page() {
   /* progress */
   const [progress, setProgress] = useState(0);
   const progressTickRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const RAMP_MS = 5 * 60 * 1000; // 5 minutes
+  const RAMP_MS = 100 * 60 * 1000;
   const MAX_DURING_RUN = 97;
 
   useEffect(() => {
@@ -788,87 +778,15 @@ export default function Page() {
   const basePrice  = useMemo(() => pickPrice(data?.property), [data?.property]);
   const baseRent   = useMemo(() => Number((data?.financials as any)?.monthly_rent_gbp ?? 0) || 0, [data?.financials]);
   const baseRefurb = useMemo(() => sumV2Totals(data?.refurb_estimates), [data?.refurb_estimates]);
-
-  // Handler for room cost changes
-  const handleRoomCostChange = (roomName: string, newCostWithVat: number) => {
-    setRoomCostOverrides(prev => {
-      const next = new Map(prev);
-      next.set(roomName, newCostWithVat);
-      return next;
-    });
-  };
+  const rollup     = useMemo(() => computeRefurbRollup(data?.property, data?.refurb_estimates), [data?.property, data?.refurb_estimates]);
 
   // New refurb data processing using properties-only approach with robust joins
   const uiRooms = useMemo(() => {
     if (!data?.property) return [];
-    const rooms = buildUiRooms(data.property);
-
-    // Apply cost overrides
-    return rooms.map(room => {
-      const override = roomCostOverrides.get(room.room_name || '');
-      if (override !== undefined) {
-        // Calculate ex-VAT from VAT-inclusive price (assuming 20% VAT)
-        const withoutVat = override / 1.2;
-        return {
-          ...room,
-          total_with_vat: override,
-          costWithVat: override,
-          total_without_vat: withoutVat,
-          costWithoutVat: withoutVat,
-        };
-      }
-      return room;
-    });
-  }, [data?.property, roomCostOverrides]);
+    return buildUiRooms(data.property);
+  }, [data?.property]);
 
   const hasRefurbData = uiRooms.length > 0;
-
-  // Debug logging for room data
-  useEffect(() => {
-    if (uiRooms.length > 0) {
-      console.log(`[Refurb Breakdown] Total uiRooms: ${uiRooms.length}`);
-      console.log(`[Refurb Breakdown] Rooms with cost > 0: ${uiRooms.filter(r => (r.total_with_vat || 0) > 0).length}`);
-      console.log(`[Refurb Breakdown] Zero-cost rooms: ${uiRooms.filter(r => (r.total_with_vat || 0) === 0).length}`);
-      console.log(`[Refurb Breakdown] Floorplan source: ${uiRooms.filter(r => r.source === 'floorplan-only').length}`);
-      console.log('[Refurb Breakdown] Full room list:', uiRooms.map(r => ({
-        name: r.display_name,
-        cost: r.total_with_vat,
-        source: r.source,
-        type: r.room_type,
-        inFloorplan: r.inFloorplan
-      })));
-      console.log('[Refurb Breakdown] Raw property data:', {
-        floorplan_min: data?.property?.floorplan_min?.length || 0,
-        room_groups: data?.property?.room_groups?.length || 0,
-        room_totals: data?.property?.room_totals?.length || 0,
-      });
-    }
-  }, [uiRooms, data?.property]);
-
-  // Recalculate rollup with overridden costs
-  const rollup = useMemo(() => {
-    const baseRollup = computeRefurbRollup(data?.property, data?.refurb_estimates);
-
-    // Calculate total rooms cost from uiRooms (which includes overrides)
-    const roomsTotalWithVat = uiRooms.reduce((sum, room) => sum + (room.total_with_vat || 0), 0);
-    const roomsTotalWithoutVat = uiRooms.reduce((sum, room) => sum + (room.total_without_vat || 0), 0);
-
-    // Recalculate property total including overheads and EPC
-    const propertyTotalWithVat = roomsTotalWithVat +
-      (baseRollup.overheads_with_vat || 0) +
-      (baseRollup.epc_total_with_vat || 0);
-    const propertyTotalWithoutVat = roomsTotalWithoutVat +
-      (baseRollup.overheads_without_vat || 0) +
-      (baseRollup.epc_total_without_vat || 0);
-
-    return {
-      ...baseRollup,
-      rooms_total_with_vat: roomsTotalWithVat,
-      rooms_total_without_vat: roomsTotalWithoutVat,
-      property_total_with_vat: propertyTotalWithVat,
-      property_total_without_vat: propertyTotalWithoutVat,
-    };
-  }, [data?.property, data?.refurb_estimates, uiRooms]);
 
   // Missing room requests (realtime)
   const { requests: missingRoomRequests } = useMissingRoomRequests(data?.property_id || '');
@@ -1441,22 +1359,11 @@ function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
   const filteredRooms = useMemo(() => {
     let list = [...uiRooms];
 
-    const beforeFilter = list.length;
-
     // Apply existing filters
     list = list.filter(room => !UNWANTED_TYPES.has(room.room_type || ''));
 
-    const afterUnwantedFilter = list.length;
-    if (beforeFilter !== afterUnwantedFilter) {
-      console.log(`[Filtering] Removed ${beforeFilter - afterUnwantedFilter} rooms via UNWANTED_TYPES`);
-    }
-
     if (filterType !== 'All') {
-      const beforeTypeFilter = list.length;
       list = list.filter((room) => titleize(room.room_type) === filterType);
-      if (beforeTypeFilter !== list.length) {
-        console.log(`[Filtering] Removed ${beforeTypeFilter - list.length} rooms via room type filter (showing: ${filterType})`);
-      }
     }
 
     // Note: confidence filtering removed as new UiRoom doesn't have confidence scores
@@ -1467,8 +1374,6 @@ function buildRoomGroups(property: any, refurbRows: RefurbRoom[]) {
     } else if (sortKey === 'total_asc') {
       list = [...list].sort((a, b) => (a.total_with_vat ?? 0) - (b.total_with_vat ?? 0));
     }
-
-    console.log(`[Filtering] Final filtered count: ${list.length} (from ${uiRooms.length} total)`);
 
     return list;
   }, [uiRooms, filterType, sortKey]);
@@ -1596,7 +1501,7 @@ const roomTypes = useMemo(() => {
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 tracking-wide">AI-POWERED PROPERTY INVESTMENT ANALYSIS</p>
               </div>
             </div>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mt-3 max-w-2xl font-medium leading-relaxed">Paste a property listing URL to start a new analysis. After completion, the <code className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded text-xs font-mono font-semibold">run_id</code> will auto-populate below so you can reload this property anytime.</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-3 max-w-2xl font-medium leading-relaxed">Paste a property listing URL to start a new analysis, or toggle demo mode to load an existing <code className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded text-xs font-mono font-semibold">run_id</code> result.</p>
             <ProgressBar percent={progress} show={status === 'queued' || status === 'processing'} />
           </div>
 
@@ -1641,14 +1546,14 @@ const roomTypes = useMemo(() => {
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <label className="inline-flex items-center gap-2 text-slate-700 dark:text-slate-300">
             <input type="checkbox" className="accent-blue-600 dark:accent-blue-500 w-4 h-4 rounded" checked={useDemo} onChange={(e) => setUseDemo(e.target.checked)} />
-            Load Prior Run
+            Use demo run
           </label>
 
           <input
             type="text"
             value={demoRunId}
             onChange={(e) => setDemoRunId(e.target.value.trim())}
-            placeholder="run_id (UUID) - auto-filled after analysis"
+            placeholder="demo run_id (UUID)"
             className="min-w-[22rem] flex-1 p-2 border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-md disabled:bg-slate-50 dark:disabled:bg-slate-900 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-all"
             disabled={!useDemo}
           />
@@ -1658,7 +1563,7 @@ const roomTypes = useMemo(() => {
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); loadDemoRun((demoRunId || '').trim()); }}
             disabled={!useDemo || !(demoRunId || '').trim()}
             className="px-3 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors font-medium"
-            title="Load previously analyzed property using the run_id"
+            title="Load demo data using the run_id"
           >
             Load demo
           </button>
@@ -1753,30 +1658,11 @@ const roomTypes = useMemo(() => {
 
               {/* Right: media + links */}
               <div className="space-y-4">
-                <button
-                  onClick={() => {
-                    if (data.property?.listing_images && data.property.listing_images.length > 0) {
-                      setListingGalleryStartIndex(0);
-                      setListingGalleryOpen(true);
-                    }
-                  }}
-                  disabled={!data.property?.listing_images || data.property.listing_images.length === 0}
-                  className="w-full rounded-lg overflow-hidden border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 transition-all hover:shadow-lg group disabled:hover:border-slate-200 disabled:hover:shadow-none disabled:cursor-default"
-                  title={data.property?.listing_images?.length > 0 ? `Click to view all ${data.property.listing_images.length} property images` : ''}
-                >
-                  {data.property?.listing_images?.[0] ? (
-                    <div className="relative">
-                      <img src={data.property.listing_images[0]} alt="Property" className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
-                      {data.property.listing_images.length > 1 && (
-                        <div className="absolute top-2 right-2 bg-black/70 dark:bg-black/80 backdrop-blur text-white text-xs px-2 py-1 rounded-full font-medium">
-                          {data.property.listing_images.length} photos
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="w-full h-48 flex items-center justify-center text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800">No image</div>
-                  )}
-                </button>
+                <div className="rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
+                  {data.property?.listing_images?.[0]
+                    ? (<img src={data.property.listing_images[0]} alt="Property" className="w-full h-48 object-cover" loading="lazy" />)
+                    : (<div className="w-full h-48 flex items-center justify-center text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800">No image</div>)}
+                </div>
 
                 <div className="text-sm space-y-1 text-slate-700 dark:text-slate-300">
                   <div>
@@ -1865,7 +1751,6 @@ const roomTypes = useMemo(() => {
                       showCharts={true}
                       allRooms={uiRooms}
                       pendingUploads={roomUploadsMap.get(room.room_name || '') || []}
-                      onCostChange={handleRoomCostChange}
                     />
                   ))}
                 </div>
@@ -1904,55 +1789,29 @@ const roomTypes = useMemo(() => {
                     <thead>
                       <tr className="bg-slate-100 dark:bg-slate-800 border-b-2 border-slate-200 dark:border-slate-700">
                         <th className="p-4 text-left text-slate-900 dark:text-slate-50 font-bold">Room</th>
-                        <th className="p-4 text-center text-slate-900 dark:text-slate-50 font-bold w-64">Adjust Cost</th>
                         <th className="p-4 text-right text-slate-900 dark:text-slate-50 font-bold">Total (with VAT)</th>
                         <th className="p-4 text-right text-slate-900 dark:text-slate-50 font-bold">Total (ex VAT)</th>
                         <th className="p-4 text-right text-slate-900 dark:text-slate-50 font-bold">Conf.</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredRooms.map((room) => {
-                        const maxSliderValue = Math.max(50000, (room.total_with_vat || 0) * 2 || 10000);
-                        return (
-                          <tr key={room.room_name} className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                            <td className="p-4 capitalize text-slate-900 dark:text-slate-100 font-medium">
-                              {room.display_name}
-                              {room.total_with_vat === 0 && (
-                                <span className="ml-2 text-xs bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full">
-                                  No issues
-                                </span>
-                              )}
-                            </td>
-                            <td className="p-4">
-                              <div className="flex items-center gap-2">
-                                <Slider
-                                  value={[room.total_with_vat || 0]}
-                                  onValueChange={(val) => handleRoomCostChange(room.room_name || '', val[0])}
-                                  min={0}
-                                  max={maxSliderValue}
-                                  step={100}
-                                  className="flex-1"
-                                />
-                                <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                                  £{((room.total_with_vat || 0) / 1000).toFixed(1)}k
-                                </span>
-                              </div>
-                            </td>
-                            <td className="p-4 text-right font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(room.total_with_vat ?? 0)}</td>
-                            <td className="p-4 text-right text-slate-700 dark:text-slate-300">{formatCurrency(room.total_without_vat || 0)}</td>
-                            <td className="p-4 text-right text-slate-700 dark:text-slate-300">—</td>
-                          </tr>
-                        );
-                      })}
+                      {uiRooms.map((room) => (
+                        <tr key={room.room_name} className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                          <td className="p-4 capitalize text-slate-900 dark:text-slate-100 font-medium">{room.display_name}</td>
+                          <td className="p-4 text-right font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(room.total_with_vat ?? 0)}</td>
+                          <td className="p-4 text-right text-slate-700 dark:text-slate-300">{formatCurrency(room.total_without_vat || 0)}</td>
+                          <td className="p-4 text-right text-slate-700 dark:text-slate-300">—</td>
+                        </tr>
+                      ))}
                     </tbody>
                     <tfoot>
                       <tr className="border-t-2 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800">
-                        <td className="p-4 text-right font-bold text-slate-900 dark:text-slate-50" colSpan={2}>Totals</td>
+                        <td className="p-4 text-right font-bold text-slate-900 dark:text-slate-50">Totals</td>
                         <td className="p-4 text-right font-bold text-slate-900 dark:text-slate-50">
-                          {formatCurrency(filteredRooms.reduce((a, r) => a + (r.total_with_vat ?? 0), 0))}
+                          {formatCurrency(uiRooms.reduce((a, r) => a + (r.total_with_vat ?? 0), 0))}
                         </td>
                         <td className="p-4 text-right font-semibold text-slate-700 dark:text-slate-300">
-                          {formatCurrency(filteredRooms.reduce((a, r) => a + (r.total_without_vat || 0), 0))}
+                          {formatCurrency(uiRooms.reduce((a, r) => a + (r.total_without_vat || 0), 0))}
                         </td>
                         <td className="p-4" />
                       </tr>
@@ -1968,6 +1827,49 @@ const roomTypes = useMemo(() => {
             )}
           </Section>
 
+          {/* Listing Images Gallery */}
+          {data.property?.listing_images && data.property.listing_images.length > 0 && (
+            <Section title="Property Images" desc="High-resolution property photos. Click any image to open the interactive gallery with navigation.">
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                {data.property.listing_images.slice(0, 12).map((src: string, i: number) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      setListingGalleryStartIndex(i);
+                      setListingGalleryOpen(true);
+                    }}
+                    className="relative aspect-[4/3] rounded-xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 transition-all hover:scale-[1.02] hover:shadow-2xl group"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={src} alt={`Property image ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center">
+                      <div className="bg-white/90 dark:bg-slate-900/90 rounded-full p-3 transform scale-75 group-hover:scale-100 transition-transform">
+                        <svg className="w-6 h-6 text-slate-900 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                        </svg>
+                      </div>
+                    </div>
+                    <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                      {i + 1} / {data.property.listing_images.length}
+                    </div>
+                  </button>
+                ))}
+              </div>
+              {data.property.listing_images.length > 12 && (
+                <div className="mt-4 text-center">
+                  <button
+                    onClick={() => {
+                      setListingGalleryStartIndex(0);
+                      setListingGalleryOpen(true);
+                    }}
+                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-semibold transition-all shadow-md hover:shadow-lg"
+                  >
+                    View all {data.property.listing_images.length} images →
+                  </button>
+                </div>
+              )}
+            </Section>
+          )}
 
           {/* Rent estimate feedback */}
           <Section title="Rent Estimate" desc="Modelled view based on local comps and normalised assumptions. Use feedback to correct the model if this looks off.">
@@ -2080,14 +1982,7 @@ const roomTypes = useMemo(() => {
           {/* NEW: Investor Dashboard with live calculations */}
           {data && (
             <InvestorDashboard
-              payload={{
-                ...data,
-                property: {
-                  ...data.property,
-                  property_total_with_vat: rollup.property_total_with_vat,
-                  property_total_without_vat: rollup.property_total_without_vat,
-                },
-              }}
+              payload={data}
               onSaveScenario={(overrides, kpis) => {
                 console.log('Save scenario:', { overrides, kpis });
                 // TODO: Implement save to analysis_scenarios table
